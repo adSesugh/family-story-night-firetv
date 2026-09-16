@@ -7,7 +7,7 @@ export default function SetupScreen({ names, setNames, themeIndex, setThemeIndex
       </h1>
 
       <input
-        className="mt-10 w-full rounded-sm border-b-2 border-starlight/40 bg-transparent px-1 py-3 font-serif text-3xl text-parchment placeholder:text-starlight/50 focus:border-lamp focus:outline-none"
+        className="mt-10 w-full rounded-sm border-b-2 border-starlight/40 bg-transparent px-1 py-3 font-serif text-3xl text-parchment placeholder:text-starlight/50 focus:outline-none"
         value={names}
         onChange={(e) => setNames(e.target.value)}
         placeholder="Maya, Dad, Biscuit the dog"
