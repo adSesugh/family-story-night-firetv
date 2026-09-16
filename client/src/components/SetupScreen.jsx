@@ -1,4 +1,4 @@
-export default function SetupScreen({ names, setNames, themeIndex, setThemeIndex, error, onSubmit }) {
+export default function SetupScreen({ names, setNames, themeIndex, setThemeIndex, error, onSubmit, themes }) {
   return (
     <div className="relative z-10 w-full max-w-2xl px-12">
       <p className="font-sans text-lg text-starlight">Family Story Night</p>
@@ -16,9 +16,9 @@ export default function SetupScreen({ names, setNames, themeIndex, setThemeIndex
 
       <div className="mt-8 flex items-center gap-4 font-sans text-base">
         <span className="text-starlight">Tonight&rsquo;s theme</span>
-        <span className="text-parchment">{THEMES[themeIndex]}</span>
+        <span className="text-parchment">{themes[themeIndex]}</span>
         <div className="flex gap-1">
-          {THEMES.map((_, i) => (
+          {themes.map((_, i) => (
             <button
               key={i}
               onClick={() => setThemeIndex(i)}

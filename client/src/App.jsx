@@ -187,6 +187,7 @@ export default function App() {
           setThemeIndex={setThemeIndex}
           error={error}
           onSubmit={generateStory}
+          themes={THEMES}
         />
       )}
       {screen === "loading" && <LoadingScreen />}
