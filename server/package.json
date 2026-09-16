@@ -1,0 +1,19 @@
+{
+  "name": "family-story-night-server",
+  "version": "1.0.0",
+  "description": "Backend for Family Story Night - Bedrock story generation + Polly narration",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-bedrock-runtime": "^3.699.0",
+    "@aws-sdk/client-polly": "^3.699.0",
+    "cors": "^2.8.5",
+    "dotenv": "^17.4.2",
+    "express": "^4.21.1",
+    "nodemon": "^3.1.14"
+  }
+}
