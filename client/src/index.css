@@ -42,14 +42,40 @@ body {
 }
 
 /* Visible focus ring for remote/keyboard navigation, never suppressed */
-:focus-visible {
+/* :focus-visible {
   outline: 2px solid #e8a33d;
   outline-offset: 4px;
-}
+} */
 
 @media (prefers-reduced-motion: reduce) {
   * {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* Swiper overrides */
+.swiper {
+  width: 100%;
+}
+
+.swiper-slide {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Hide default Swiper navigation buttons */
+.swiper-button-prev,
+.swiper-button-next {
+  display: none;
+}
+
+/* Custom button styling */
+.swiper-button-prev.swiper-button-prev,
+.swiper-button-next.swiper-button-next {
+  color: rgb(124 147 201);
+  top: auto;
+  width: auto;
+  height: auto;
 }
