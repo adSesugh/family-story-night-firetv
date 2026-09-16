@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { BookOpen, ArrowLeft, Trash2 } from "lucide-react";
 import { loadHistory, deleteStory, clearHistory } from "../utils/storyHistory";
 
 export default function HistoryScreen({ onSelect, onBack }) {
@@ -33,16 +34,20 @@ export default function HistoryScreen({ onSelect, onBack }) {
   };
 
   return (
-    <div className="relative z-10 w-full max-w-4xl px-12 flex flex-col h-full">
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="font-serif text-6xl leading-tight text-parchment">
-          📖 Story History
-        </h1>
+    <div className="relative z-10 flex h-full w-full max-w-4xl flex-col px-12">
+      <div className="mb-8 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <BookOpen className="h-10 w-10 text-[#E8A33D]" />
+          <h1 className="font-serif text-5xl leading-tight text-parchment">
+            Story History
+          </h1>
+        </div>
         <button
           onClick={onBack}
-          className="rounded-sm bg-starlight/20 px-6 py-2 font-sans text-base text-parchment hover:bg-starlight/30 transition-colors"
+          className="flex items-center gap-2 rounded-sm bg-starlight/20 px-6 py-2 font-sans text-base text-parchment transition-colors hover:bg-starlight/30"
         >
-          ← Back
+          <ArrowLeft className="h-4 w-4" />
+          <span>← Back</span>
         </button>
       </div>
 
@@ -52,29 +57,30 @@ export default function HistoryScreen({ onSelect, onBack }) {
         <>
           <button
             onClick={handleClearAll}
-            className="mb-6 rounded-sm bg-red-900/40 px-4 py-2 font-sans text-sm text-red-200 hover:bg-red-900/60 transition-colors"
+            className="mb-6 inline-flex items-center gap-2 rounded-sm bg-red-900/40 px-4 py-2 font-sans text-sm text-red-200 transition-colors hover:bg-red-900/60"
           >
-            Clear All History
+            <Trash2 className="h-4 w-4" />
+            <span>Clear All History</span>
           </button>
 
-          <div className="flex-1 overflow-y-auto space-y-2">
+          <div className="flex-1 space-y-2 overflow-y-auto">
             {history.map((story) => (
               <div
                 key={story.id}
-                className="flex items-start justify-between gap-4 rounded-sm bg-starlight/10 px-6 py-4 hover:bg-starlight/20 transition-colors cursor-pointer"
+                className="flex cursor-pointer items-start justify-between gap-4 rounded-sm bg-starlight/10 px-6 py-4 transition-colors hover:bg-starlight/20"
                 onClick={() => onSelect(story)}
               >
-                <div className="flex-1 min-w-0">
+                <div className="min-w-0 flex-1">
                   <p className="font-sans text-sm text-starlight">
                     {formatDate(story.generatedAt)}
                   </p>
-                  <p className="font-sans text-base text-parchment mt-1">
+                  <p className="mt-1 font-sans text-base text-parchment">
                     {story.familyMembers.join(", ")}
                   </p>
-                  <p className="font-sans text-sm text-starlight/70 mt-1">
+                  <p className="mt-1 font-sans text-sm text-starlight/70">
                     Theme: {story.theme}
                   </p>
-                  <p className="font-serif text-base text-parchment/80 mt-2 line-clamp-2">
+                  <p className="mt-2 line-clamp-2 font-serif text-base text-parchment/80">
                     {story.firstPage}
                   </p>
                 </div>
@@ -83,9 +89,10 @@ export default function HistoryScreen({ onSelect, onBack }) {
                     e.stopPropagation();
                     handleDelete(story.id);
                   }}
-                  className="flex-shrink-0 rounded-sm bg-red-900/30 px-3 py-2 font-sans text-sm text-red-300 hover:bg-red-900/50 transition-colors"
+                  className="flex flex-shrink-0 items-center gap-1.5 rounded-sm bg-red-900/30 px-3 py-2 font-sans text-sm text-red-300 transition-colors hover:bg-red-900/50"
                 >
-                  Delete
+                  <Trash2 className="h-3.5 w-3.5" />
+                  <span>Delete</span>
                 </button>
               </div>
             ))}

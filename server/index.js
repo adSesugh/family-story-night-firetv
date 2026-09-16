@@ -66,25 +66,47 @@ async function generateIllustration(pageText, theme, seed, retries = 3) {
   }
 }
 
+const ALLOWED_VOICES = ["Joanna", "Matthew", "Emma", "Ivy"];
+const ALLOWED_STORY_LENGTHS = [4, 6, 8];
+const MAX_TOKENS_BY_LENGTH = { 4: 600, 6: 800, 8: 1050 };
+
 /**
  * POST /generate-story
- * body: { familyMembers: string[], theme: string }
- * returns: { pages: Array<{ text: string, illustration: { url: string, alt: string } | null }> }
+ * body: { familyMembers: string[], theme?: string, isCustomTheme?: boolean, storyLength?: number }
+ * returns: { pages: Array<string> }
  */
 app.post("/generate-story", async (req, res) => {
   try {
-    const { familyMembers = [], theme = "a cozy adventure" } = req.body;
+    const {
+      familyMembers = [],
+      theme = "a cozy adventure",
+      isCustomTheme = false,
+      storyLength = 6,
+    } = req.body;
 
     if (familyMembers.length === 0) {
       return res.status(400).json({ error: "familyMembers is required" });
     }
 
-    const prompt = `Write a short, warm bedtime story (6 pages, 2-3 sentences per page) \
+    if (isCustomTheme && theme.length > 100) {
+      return res.status(400).json({ error: "Custom theme must be 100 characters or fewer" });
+    }
+
+    const parsedLength = Number(storyLength);
+    if (!ALLOWED_STORY_LENGTHS.includes(parsedLength)) {
+      return res.status(400).json({ error: "storyLength must be 4, 6, or 8" });
+    }
+
+    console.log(`[generate-story] isCustomTheme: ${isCustomTheme}, length: ${parsedLength}, theme: "${theme}"`);
+
+    const maxTokens = MAX_TOKENS_BY_LENGTH[parsedLength] || 800;
+
+    const prompt = `Write a short, warm bedtime story (${parsedLength} pages, 2-3 sentences per page) \
 starring these family members: ${familyMembers.join(", ")}. Theme: ${theme}. \
 Make it gentle, imaginative, and suitable for all ages. \
 Important rules: do not use dashes, hyphenated words, or em dashes anywhere in the story text. \
 Write every sentence in plain language with standard punctuation only. \
-Return ONLY a JSON array of 6 strings, one per page, with no extra text or markdown.`;
+Return ONLY a JSON array of ${parsedLength} strings, one per page, with no extra text or markdown.`;
 
     const command = new InvokeModelCommand({
       modelId: MODEL_ID,
@@ -92,7 +114,7 @@ Return ONLY a JSON array of 6 strings, one per page, with no extra text or markd
       accept: "application/json",
       body: JSON.stringify({
         anthropic_version: "bedrock-2023-05-31",
-        max_tokens: 800,
+        max_tokens: maxTokens,
         messages: [{ role: "user", content: prompt }],
       }),
     });
@@ -106,7 +128,7 @@ Return ONLY a JSON array of 6 strings, one per page, with no extra text or markd
       pages = JSON.parse(text.replace(/```json|```/g, "").trim());
     } catch {
       // Fallback: split into rough chunks if the model didn't return clean JSON
-      pages = text.split("\n").filter(Boolean).slice(0, 6);
+      pages = text.split("\n").filter(Boolean).slice(0, parsedLength);
     }
 
     res.json({ pages });
@@ -144,18 +166,20 @@ app.post("/illustrate", async (req, res) => {
 
 /**
  * POST /narrate
- * body: { text: string }
+ * body: { text: string, voiceId?: string }
  * returns: audio/mpeg stream
  */
 app.post("/narrate", async (req, res) => {
   try {
-    const { text } = req.body;
+    const { text, voiceId } = req.body;
     if (!text) return res.status(400).json({ error: "text is required" });
+
+    const selectedVoice = ALLOWED_VOICES.includes(voiceId) ? voiceId : "Joanna";
 
     const command = new SynthesizeSpeechCommand({
       Text: text,
       OutputFormat: "mp3",
-      VoiceId: "Joanna",
+      VoiceId: selectedVoice,
       Engine: "neural",
     });
 

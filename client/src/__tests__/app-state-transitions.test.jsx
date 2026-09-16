@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 
 /**
@@ -164,7 +164,7 @@ describe('Task 3.1: Verify Loading Screen displays during generation', () => {
 
     // Enter names
     const input = getByPlaceholderText("Maya, Dad, Biscuit the dog");
-    input.value = "Maya, Dad";
+    fireEvent.change(input, { target: { value: "Maya, Dad" } });
 
     // Click submit (simulating user entering names and clicking button)
     const submitBtn = getByTestId("submit-button");
@@ -200,7 +200,7 @@ describe('Task 3.2: Verify transition to Story Screen on success', () => {
 
     // Enter names and submit
     const input = getByPlaceholderText("Maya, Dad, Biscuit the dog");
-    input.value = "Maya";
+    fireEvent.change(input, { target: { value: "Maya" } });
 
     const submitBtn = getByTestId("submit-button");
     submitBtn.click();
@@ -228,7 +228,7 @@ describe('Task 3.2: Verify transition to Story Screen on success', () => {
     );
 
     const input = getByPlaceholderText("Maya, Dad, Biscuit the dog");
-    input.value = "Test";
+    fireEvent.change(input, { target: { value: "Test" } });
 
     const submitBtn = getByTestId("submit-button");
     submitBtn.click();
@@ -253,7 +253,7 @@ describe('Task 3.2: Verify transition to Story Screen on success', () => {
     );
 
     const input = getByPlaceholderText("Maya, Dad, Biscuit the dog");
-    input.value = "Test";
+    fireEvent.change(input, { target: { value: "Test" } });
 
     const submitBtn = getByTestId("submit-button");
     submitBtn.click();
@@ -276,7 +276,7 @@ describe('Task 3.3: Verify transition back to Setup on error', () => {
     );
 
     const input = getByPlaceholderText("Maya, Dad, Biscuit the dog");
-    input.value = "Maya";
+    fireEvent.change(input, { target: { value: "Maya" } });
 
     const submitBtn = getByTestId("submit-button");
     submitBtn.click();
@@ -295,7 +295,7 @@ describe('Task 3.3: Verify transition back to Setup on error', () => {
     );
 
     const input = getByPlaceholderText("Maya, Dad, Biscuit the dog");
-    input.value = "Maya";
+    fireEvent.change(input, { target: { value: "Maya" } });
 
     const submitBtn = getByTestId("submit-button");
     submitBtn.click();
@@ -319,7 +319,7 @@ describe('Task 3.3: Verify transition back to Setup on error', () => {
     );
 
     const input = getByPlaceholderText("Maya, Dad, Biscuit the dog");
-    input.value = "Maya";
+    fireEvent.change(input, { target: { value: "Maya" } });
 
     const submitBtn = getByTestId("submit-button");
     submitBtn.click();
@@ -339,7 +339,7 @@ describe('Task 3.3: Verify transition back to Setup on error', () => {
     );
 
     const input = getByPlaceholderText("Maya, Dad, Biscuit the dog");
-    input.value = "Maya";
+    fireEvent.change(input, { target: { value: "Maya" } });
 
     const submitBtn = getByTestId("submit-button");
     submitBtn.click();

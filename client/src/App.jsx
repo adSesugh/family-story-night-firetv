@@ -2,9 +2,15 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import SetupScreen from "./components/SetupScreen";
 import StoryScreen from "./components/StoryScreen";
 import HistoryScreen from "./components/HistoryScreen";
+import SettingsScreen from "./components/SettingsScreen";
 import { saveStory, loadHistory } from "./utils/storyHistory";
+import { StorageService } from "./utils/storage";
+import { loadSettings } from "./utils/parentSettings";
+import { trackEvent } from "./utils/analytics";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:4000";
+const API_BASE =
+  (typeof process !== "undefined" && process.env && process.env.VITE_API_BASE) ||
+  "http://localhost:4000";
 
 const THEMES = [
   "a cozy adventure",
@@ -14,24 +20,44 @@ const THEMES = [
 ];
 
 export default function App() {
-  const [screen, setScreen] = useState("setup"); // setup | loading | story | history
+  const [screen, setScreen] = useState("setup"); // setup | loading | story | history | settings
   const [names, setNames] = useState("");
   const [themeIndex, setThemeIndex] = useState(0);
+  const [themeMode, setThemeMode] = useState("preset"); // preset | custom
+  const [customTheme, setCustomTheme] = useState("");
   const [pages, setPages] = useState([]);
   const [pageIndex, setPageIndex] = useState(0);
   const [error, setError] = useState(null);
   const [illustrations, setIllustrations] = useState([]);
   const [turnKey, setTurnKey] = useState(0); // bump to replay the page-turn animation
   const [history, setHistory] = useState([]);
+
+  // Enhancements: Parent settings, voice, story length, analytics
+  const [parentSettings, setParentSettings] = useState(() => loadSettings());
+  const [voice, setVoice] = useState(() => {
+    const stored = StorageService.getItem("familyStoryNight_voice");
+    if (stored) return stored;
+    const settings = loadSettings();
+    return settings?.settings?.defaultVoice || "Joanna";
+  });
+  const [storyLength, setStoryLength] = useState(6);
+
   const audioRef = useRef(null);
+  const storyStartTimeRef = useRef(null);
 
   // Load history on mount
   useEffect(() => {
     setHistory(loadHistory());
   }, []);
 
+  const handleVoiceChange = useCallback((newVoice) => {
+    setVoice(newVoice);
+    StorageService.setItem("familyStoryNight_voice", newVoice);
+  }, []);
+
   const generateStory = useCallback(async () => {
     setError(null);
+    const startTime = Date.now();
     
     const familyMembers = names
       .split(",")
@@ -44,27 +70,51 @@ export default function App() {
       return;
     }
 
+    // Validate custom theme if in custom mode
+    if (themeMode === "custom" && customTheme.trim() === "") {
+      setError("Custom theme cannot be empty");
+      return;
+    }
+
     setScreen("loading");
     try {
+      const activeTheme = themeMode === "custom" ? customTheme : THEMES[themeIndex];
       const res = await fetch(`${API_BASE}/generate-story`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ familyMembers, theme: THEMES[themeIndex] }),
+        body: JSON.stringify({
+          familyMembers,
+          theme: activeTheme,
+          isCustomTheme: themeMode === "custom",
+          storyLength,
+        }),
       });
       if (!res.ok) throw new Error("Story generation failed");
       const data = await res.json();
       const storyPages = data.pages || [];
+      const genDuration = (Date.now() - startTime) / 1000;
+
       setPages(storyPages);
       setPageIndex(0);
       setTurnKey((k) => k + 1);
       setIllustrations([]); // clear previous
+      storyStartTimeRef.current = Date.now();
       setScreen("story");
+
+      // Track story generation analytics event (Req 7.1)
+      trackEvent("story_generated", {
+        familyMembers,
+        theme: activeTheme,
+        storyLength,
+        voice,
+        generationTime: genDuration,
+      });
 
       // Save story to history
       const firstPage = storyPages[0];
       saveStory({
         familyMembers,
-        theme: THEMES[themeIndex],
+        theme: activeTheme,
         pages: storyPages,
         firstPage: typeof firstPage === "string" ? firstPage : firstPage.text,
       });
@@ -72,7 +122,6 @@ export default function App() {
       setHistory(loadHistory());
 
       // Fetch illustrations in background — sequential with delay to avoid rate limits
-      const activeTheme = THEMES[themeIndex];
       (async () => {
         const urls = [];
         for (let idx = 0; idx < storyPages.length; idx++) {
@@ -101,12 +150,13 @@ export default function App() {
       setError("Couldn't reach the storyteller. Is the backend running?");
       setScreen("setup");
     }
-  }, [names, themeIndex]);
+  }, [names, themeIndex, themeMode, customTheme, storyLength, voice]);
 
   const turnTo = useCallback((next) => {
     setPageIndex(next);
     setTurnKey((k) => k + 1);
-  }, []);
+    trackEvent("page_viewed", { pageIndex: next, totalPages: pages.length });
+  }, [pages.length]);
 
   const handleViewHistory = useCallback(() => {
     setScreen("history");
@@ -116,6 +166,7 @@ export default function App() {
     setPages(story.pages);
     setPageIndex(0);
     setTurnKey((k) => k + 1);
+    storyStartTimeRef.current = Date.now();
     setScreen("story");
   }, []);
 
@@ -123,9 +174,19 @@ export default function App() {
     setScreen("setup");
   }, []);
 
+  const handleOpenSettings = useCallback(() => {
+    setScreen("settings");
+  }, []);
+
+  const handleBackFromSettings = useCallback(() => {
+    setScreen("setup");
+  }, []);
+
+  const handleSettingsChange = useCallback((updated) => {
+    setParentSettings(updated);
+  }, []);
+
   // Screen-change narration effect: handle initial story load (screen="story", pageIndex=0)
-  // This effect triggers when screen changes to "story", ensuring narration plays on initial load
-  // independent of the page-change narration effect below
   useEffect(() => {
     if (screen !== "story" || pageIndex !== 0 || !pages.length) return;
     let cancelled = false;
@@ -135,7 +196,7 @@ export default function App() {
         const res = await fetch(`${API_BASE}/narrate`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text: pages[0] }),
+          body: JSON.stringify({ text: pages[0], voiceId: voice }),
         });
         if (!res.ok || cancelled) return;
         const blob = await res.blob();
@@ -154,10 +215,9 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [screen, pages]);
+  }, [screen, pages, voice]);
 
   // Narrate current page whenever it changes on the story screen (page 2+)
-  // This effect handles page navigation after the initial load
   useEffect(() => {
     if (screen !== "story" || !pages[pageIndex]) return;
     let cancelled = false;
@@ -167,7 +227,7 @@ export default function App() {
         const res = await fetch(`${API_BASE}/narrate`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text: pages[pageIndex] }),
+          body: JSON.stringify({ text: pages[pageIndex], voiceId: voice }),
         });
         if (!res.ok || cancelled) return;
         const blob = await res.blob();
@@ -186,7 +246,7 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [screen, pageIndex, pages]);
+  }, [screen, pageIndex, pages, voice]);
 
   useEffect(() => {
     if (!audioRef.current) return;
@@ -195,7 +255,16 @@ export default function App() {
     let turnTimer = null;
 
     const handleEnded = () => {
-      if (screen !== "story" || pageIndex >= pages.length - 1) return;
+      if (screen !== "story") return;
+
+      if (pageIndex >= pages.length - 1) {
+        // Track story completed analytics event (Req 7.3)
+        trackEvent("story_completed", {
+          totalPages: pages.length,
+          timeSpent: storyStartTimeRef.current ? Math.round((Date.now() - storyStartTimeRef.current) / 1000) : 0,
+        });
+        return;
+      }
 
       turnTimer = setTimeout(() => {
         turnTo(pageIndex + 1);
@@ -226,6 +295,10 @@ export default function App() {
         if (e.key === "Backspace" || e.key === "Escape") {
           setScreen("setup");
         }
+      } else if (screen === "history" || screen === "settings") {
+        if (e.key === "Backspace" || e.key === "Escape") {
+          setScreen("setup");
+        }
       }
     };
     window.addEventListener("keydown", handleKeyDown);
@@ -248,16 +321,41 @@ export default function App() {
           setNames={setNames}
           themeIndex={themeIndex}
           setThemeIndex={setThemeIndex}
+          themeMode={themeMode}
+          setThemeMode={setThemeMode}
+          customTheme={customTheme}
+          setCustomTheme={setCustomTheme}
           error={error}
           onSubmit={generateStory}
           themes={THEMES}
           hasHistory={history.length > 0}
           onViewHistory={handleViewHistory}
+          voice={voice}
+          setVoice={handleVoiceChange}
+          storyLength={storyLength}
+          setStoryLength={setStoryLength}
+          parentSettings={parentSettings}
+          onOpenSettings={handleOpenSettings}
         />
       )}
       {screen === "loading" && <LoadingScreen />}
       {screen === "history" && (
         <HistoryScreen onSelect={handleSelectStory} onBack={handleBackFromHistory} />
+      )}
+      {screen === "settings" && (
+        <SettingsScreen
+          onBack={handleBackFromSettings}
+          onSettingsChange={handleSettingsChange}
+          voice={voice}
+          setVoice={handleVoiceChange}
+          themeMode={themeMode}
+          setThemeMode={setThemeMode}
+          customTheme={customTheme}
+          setCustomTheme={setCustomTheme}
+          themes={THEMES}
+          themeIndex={themeIndex}
+          setThemeIndex={setThemeIndex}
+        />
       )}
       {screen === "story" && (
         <StoryScreen pages={pages} illustrations={illustrations} pageIndex={pageIndex} turnKey={turnKey} onTurn={turnTo} />
