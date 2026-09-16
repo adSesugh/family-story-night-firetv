@@ -35,6 +35,26 @@ export function saveStory(story) {
 }
 
 /**
+ * Update an existing story in history by id (e.g. to attach newly generated illustrations).
+ *
+ * @param {string} id
+ * @param {Partial<Story>} updates
+ * @returns {Story | null}
+ */
+export function updateStory(id, updates) {
+  try {
+    const stories = loadHistory();
+    const index = stories.findIndex((s) => s.id === id);
+    if (index === -1) return null;
+    stories[index] = { ...stories[index], ...updates };
+    StorageService.setItem(STORAGE_KEY, { stories, version: 1 });
+    return stories[index];
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Load all stored stories. Returns an empty array on any error.
  *
  * @returns {Story[]}

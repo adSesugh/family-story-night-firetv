@@ -1,10 +1,19 @@
 import { useEffect, useRef } from "react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Keyboard, Navigation } from "swiper/modules";
+import { Volume2, VolumeX } from "lucide-react";
 import "swiper/css";
 import "swiper/css/navigation";
 
-export default function StoryScreen({ pages, illustrations = [], pageIndex, turnKey, onTurn }) {
+export default function StoryScreen({
+  pages,
+  illustrations = [],
+  pageIndex,
+  turnKey,
+  onTurn,
+  isNarrating = false,
+  onToggleNarration,
+}) {
   const swiperRef = useRef(null);
 
   // Sync Swiper with pageIndex when it changes from parent
@@ -20,6 +29,28 @@ export default function StoryScreen({ pages, illustrations = [], pageIndex, turn
 
   return (
     <div className="relative z-10 flex h-screen w-full items-center justify-center">
+      {/* Narration audio status / manual toggle */}
+      {onToggleNarration && (
+        <button
+          onClick={onToggleNarration}
+          aria-label={isNarrating ? "Pause narration" : "Play narration"}
+          title={isNarrating ? "Click to pause narration" : "Click to play narration"}
+          className="absolute top-6 right-8 z-30 flex items-center gap-2 rounded-full border border-starlight/20 bg-panel/70 px-4 py-2 font-sans text-sm text-starlight hover:bg-panel/90 hover:text-parchment backdrop-blur-sm transition-all shadow-md focus:outline-none focus:ring-2 focus:ring-lamp/50 cursor-pointer"
+        >
+          {isNarrating ? (
+            <>
+              <Volume2 className="h-4 w-4 text-lamp animate-pulse" />
+              <span>Reading aloud</span>
+            </>
+          ) : (
+            <>
+              <VolumeX className="h-4 w-4 text-starlight/60" />
+              <span>Listen</span>
+            </>
+          )}
+        </button>
+      )}
+
       <Swiper
         ref={swiperRef}
         modules={[Keyboard, Navigation]}
@@ -30,7 +61,7 @@ export default function StoryScreen({ pages, illustrations = [], pageIndex, turn
       >
         {pages.map((page, idx) => {
           const pageText = typeof page === "object" ? page.text : page; // keep backward compat
-          const illustrationUrl = illustrations[idx] ?? null;
+          const illustrationUrl = illustrations[idx] || (typeof page === "object" && page.illustration ? page.illustration.url : null);
           return (
             <SwiperSlide key={idx} className="flex items-center justify-center px-16 py-14">
               <div className="grid h-full max-h-[38rem] w-full max-w-6xl grid-cols-2 overflow-hidden rounded-sm bg-panel/60 shadow-2xl shadow-black/40 backdrop-blur-sm">
@@ -56,11 +87,11 @@ export default function StoryScreen({ pages, illustrations = [], pageIndex, turn
                   <div className="pointer-events-none absolute inset-0 shadow-[inset_0_0_40px_rgba(0,0,0,0.35)]" />
                 </div>
 
-                {/* Text column — generous, consistent padding, vertically centered */}
-                <div className="flex h-full items-center px-14 py-12">
+                {/* Text column — starts naturally from top with balanced padding like a storybook */}
+                <div className="flex h-full w-full flex-col justify-start px-12 md:px-16 pt-12 md:pt-14 pb-8 overflow-y-auto">
                   <p
                     key={turnKey}
-                    className="animate-page-in font-serif text-[1.75rem] leading-[1.6] text-parchment"
+                    className="animate-page-in font-serif text-[1.65rem] md:text-2xl leading-[1.65] text-parchment text-left"
                   >
                     {pageText}
                   </p>

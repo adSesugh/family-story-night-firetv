@@ -3,10 +3,11 @@ import SetupScreen from "./components/SetupScreen";
 import StoryScreen from "./components/StoryScreen";
 import HistoryScreen from "./components/HistoryScreen";
 import SettingsScreen from "./components/SettingsScreen";
-import { saveStory, loadHistory } from "./utils/storyHistory";
+import { saveStory, updateStory, loadHistory } from "./utils/storyHistory";
 import { StorageService } from "./utils/storage";
 import { loadSettings } from "./utils/parentSettings";
 import { trackEvent } from "./utils/analytics";
+import { blobToDataUrl, compressBlobToDataUrl } from "./utils/imageUtils";
 
 const API_BASE =
   (typeof process !== "undefined" && process.env && process.env.VITE_API_BASE) ||
@@ -55,6 +56,25 @@ export default function App() {
     StorageService.setItem("familyStoryNight_voice", newVoice);
   }, []);
 
+  // Prime audio element during user gesture so browser permits autoplay after async operations
+  const primeAudio = useCallback(() => {
+    if (audioRef.current) {
+      try {
+        audioRef.current.src = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=";
+        const playPromise = audioRef.current.play();
+        if (playPromise !== undefined) {
+          playPromise
+            .then(() => {
+              if (audioRef.current) audioRef.current.pause();
+            })
+            .catch(() => {});
+        }
+      } catch (e) {
+        // Ignore priming errors in environments without media support
+      }
+    }
+  }, []);
+
   const generateStory = useCallback(async () => {
     setError(null);
     const startTime = Date.now();
@@ -76,6 +96,9 @@ export default function App() {
       return;
     }
 
+    // Unlock audio context during initial user click before async API delay
+    primeAudio();
+
     setScreen("loading");
     try {
       const activeTheme = themeMode === "custom" ? customTheme : THEMES[themeIndex];
@@ -94,12 +117,49 @@ export default function App() {
       const storyPages = data.pages || [];
       const genDuration = (Date.now() - startTime) / 1000;
 
+      // 1. Fetch first illustration immediately so it displays as soon as the story screen opens
+      let firstIllustrationDisplay = null;
+      let firstIllustrationStored = null;
+      try {
+        const illRes = await fetch(`${API_BASE}/illustrate`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: storyPages[0], theme: activeTheme, seed: 0 }),
+        });
+        if (illRes.ok) {
+          const blob = await illRes.blob();
+          firstIllustrationDisplay = (typeof URL.createObjectURL === "function" ? URL.createObjectURL(blob) : null) || await blobToDataUrl(blob);
+          firstIllustrationStored = await compressBlobToDataUrl(blob);
+        }
+      } catch (illErr) {
+        console.warn("First illustration fetch failed (graceful degradation):", illErr);
+      }
+
+      const initialIllustrations = firstIllustrationDisplay ? [firstIllustrationDisplay] : [];
+      const storedIllustrations = firstIllustrationStored ? [firstIllustrationStored] : [];
+
       setPages(storyPages);
       setPageIndex(0);
       setTurnKey((k) => k + 1);
-      setIllustrations([]); // clear previous
+      setIllustrations(initialIllustrations);
       storyStartTimeRef.current = Date.now();
       setScreen("story");
+
+      // Save story to history with the initial illustration
+      const firstPage = storyPages[0];
+      const savedStory = saveStory({
+        familyMembers,
+        theme: activeTheme,
+        pages: storyPages.map((text, idx) => (
+          idx === 0 && storedIllustrations[0]
+            ? { text, illustration: { url: storedIllustrations[0], alt: `Illustration for page 1` } }
+            : text
+        )),
+        illustrations: storedIllustrations,
+        firstPage: typeof firstPage === "string" ? firstPage : firstPage.text,
+      });
+      // Reload history
+      setHistory(loadHistory());
 
       // Track story generation analytics event (Req 7.1)
       trackEvent("story_generated", {
@@ -110,22 +170,16 @@ export default function App() {
         generationTime: genDuration,
       });
 
-      // Save story to history
-      const firstPage = storyPages[0];
-      saveStory({
-        familyMembers,
-        theme: activeTheme,
-        pages: storyPages,
-        firstPage: typeof firstPage === "string" ? firstPage : firstPage.text,
-      });
-      // Reload history
-      setHistory(loadHistory());
-
-      // Fetch illustrations in background — sequential with delay to avoid rate limits
+      // Fetch subsequent illustrations (page 1+) in background, updating UI & storage progressively
       (async () => {
-        const urls = [];
-        for (let idx = 0; idx < storyPages.length; idx++) {
+        const currentDisplayUrls = [...initialIllustrations];
+        const currentStoredUrls = [...storedIllustrations];
+
+        for (let idx = 1; idx < storyPages.length; idx++) {
           try {
+            // Respect API rate limits
+            await new Promise((resolve) => setTimeout(resolve, 2000));
+
             const res = await fetch(`${API_BASE}/illustrate`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
@@ -133,17 +187,36 @@ export default function App() {
             });
             if (res.ok) {
               const blob = await res.blob();
-              urls[idx] = URL.createObjectURL(blob);
+              const displayUrl = (typeof URL.createObjectURL === "function" ? URL.createObjectURL(blob) : null) || await blobToDataUrl(blob);
+              const storedUrl = await compressBlobToDataUrl(blob);
+
+              currentDisplayUrls[idx] = displayUrl;
+              currentStoredUrls[idx] = storedUrl;
+
+              // Immediately update UI state as each page's illustration arrives
+              setIllustrations((prev) => {
+                const next = [...prev];
+                next[idx] = displayUrl;
+                return next;
+              });
+
+              // Persist to localStorage immediately
+              if (savedStory?.id) {
+                updateStory(savedStory.id, {
+                  illustrations: currentStoredUrls,
+                  pages: storyPages.map((text, i) => (
+                    currentStoredUrls[i]
+                      ? { text: typeof text === "object" ? text.text : text, illustration: { url: currentStoredUrls[i], alt: `Illustration for page ${i + 1}` } }
+                      : text
+                  )),
+                });
+                setHistory(loadHistory());
+              }
             }
           } catch (err) {
             console.error(`Failed to fetch illustration ${idx}:`, err);
           }
-          // Wait 2s between requests to avoid rate limiting
-          if (idx < storyPages.length - 1) {
-            await new Promise((resolve) => setTimeout(resolve, 6000));
-          }
         }
-        setIllustrations(urls);
       })();
     } catch (err) {
       console.error(err);
@@ -163,12 +236,19 @@ export default function App() {
   }, []);
 
   const handleSelectStory = useCallback((story) => {
+    primeAudio();
     setPages(story.pages);
+    const restoredIllustrations =
+      story.illustrations ||
+      (Array.isArray(story.pages)
+        ? story.pages.map((p) => (typeof p === "object" && p?.illustration?.url ? p.illustration.url : null))
+        : []);
+    setIllustrations(restoredIllustrations || []);
     setPageIndex(0);
     setTurnKey((k) => k + 1);
     storyStartTimeRef.current = Date.now();
     setScreen("story");
-  }, []);
+  }, [primeAudio]);
 
   const handleBackFromHistory = useCallback(() => {
     setScreen("setup");
@@ -186,57 +266,81 @@ export default function App() {
     setParentSettings(updated);
   }, []);
 
-  // Screen-change narration effect: handle initial story load (screen="story", pageIndex=0)
+  const [isNarrating, setIsNarrating] = useState(false);
+
   useEffect(() => {
-    if (screen !== "story" || pageIndex !== 0 || !pages.length) return;
-    let cancelled = false;
+    if (!audioRef.current) return;
+    const audio = audioRef.current;
 
-    (async () => {
-      try {
-        const res = await fetch(`${API_BASE}/narrate`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text: pages[0], voiceId: voice }),
-        });
-        if (!res.ok || cancelled) return;
-        const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        if (audioRef.current) {
-          audioRef.current.pause();
-          audioRef.current.src = url;
-          audioRef.current.load();
-          audioRef.current.play().catch(() => {});
-        }
-      } catch (err) {
-        console.error("narration failed", err);
-      }
-    })();
+    const onPlay = () => setIsNarrating(true);
+    const onPause = () => setIsNarrating(false);
 
+    audio.addEventListener("play", onPlay);
+    audio.addEventListener("pause", onPause);
     return () => {
-      cancelled = true;
+      audio.removeEventListener("play", onPlay);
+      audio.removeEventListener("pause", onPause);
     };
-  }, [screen, pages, voice]);
+  }, []);
 
-  // Narrate current page whenever it changes on the story screen (page 2+)
+  const handleToggleNarration = useCallback(() => {
+    if (!audioRef.current) return;
+    if (audioRef.current.paused) {
+      audioRef.current.play().catch(() => {});
+    } else {
+      audioRef.current.pause();
+    }
+  }, []);
+
+  // Stop narration when leaving the story screen
   useEffect(() => {
-    if (screen !== "story" || !pages[pageIndex]) return;
+    if (screen !== "story" && audioRef.current && typeof audioRef.current.pause === "function") {
+      try {
+        audioRef.current.pause();
+      } catch (e) {
+        // Ignore in environments where pause is not implemented
+      }
+    }
+  }, [screen]);
+
+  // Narrate current page whenever screen="story", page changes, or voice changes
+  useEffect(() => {
+    if (screen !== "story" || !pages || !pages[pageIndex]) return;
     let cancelled = false;
 
     (async () => {
       try {
+        const currentPage = pages[pageIndex];
+        const text = typeof currentPage === "object" ? currentPage.text : currentPage;
+        if (!text) return;
+
         const res = await fetch(`${API_BASE}/narrate`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text: pages[pageIndex], voiceId: voice }),
+          body: JSON.stringify({ text, voiceId: voice }),
         });
         if (!res.ok || cancelled) return;
         const blob = await res.blob();
+        if (typeof URL.createObjectURL !== "function") return;
         const url = URL.createObjectURL(blob);
-        if (audioRef.current) {
-          audioRef.current.pause();
+        if (audioRef.current && !cancelled) {
+          if (typeof audioRef.current.pause === "function") {
+            try { audioRef.current.pause(); } catch (e) {}
+          }
           audioRef.current.src = url;
-          audioRef.current.load();
-          audioRef.current.play().catch(() => {});
+          if (typeof audioRef.current.load === "function") {
+            try { audioRef.current.load(); } catch (e) {}
+          }
+          if (typeof audioRef.current.play === "function") {
+            try {
+              const playPromise = audioRef.current.play();
+              if (playPromise !== undefined) {
+                playPromise.catch((err) => {
+                  console.warn("Audio autoplay blocked or interrupted:", err);
+                });
+              }
+            } catch (e) {}
+          }
         }
       } catch (err) {
         console.error("narration failed", err);
@@ -358,7 +462,15 @@ export default function App() {
         />
       )}
       {screen === "story" && (
-        <StoryScreen pages={pages} illustrations={illustrations} pageIndex={pageIndex} turnKey={turnKey} onTurn={turnTo} />
+        <StoryScreen
+          pages={pages}
+          illustrations={illustrations}
+          pageIndex={pageIndex}
+          turnKey={turnKey}
+          onTurn={turnTo}
+          isNarrating={isNarrating}
+          onToggleNarration={handleToggleNarration}
+        />
       )}
     </div>
   );
