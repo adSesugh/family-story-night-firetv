@@ -4,11 +4,11 @@ export default {
   theme: {
     extend: {
       colors: {
-        dusk: "#151030",
-        panel: "#2A2158",
-        parchment: "#F4EFE6",
-        lamp: "#E8A33D",
-        starlight: "#7C93C9",
+        dusk: "rgb(21 16 48 / <alpha-value>)",
+        panel: "rgb(42 33 88 / <alpha-value>)",
+        parchment: "rgb(244 239 230 / <alpha-value>)",
+        lamp: "rgb(232 163 61 / <alpha-value>)",
+        starlight: "rgb(124 147 201 / <alpha-value>)",
       },
       fontFamily: {
         serif: ["Fraunces", "Georgia", "serif"],
