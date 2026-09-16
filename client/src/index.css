@@ -1,5 +1,29 @@
 @import "tailwindcss";
 
+@theme {
+  --color-dusk: #151030;
+  --color-panel: #2a2158;
+  --color-parchment: #f4efe6;
+  --color-lamp: #e8a33d;
+  --color-starlight: #7c93c9;
+
+  --font-serif: "Fraunces", "Georgia", serif;
+  --font-sans: "Inter", system-ui, sans-serif;
+
+  --animate-page-in: pageIn 400ms ease-out;
+
+  @keyframes pageIn {
+    0% {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
 * {
   box-sizing: border-box;
 }
