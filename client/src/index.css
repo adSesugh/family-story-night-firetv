@@ -70,31 +70,3 @@ body {
 .swiper-button-next {
   display: none;
 }
-
-/* Navigation button styling for better remote focus */
-button[class*="swiper-button"] {
-  position: relative;
-  padding: 0.5rem 1rem;
-  font-size: 1rem;
-  color: rgb(124 147 201);
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  transition: color 0.2s ease;
-}
-
-button[class*="swiper-button"]:focus-visible {
-  color: rgb(232 163 61);
-  outline: 2px solid rgb(232 163 61);
-  outline-offset: 4px;
-}
-
-button[class*="swiper-button"]:hover:not(:disabled) {
-  color: rgb(244 239 230);
-}
-
-button[class*="swiper-button"]:disabled {
-  opacity: 0;
-  pointer-events: none;
-  cursor: not-allowed;
-}

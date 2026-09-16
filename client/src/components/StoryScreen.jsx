@@ -57,12 +57,22 @@ export default function StoryScreen({ pages, pageIndex, turnKey, onTurn }) {
         ))}
       </Swiper>
 
+      {/* Decorative ellipse below card */}
+      <div
+        className="pointer-events-none absolute top-[55%] h-[40vh] w-[80vw] rounded-full opacity-20 blur-3xl"
+        style={{ background: "radial-gradient(circle, #7C93C9 0%, transparent 70%)" }}
+      />
+
       {/* Navigation Controls */}
-      <div className="mt-8 flex w-full items-center justify-between px-12 font-sans text-base text-starlight">
+      <div className="relative z-20 mt-8 flex w-full items-center justify-between px-12 font-sans text-base text-starlight">
         <button
           onClick={handlePrev}
+          className={`transition-all focus:outline-none ${
+            isFirst
+              ? "cursor-not-allowed opacity-30"
+              : "opacity-100 hover:text-parchment hover:scale-110 focus:text-lamp"
+          }`}
           disabled={isFirst}
-          className="transition-opacity disabled:opacity-0 hover:text-parchment focus:outline-none"
         >
           ← Previous
         </button>
@@ -71,8 +81,12 @@ export default function StoryScreen({ pages, pageIndex, turnKey, onTurn }) {
         </span>
         <button
           onClick={handleNext}
+          className={`transition-all focus:outline-none ${
+            isLast
+              ? "cursor-not-allowed opacity-30"
+              : "opacity-100 hover:text-parchment hover:scale-110 focus:text-lamp"
+          }`}
           disabled={isLast}
-          className="transition-opacity disabled:opacity-0 hover:text-parchment focus:outline-none"
         >
           Next →
         </button>
