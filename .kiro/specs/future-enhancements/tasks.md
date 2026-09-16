@@ -10,33 +10,33 @@ This plan incrementally extends Family Story Night across 7 features — Story H
 
 ### Feature 1: Story History
 
-- [ ] 1. Create localStorage utility module
-  - [ ] 1.1 Create `client/src/utils/storage.js` with a `StorageService` wrapper
+- [x] 1. Create localStorage utility module
+  - [x] 1.1 Create `client/src/utils/storage.js` with a `StorageService` wrapper
     - Implement `getItem(key)`, `setItem(key, value)`, `removeItem(key)` that each catch `SecurityError`/`QuotaExceededError` and return `null` / `false` instead of throwing
     - Export a `isStorageAvailable()` helper that probes `localStorage` with a test write
     - _Requirements: 1.7 (graceful degradation if localStorage unavailable)_
 
-  - [ ]* 1.2 Write unit tests for `StorageService`
+  - [x]* 1.2 Write unit tests for `StorageService`
     - Test normal get/set/remove flow
     - Test graceful return when `localStorage` throws (mock `localStorage` to throw)
     - _Requirements: 1.7_
 
-- [ ] 2. Implement story history data layer
-  - [ ] 2.1 Create `client/src/utils/storyHistory.js`
+- [x] 2. Implement story history data layer
+  - [x] 2.1 Create `client/src/utils/storyHistory.js`
     - Implement `saveStory(story)` — generates a UUID (`crypto.randomUUID()`), sets `generatedAt`, enforces 50-story cap by dropping oldest entry (requirement 1.6), and writes to `StorageService` under key `familyStoryNight_history`
     - Implement `loadHistory()` — reads and parses from `StorageService`; returns `[]` on any error
     - Implement `deleteStory(id)` — removes a single entry by id
     - Implement `clearHistory()` — wipes all entries
     - _Requirements: 1.1, 1.5, 1.6_
 
-  - [ ]* 2.2 Write unit tests for `storyHistory.js`
+  - [x]* 2.2 Write unit tests for `storyHistory.js`
     - Test that `saveStory` enforces the 50-story cap
     - Test that `loadHistory` returns `[]` when storage is empty or corrupted
     - Test `deleteStory` removes only the matching id
     - _Requirements: 1.5, 1.6_
 
-- [ ] 3. Build `HistoryScreen` component
-  - [ ] 3.1 Create `client/src/components/HistoryScreen.jsx`
+- [x] 3. Build `HistoryScreen` component
+  - [x] 3.1 Create `client/src/components/HistoryScreen.jsx`
     - Render a scrollable list; each row shows: formatted date/time, family member names (joined with commas), theme, and first-50-char preview of `firstPage`
     - Each row has a clickable area that calls `onSelect(story)` prop
     - Each row has a "Delete" button that calls `onDelete(story.id)` with a `window.confirm` guard
@@ -44,28 +44,28 @@ This plan incrementally extends Family Story Night across 7 features — Story H
     - Match the existing design language (dark `bg-dusk`, `text-parchment`, `font-serif` headings, `font-sans` body)
     - _Requirements: 1.3, 1.4_
 
-  - [ ]* 3.2 Write unit tests for `HistoryScreen`
+  - [x]* 3.2 Write unit tests for `HistoryScreen`
     - Test list renders correct count of story rows
     - Test clicking a row calls `onSelect` with correct story object
     - Test "Delete" button calls `onDelete` with correct id after confirmation
     - Test empty state renders without crashing
     - _Requirements: 1.3, 1.4_
 
-- [ ] 4. Wire Story History into `App.jsx`
-  - [ ] 4.1 Add `history` state and history-related handlers in `App.jsx`
+- [x] 4. Wire Story History into `App.jsx`
+  - [x] 4.1 Add `history` state and history-related handlers in `App.jsx`
     - Call `loadHistory()` on mount; store in `history` state
     - Add `screen` value `"history"` to the existing screen state machine
     - Call `saveStory({ id, generatedAt, familyMembers, theme, pages, firstPage })` immediately after `setScreen("story")` in `generateStory`
     - Add `handleDeleteStory`, `handleClearHistory`, and `handleSelectStory` callbacks that update `history` state and (for `handleSelectStory`) set `pages`/`screen` without re-generating
     - _Requirements: 1.1, 1.2, 1.4, 1.5_
 
-  - [ ] 4.2 Add "View History" button to `SetupScreen` and render `HistoryScreen` conditionally
+  - [x] 4.2 Add "View History" button to `SetupScreen` and render `HistoryScreen` conditionally
     - Pass `hasHistory={history.length > 0}` and `onViewHistory` prop to `SetupScreen`
     - In `SetupScreen`, render a `"📖 View History"` button below the theme selector only when `hasHistory` is true
     - In `App.jsx`, render `<HistoryScreen>` when `screen === "history"`
     - _Requirements: 1.2, 1.7_
 
-- [ ] 5. Checkpoint — Story History
+- [x] 5. Checkpoint — Story History
   - Ensure all Story History tests pass and the history button only appears after at least one story is generated. Ask the user if questions arise.
 
 ---
@@ -183,19 +183,19 @@ This plan incrementally extends Family Story Night across 7 features — Story H
 
 ### Feature 5: Illustrations (Data Layer Foundation)
 
-- [ ] 13. Extend data structures to support illustrations (deferred rendering)
-  - [ ] 13.1 Update story data shape to include optional `illustration` field
+- [x] 13. Extend data structures to support illustrations (deferred rendering)
+  - [x] 13.1 Update story data shape to include optional `illustration` field
     - In `storyHistory.js`, update the story schema comment/JSDoc to include `pages` as an array of `{ text: string, illustration?: { url: string, alt: string } | null }`
     - Update `saveStory` to accept and persist the new shape (plain text pages still accepted for backward compat)
     - _Requirements: 5.1, 5.4_
 
-  - [ ] 13.2 Update `StoryScreen` to render illustration when present
+  - [x] 13.2 Update `StoryScreen` to render illustration when present
     - In `StoryScreen.jsx`, replace bare `{page}` string access with `{typeof page === "object" ? page.text : page}` for backward compat
     - Above the `<p>` tag in each `SwiperSlide`, render `{page?.illustration && <img src={page.illustration.url} alt={page.illustration.alt} className="mb-6 w-full rounded-sm object-cover max-h-64" />}`
     - Wrap the `<img>` in an error boundary / `onError` handler that hides it on load failure (graceful degradation per requirement 5.4)
     - _Requirements: 5.2, 5.3, 5.4_
 
-  - [ ]* 13.3 Write unit tests for illustration rendering
+  - [x]* 13.3 Write unit tests for illustration rendering
     - Test `StoryScreen` renders `<img>` when page has illustration data
     - Test `StoryScreen` renders without `<img>` when illustration is absent (backward compat)
     - Test `StoryScreen` hides broken image on `onError`
