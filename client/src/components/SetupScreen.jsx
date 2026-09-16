@@ -1,4 +1,4 @@
-export default function SetupScreen({ names, setNames, themeIndex, setThemeIndex, error, onSubmit, themes }) {
+export default function SetupScreen({ names, setNames, themeIndex, setThemeIndex, error, onSubmit, themes, hasHistory, onViewHistory }) {
   return (
     <div className="relative z-10 w-full max-w-2xl px-12">
       <p className="font-sans text-lg text-starlight">Family Story Night</p>
@@ -31,6 +31,15 @@ export default function SetupScreen({ names, setNames, themeIndex, setThemeIndex
         </div>
         <span className="text-starlight/60">↑ / ↓ to change</span>
       </div>
+
+      {hasHistory && (
+        <button
+          onClick={onViewHistory}
+          className="mt-8 mr-2 rounded-sm bg-starlight/20 px-8 py-3 font-sans text-lg font-medium text-parchment transition-transform hover:scale-[1.02] focus:outline-none"
+        >
+          📖 View History
+        </button>
+      )}
 
       {error && <p className="mt-6 font-sans text-base text-red-300">{error}</p>}
 

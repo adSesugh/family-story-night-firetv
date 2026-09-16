@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import SetupScreen from "./components/SetupScreen";
 import StoryScreen from "./components/StoryScreen";
+import HistoryScreen from "./components/HistoryScreen";
+import { saveStory, loadHistory } from "./utils/storyHistory";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:4000";
 
@@ -12,14 +14,21 @@ const THEMES = [
 ];
 
 export default function App() {
-  const [screen, setScreen] = useState("setup"); // setup | loading | story
+  const [screen, setScreen] = useState("setup"); // setup | loading | story | history
   const [names, setNames] = useState("");
   const [themeIndex, setThemeIndex] = useState(0);
   const [pages, setPages] = useState([]);
   const [pageIndex, setPageIndex] = useState(0);
   const [error, setError] = useState(null);
+  const [illustrations, setIllustrations] = useState([]);
   const [turnKey, setTurnKey] = useState(0); // bump to replay the page-turn animation
+  const [history, setHistory] = useState([]);
   const audioRef = useRef(null);
+
+  // Load history on mount
+  useEffect(() => {
+    setHistory(loadHistory());
+  }, []);
 
   const generateStory = useCallback(async () => {
     setError(null);
@@ -44,10 +53,49 @@ export default function App() {
       });
       if (!res.ok) throw new Error("Story generation failed");
       const data = await res.json();
-      setPages(data.pages || []);
+      const storyPages = data.pages || [];
+      setPages(storyPages);
       setPageIndex(0);
       setTurnKey((k) => k + 1);
+      setIllustrations([]); // clear previous
       setScreen("story");
+
+      // Save story to history
+      const firstPage = storyPages[0];
+      saveStory({
+        familyMembers,
+        theme: THEMES[themeIndex],
+        pages: storyPages,
+        firstPage: typeof firstPage === "string" ? firstPage : firstPage.text,
+      });
+      // Reload history
+      setHistory(loadHistory());
+
+      // Fetch illustrations in background — sequential with delay to avoid rate limits
+      const activeTheme = THEMES[themeIndex];
+      (async () => {
+        const urls = [];
+        for (let idx = 0; idx < storyPages.length; idx++) {
+          try {
+            const res = await fetch(`${API_BASE}/illustrate`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ text: storyPages[idx], theme: activeTheme, seed: idx * 1000 }),
+            });
+            if (res.ok) {
+              const blob = await res.blob();
+              urls[idx] = URL.createObjectURL(blob);
+            }
+          } catch (err) {
+            console.error(`Failed to fetch illustration ${idx}:`, err);
+          }
+          // Wait 2s between requests to avoid rate limiting
+          if (idx < storyPages.length - 1) {
+            await new Promise((resolve) => setTimeout(resolve, 6000));
+          }
+        }
+        setIllustrations(urls);
+      })();
     } catch (err) {
       console.error(err);
       setError("Couldn't reach the storyteller. Is the backend running?");
@@ -58,6 +106,21 @@ export default function App() {
   const turnTo = useCallback((next) => {
     setPageIndex(next);
     setTurnKey((k) => k + 1);
+  }, []);
+
+  const handleViewHistory = useCallback(() => {
+    setScreen("history");
+  }, []);
+
+  const handleSelectStory = useCallback((story) => {
+    setPages(story.pages);
+    setPageIndex(0);
+    setTurnKey((k) => k + 1);
+    setScreen("story");
+  }, []);
+
+  const handleBackFromHistory = useCallback(() => {
+    setScreen("setup");
   }, []);
 
   // Screen-change narration effect: handle initial story load (screen="story", pageIndex=0)
@@ -188,11 +251,16 @@ export default function App() {
           error={error}
           onSubmit={generateStory}
           themes={THEMES}
+          hasHistory={history.length > 0}
+          onViewHistory={handleViewHistory}
         />
       )}
       {screen === "loading" && <LoadingScreen />}
+      {screen === "history" && (
+        <HistoryScreen onSelect={handleSelectStory} onBack={handleBackFromHistory} />
+      )}
       {screen === "story" && (
-        <StoryScreen pages={pages} pageIndex={pageIndex} turnKey={turnKey} onTurn={turnTo} />
+        <StoryScreen pages={pages} illustrations={illustrations} pageIndex={pageIndex} turnKey={turnKey} onTurn={turnTo} />
       )}
     </div>
   );
@@ -205,6 +273,9 @@ function LoadingScreen() {
     <div className="relative z-10 text-center">
       <p className="font-serif text-4xl italic text-parchment/90">
         Turning up the lamp&hellip;
+      </p>
+      <p className="mt-4 font-sans text-lg text-starlight/70">
+        Painting your illustrations&hellip;
       </p>
     </div>
   );

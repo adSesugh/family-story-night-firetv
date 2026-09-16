@@ -4,7 +4,7 @@ import { Keyboard, Navigation } from "swiper/modules";
 import "swiper/css";
 import "swiper/css/navigation";
 
-export default function StoryScreen({ pages, pageIndex, turnKey, onTurn }) {
+export default function StoryScreen({ pages, illustrations = [], pageIndex, turnKey, onTurn }) {
   const swiperRef = useRef(null);
 
   // Sync Swiper with pageIndex when it changes from parent
@@ -18,43 +18,57 @@ export default function StoryScreen({ pages, pageIndex, turnKey, onTurn }) {
     onTurn(swiper.activeIndex);
   };
 
-  const handlePrev = () => {
-    if (swiperRef.current && swiperRef.current.swiper) {
-      swiperRef.current.swiper.slidePrev();
-    }
-  };
-
-  const handleNext = () => {
-    if (swiperRef.current && swiperRef.current.swiper) {
-      swiperRef.current.swiper.slideNext();
-    }
-  };
-
-  const isFirst = pageIndex === 0;
-  const isLast = pageIndex === pages.length - 1;
-
   return (
-    <div className="relative z-10 flex w-full max-w-3xl flex-col items-center h-full justify-center">
+    <div className="relative z-10 flex h-screen w-full items-center justify-center">
       <Swiper
         ref={swiperRef}
         modules={[Keyboard, Navigation]}
         keyboard={{ enabled: true }}
         onSlideChange={handleSlideChange}
         initialSlide={pageIndex}
-        className="w-full"
+        className="h-full w-full"
       >
-        {pages.map((page, idx) => (
-          <SwiperSlide key={idx} className="flex items-center justify-center px-12 py-20">
-            <div className="w-full rounded-sm bg-panel/60 px-16 py-14 shadow-2xl shadow-black/40 backdrop-blur-sm">
-              <p
-                key={turnKey}
-                className="animate-page-in font-serif text-4xl leading-relaxed text-parchment"
-              >
-                {page}
-              </p>
-            </div>
-          </SwiperSlide>
-        ))}
+        {pages.map((page, idx) => {
+          const pageText = typeof page === "object" ? page.text : page; // keep backward compat
+          const illustrationUrl = illustrations[idx] ?? null;
+          return (
+            <SwiperSlide key={idx} className="flex items-center justify-center px-16 py-14">
+              <div className="grid h-full max-h-[38rem] w-full max-w-6xl grid-cols-2 overflow-hidden rounded-sm bg-panel/60 shadow-2xl shadow-black/40 backdrop-blur-sm">
+                {/* Illustration column — fills the full height/width of its half */}
+                <div className="relative h-full w-full bg-dusk/40">
+                  {illustrationUrl ? (
+                    <img
+                      src={illustrationUrl}
+                      alt={`Illustration for page ${idx + 1}`}
+                      className="h-full w-full object-cover"
+                      onError={(e) => {
+                        e.currentTarget.style.display = "none";
+                      }}
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center">
+                      <span className="font-serif text-lg italic text-starlight/40">
+                        Illustration loading&hellip;
+                      </span>
+                    </div>
+                  )}
+                  {/* Soft inner edge so the image reads as part of the page, not a pasted photo */}
+                  <div className="pointer-events-none absolute inset-0 shadow-[inset_0_0_40px_rgba(0,0,0,0.35)]" />
+                </div>
+
+                {/* Text column — generous, consistent padding, vertically centered */}
+                <div className="flex h-full items-center px-14 py-12">
+                  <p
+                    key={turnKey}
+                    className="animate-page-in font-serif text-[1.75rem] leading-[1.6] text-parchment"
+                  >
+                    {pageText}
+                  </p>
+                </div>
+              </div>
+            </SwiperSlide>
+          );
+        })}
       </Swiper>
 
       {/* Decorative ellipse below card */}
@@ -63,34 +77,10 @@ export default function StoryScreen({ pages, pageIndex, turnKey, onTurn }) {
         style={{ background: "radial-gradient(circle, #7C93C9 0%, transparent 70%)" }}
       />
 
-      {/* Navigation Controls */}
-      {/* <div className="relative z-20 mt-8 flex w-full items-center justify-between px-12 font-sans text-base text-starlight">
-        <button
-          onClick={handlePrev}
-          className={`transition-all focus:outline-none ${
-            isFirst
-              ? "cursor-not-allowed opacity-30"
-              : "opacity-100 hover:text-parchment hover:scale-110 focus:text-lamp"
-          }`}
-          disabled={isFirst}
-        >
-          ← Previous
-        </button>
-        <span className="text-starlight/70">
-          Page {pageIndex + 1} of {pages.length}
-        </span>
-        <button
-          onClick={handleNext}
-          className={`transition-all focus:outline-none ${
-            isLast
-              ? "cursor-not-allowed opacity-30"
-              : "opacity-100 hover:text-parchment hover:scale-110 focus:text-lamp"
-          }`}
-          disabled={isLast}
-        >
-          Next →
-        </button>
-      </div> */}
+      {/* Page indicator */}
+      <div className="pointer-events-none absolute bottom-8 left-1/2 z-20 -translate-x-1/2 font-sans text-sm text-starlight/70">
+        Page {pageIndex + 1} of {pages.length}
+      </div>
     </div>
   );
 }
