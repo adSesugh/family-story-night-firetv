@@ -18,16 +18,27 @@ export default function StoryScreen({ pages, pageIndex, turnKey, onTurn }) {
     onTurn(swiper.activeIndex);
   };
 
+  const handlePrev = () => {
+    if (swiperRef.current && swiperRef.current.swiper) {
+      swiperRef.current.swiper.slidePrev();
+    }
+  };
+
+  const handleNext = () => {
+    if (swiperRef.current && swiperRef.current.swiper) {
+      swiperRef.current.swiper.slideNext();
+    }
+  };
+
+  const isFirst = pageIndex === 0;
+  const isLast = pageIndex === pages.length - 1;
+
   return (
-    <div className="relative z-10 w-full max-w-3xl">
+    <div className="relative z-10 flex w-full max-w-3xl flex-col items-center">
       <Swiper
         ref={swiperRef}
         modules={[Keyboard, Navigation]}
         keyboard={{ enabled: true }}
-        navigation={{
-          nextEl: ".swiper-button-next",
-          prevEl: ".swiper-button-prev",
-        }}
         onSlideChange={handleSlideChange}
         initialSlide={pageIndex}
         className="w-full"
@@ -46,11 +57,12 @@ export default function StoryScreen({ pages, pageIndex, turnKey, onTurn }) {
         ))}
       </Swiper>
 
-      {/* Custom Navigation Buttons */}
-      <div className="mt-8 flex w-full max-w-3xl items-center justify-between font-sans text-base text-starlight">
+      {/* Navigation Controls */}
+      <div className="mt-8 flex w-full items-center justify-between px-12 font-sans text-base text-starlight">
         <button
-          className="swiper-button-prev transition-opacity hover:text-parchment disabled:opacity-0"
-          disabled={pageIndex === 0}
+          onClick={handlePrev}
+          disabled={isFirst}
+          className="transition-opacity disabled:opacity-0 hover:text-parchment focus:outline-none"
         >
           ← Previous
         </button>
@@ -58,8 +70,9 @@ export default function StoryScreen({ pages, pageIndex, turnKey, onTurn }) {
           Page {pageIndex + 1} of {pages.length}
         </span>
         <button
-          className="swiper-button-next transition-opacity hover:text-parchment disabled:opacity-0"
-          disabled={pageIndex === pages.length - 1}
+          onClick={handleNext}
+          disabled={isLast}
+          className="transition-opacity disabled:opacity-0 hover:text-parchment focus:outline-none"
         >
           Next →
         </button>
