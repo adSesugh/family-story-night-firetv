@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import SetupScreen from "./components/SetupScreen";
+import StoryScreen from "./components/StoryScreen";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:4000";
 
@@ -21,13 +23,20 @@ export default function App() {
 
   const generateStory = useCallback(async () => {
     setError(null);
+    
+    const familyMembers = names
+      .split(",")
+      .map((n) => n.trim())
+      .filter(Boolean);
+
+    // Validate that at least one family member was provided
+    if (familyMembers.length === 0) {
+      setError("Please enter at least one family member name");
+      return;
+    }
+
     setScreen("loading");
     try {
-      const familyMembers = names
-        .split(",")
-        .map((n) => n.trim())
-        .filter(Boolean);
-
       const res = await fetch(`${API_BASE}/generate-story`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -51,7 +60,41 @@ export default function App() {
     setTurnKey((k) => k + 1);
   }, []);
 
-  // Narrate current page whenever it changes on the story screen
+  // Screen-change narration effect: handle initial story load (screen="story", pageIndex=0)
+  // This effect triggers when screen changes to "story", ensuring narration plays on initial load
+  // independent of the page-change narration effect below
+  useEffect(() => {
+    if (screen !== "story" || pageIndex !== 0 || !pages.length) return;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const res = await fetch(`${API_BASE}/narrate`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: pages[0] }),
+        });
+        if (!res.ok || cancelled) return;
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        if (audioRef.current) {
+          audioRef.current.pause();
+          audioRef.current.src = url;
+          audioRef.current.load();
+          audioRef.current.play().catch(() => {});
+        }
+      } catch (err) {
+        console.error("narration failed", err);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [screen, pages]);
+
+  // Narrate current page whenever it changes on the story screen (page 2+)
+  // This effect handles page navigation after the initial load
   useEffect(() => {
     if (screen !== "story" || !pages[pageIndex]) return;
     let cancelled = false;
@@ -154,52 +197,7 @@ export default function App() {
   );
 }
 
-function SetupScreen({ names, setNames, themeIndex, setThemeIndex, error, onSubmit }) {
-  return (
-    <div className="relative z-10 w-full max-w-2xl px-12">
-      <p className="font-sans text-lg text-starlight">Family Story Night</p>
-      <h1 className="mt-2 font-serif text-6xl leading-tight text-parchment">
-        Who&rsquo;s in tonight&rsquo;s story?
-      </h1>
 
-      <input
-        className="mt-10 w-full rounded-sm border-b-2 border-starlight/40 bg-transparent px-1 py-3 font-serif text-3xl text-parchment placeholder:text-starlight/50 focus:border-lamp focus:outline-none"
-        value={names}
-        onChange={(e) => setNames(e.target.value)}
-        placeholder="Maya, Dad, Biscuit the dog"
-        autoFocus
-      />
-
-      <div className="mt-8 flex items-center gap-4 font-sans text-base">
-        <span className="text-starlight">Tonight&rsquo;s theme</span>
-        <span className="text-parchment">{THEMES[themeIndex]}</span>
-        <div className="flex gap-1">
-          {THEMES.map((_, i) => (
-            <button
-              key={i}
-              onClick={() => setThemeIndex(i)}
-              className={`h-2 w-2 rounded-full transition-colors ${
-                i === themeIndex ? "bg-lamp" : "bg-starlight/30"
-              }`}
-              aria-label={`Theme ${i + 1}`}
-            />
-          ))}
-        </div>
-        <span className="text-starlight/60">↑ / ↓ to change</span>
-      </div>
-
-      {error && <p className="mt-6 font-sans text-base text-red-300">{error}</p>}
-
-      <button
-        onClick={onSubmit}
-        className="mt-10 rounded-sm bg-lamp px-8 py-3 font-sans text-lg font-medium text-dusk transition-transform hover:scale-[1.02] focus:outline-none"
-      >
-        Begin the story
-      </button>
-      <p className="mt-3 font-sans text-sm text-starlight/60">or press Enter</p>
-    </div>
-  );
-}
 
 function LoadingScreen() {
   return (
@@ -207,39 +205,6 @@ function LoadingScreen() {
       <p className="font-serif text-4xl italic text-parchment/90">
         Turning up the lamp&hellip;
       </p>
-    </div>
-  );
-}
-
-function StoryScreen({ pages, pageIndex, turnKey, onTurn }) {
-  const isLast = pageIndex === pages.length - 1;
-  const isFirst = pageIndex === 0;
-
-  return (
-    <div className="relative z-10 flex w-full max-w-3xl flex-col items-center px-12">
-      <div className="w-full rounded-sm bg-panel/60 px-16 py-14 shadow-2xl shadow-black/40 backdrop-blur-sm">
-        <p key={turnKey} className="animate-page-in font-serif text-4xl leading-relaxed text-parchment">
-          {pages[pageIndex]}
-        </p>
-      </div>
-
-      <div className="mt-8 flex w-full items-center justify-between font-sans text-base text-starlight">
-        <button
-          onClick={() => !isFirst && onTurn(pageIndex - 1)}
-          className={`transition-opacity ${isFirst ? "opacity-0" : "opacity-100 hover:text-parchment"}`}
-        >
-          ← Previous page
-        </button>
-        <span className="text-starlight/70">
-          Page {pageIndex + 1} of {pages.length}
-        </span>
-        <button
-          onClick={() => !isLast && onTurn(pageIndex + 1)}
-          className={`transition-opacity ${isLast ? "opacity-0" : "opacity-100 hover:text-parchment"}`}
-        >
-          Next page →
-        </button>
-      </div>
     </div>
   );
 }

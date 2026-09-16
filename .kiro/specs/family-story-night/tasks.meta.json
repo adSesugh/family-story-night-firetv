@@ -1,0 +1,2076 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1.1 Verify Setup Screen displays on app launch": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570822026
+      },
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570856207
+      },
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789571053893
+      }
+    ],
+    "1.2 Verify comma-separated name input is accepted": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570822173
+      },
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570856557
+      },
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789571054135
+      }
+    ],
+    "1.3 Verify theme selection and display works": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570822336
+      },
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570857106
+      },
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789571054587
+      }
+    ],
+    "1.4 Verify story generation submission works": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570822575
+      },
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570857443
+      },
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789571054868
+      }
+    ],
+    "1.5 Verify input validation prevents empty submissions": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570822714
+      },
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570857794
+      },
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789571055238
+      }
+    ],
+    "2.1 Verify backend invokes Bedrock with correct prompt": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570822840
+      },
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789571059748
+      }
+    ],
+    "2.2 Verify backend parses Bedrock response into 6 pages": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570823040
+      },
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789571060168
+      }
+    ],
+    "2.3 Verify fallback chunking if JSON parsing fails": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570823161
+      },
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789571060512
+      }
+    ],
+    "3.1 Verify Loading Screen displays during generation": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570823282
+      },
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789571060848
+      }
+    ],
+    "3.2 Verify transition to Story Screen on success": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570823404
+      },
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789571061208
+      }
+    ],
+    "3.3 Verify transition back to Setup on error": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570823601
+      },
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789571061394
+      }
+    ],
+    "4.1 Verify Story Screen displays first page on load": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570823727
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789573842447
+      }
+    ],
+    "4.2 Verify next page navigation with arrow keys": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570823861
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789573842723
+      }
+    ],
+    "4.3 Verify previous page navigation with arrow keys": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570823976
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789573843093
+      }
+    ],
+    "4.4 Verify Enter key advances page on Story Screen": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570824085
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789573843456
+      }
+    ],
+    "4.5 Verify page-turn animation plays on navigation": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570824292
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789573843854
+      }
+    ],
+    "4.6 Verify button disabled states at boundaries": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570824437
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789573844065
+      }
+    ],
+    "4.7 Verify Backspace/Escape returns to Setup Screen": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570824556
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789573844314
+      }
+    ],
+    "5.1 Verify audio narration starts on page display": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570824693
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789573852953
+      }
+    ],
+    "5.2 Verify audio switches on page navigation": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570824805
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789573853334
+      }
+    ],
+    "5.3 Verify auto-advance after narration ends": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570824961
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789573853675
+      }
+    ],
+    "5.4 Verify auto-advance doesn't trigger on last page": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570825099
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789573853955
+      }
+    ],
+    "6.1 Verify up arrow cycles themes backward": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570825241
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789573854291
+      }
+    ],
+    "6.2 Verify down arrow cycles themes forward": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570825357
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789573854583
+      }
+    ],
+    "6.3 Verify Enter generates story on Setup Screen": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570825476
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789573854837
+      }
+    ],
+    "6.4 Verify right arrow navigates forward on Story Screen": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570825676
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789573862763
+      }
+    ],
+    "6.5 Verify left arrow navigates backward on Story Screen": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570825801
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789573863090
+      }
+    ],
+    "6.6 Verify back button returns to setup": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570825937
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789573863600
+      }
+    ],
+    "7.1 Verify all 4 themes are available": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570826057
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789573863902
+      }
+    ],
+    "7.2 Verify theme is sent to backend in request": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570826242
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789573864105
+      }
+    ],
+    "8.1 Verify backend unreachable message": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570826367
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789573864510
+      }
+    ],
+    "8.2 Verify app recovers from API errors": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570826487
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789573864896
+      }
+    ],
+    "8.3 Verify narration failure doesn't stop story": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570826620
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789573865106
+      }
+    ],
+    "9.1 Verify color palette is applied": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570826747
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789573877725
+      }
+    ],
+    "9.2 Verify text sizes are appropriate for TV": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570826865
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789573877480
+      }
+    ],
+    "9.3 Verify gradient and panel styling": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570826984
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789573876344
+      }
+    ],
+    "10.1 Verify frontend API URL configuration": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570827161
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789573877073
+      }
+    ],
+    "10.2 Verify backend AWS configuration": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570827369
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789573875520
+      }
+    ],
+    "10.3 Verify health endpoint": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570827516
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789573874763
+      }
+    ],
+    "11.1 Verify story pages persist in memory": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570827626
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789573874337
+      }
+    ],
+    "11.2 Verify narration replays for previously viewed pages": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570827755
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789573875925
+      }
+    ],
+    "12.1 Verify leading/trailing spaces are trimmed": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570827890
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789573876676
+      }
+    ],
+    "12.2 Verify empty names are filtered out": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570828016
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789573873965
+      }
+    ],
+    "12.3 Verify single name is accepted": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570828346
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789573875156
+      }
+    ],
+    "13.1 Write unit test: SetupScreen renders input field": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570828497
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789573967704
+      }
+    ],
+    "13.2 Write unit test: SetupScreen renders theme selector": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570828614
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789573968230
+      }
+    ],
+    "13.3 Write unit test: SetupScreen updates parent on input change": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570828732
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789573968586
+      }
+    ],
+    "13.4 Write unit test: SetupScreen displays error message": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570828852
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789573968786
+      }
+    ],
+    "13.5 Write unit test: SetupScreen button calls onSubmit": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570828970
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789573969182
+      }
+    ],
+    "14.1 Write unit test: StoryScreen displays current page": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570829089
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789573969542
+      }
+    ],
+    "14.2 Write unit test: StoryScreen displays page counter": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570829205
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789573969924
+      }
+    ],
+    "14.3 Write unit test: StoryScreen next button disabled on last page": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570829319
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789573970448
+      }
+    ],
+    "14.4 Write unit test: StoryScreen previous button disabled on first page": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570829441
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789573970811
+      }
+    ],
+    "14.5 Write unit test: StoryScreen next button calls onTurn with next index": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570829552
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789573971244
+      }
+    ],
+    "14.6 Write unit test: StoryScreen previous button calls onTurn with prev index": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570829663
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789573971746
+      }
+    ],
+    "14.7 Write unit test: Page-turn animation CSS class is applied": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570829789
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789573972218
+      }
+    ],
+    "15.1 Write unit test: LoadingScreen displays message": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570829979
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789573972786
+      }
+    ],
+    "15.2 Write unit test: LoadingScreen has no interactive elements": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570830117
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789573972997
+      }
+    ],
+    "16.1 Write unit test: App initializes with correct state": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570830313
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789573973465
+      }
+    ],
+    "16.2 Write unit test: App transitions to loading on story generation": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570830429
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789573973943
+      }
+    ],
+    "16.3 Write unit test: App transitions to story on successful generation": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570830560
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789573974337
+      }
+    ],
+    "16.4 Write unit test: App returns to setup with error on API failure": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570830744
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789573974695
+      }
+    ],
+    "16.5 Write unit test: App clears error when retrying": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570830876
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789573975121
+      }
+    ],
+    "17.1 Write unit test: Up arrow cycles themes backward on Setup Screen": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570831036
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789573975659
+      }
+    ],
+    "17.2 Write unit test: Up arrow wraps around from 0 to 3": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570831214
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789573992927
+      }
+    ],
+    "17.3 Write unit test: Down arrow cycles themes forward on Setup Screen": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570831343
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789573993109
+      }
+    ],
+    "17.4 Write unit test: Down arrow wraps from 3 to 0": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570831463
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789573993656
+      }
+    ],
+    "17.5 Write unit test: Enter triggers story generation on Setup Screen": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570831584
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789573993980
+      }
+    ],
+    "17.6 Write unit test: Right arrow advances page on Story Screen": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570831744
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789573994404
+      }
+    ],
+    "17.7 Write unit test: Right arrow does not advance past last page": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570831911
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789573994943
+      }
+    ],
+    "17.8 Write unit test: Left arrow goes to previous page on Story Screen": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570832129
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789573995294
+      }
+    ],
+    "17.9 Write unit test: Left arrow does not go before first page": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570832263
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789573995715
+      }
+    ],
+    "17.10 Write unit test: Enter advances page on Story Screen (not last page)": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570832382
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789573996089
+      }
+    ],
+    "17.11 Write unit test: Backspace returns to Setup Screen": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570832503
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789573996474
+      }
+    ],
+    "17.12 Write unit test: Escape returns to Setup Screen": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570832622
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574000936
+      }
+    ],
+    "17.13 Write unit test: Invalid keys don't trigger actions": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570832742
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574001105
+      }
+    ],
+    "18.1 Write integration test: Valid request returns 200 with 6 pages": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570832876
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574005011
+      }
+    ],
+    "18.2 Write integration test: Response includes all family member names": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570832995
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574002593
+      }
+    ],
+    "18.3 Write integration test: Response reflects selected theme": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570833124
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574004601
+      }
+    ],
+    "18.4 Write integration test: Each page has 2-3 sentences": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570833244
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574004228
+      }
+    ],
+    "18.5 Write integration test: Response has no dashes or hyphens": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570833367
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574002002
+      }
+    ],
+    "18.6 Write integration test: Empty familyMembers returns 400": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570833492
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574002937
+      }
+    ],
+    "18.7 Write integration test: Missing familyMembers field returns 400": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570833621
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574003749
+      }
+    ],
+    "18.8 Write integration test: Missing theme field uses default": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570833769
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574081278
+      }
+    ],
+    "18.9 Write integration test: Bedrock failure returns 500": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570833928
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574003335
+      }
+    ],
+    "18.10 Write integration test: Fallback chunking on JSON parse failure": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570834105
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574081685
+      }
+    ],
+    "18.11 Write integration test: Request timeout handling": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570834278
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574001663
+      }
+    ],
+    "19.1 Write integration test: Valid request returns audio/mpeg": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570834431
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574076752
+      }
+    ],
+    "19.2 Write integration test: Uses Joanna voice with neural engine": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570834607
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574082030
+      }
+    ],
+    "19.3 Write integration test: Output format is mp3": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570834908
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574082480
+      }
+    ],
+    "19.4 Write integration test: Missing text field returns 400": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570835145
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574083050
+      }
+    ],
+    "19.5 Write integration test: Empty text field returns 400": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570835302
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574083405
+      }
+    ],
+    "19.6 Write integration test: Polly failure returns 500": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570835447
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574083791
+      }
+    ],
+    "19.7 Write integration test: Long text is handled": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570835616
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574084181
+      }
+    ],
+    "19.8 Write integration test: Special characters are handled": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570835771
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574084672
+      }
+    ],
+    "20.1 Write unit test: /health returns 200 with status ok": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570835969
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574077354
+      }
+    ],
+    "20.2 Write unit test: /health has correct content-type": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570836110
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574084937
+      }
+    ],
+    "21.1 Write integration test: Audio element is created and referenced": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570836272
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574077789
+      }
+    ],
+    "21.2 Write integration test: Audio src is set on page change": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570836436
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574092975
+      }
+    ],
+    "21.3 Write integration test: Audio plays automatically": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570836585
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574095032
+      }
+    ],
+    "21.4 Write integration test: Audio pauses on page change mid-playback": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570836723
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574095185
+      }
+    ],
+    "21.5 Write integration test: Auto-advance triggers after narration ends": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570836850
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574095364
+      }
+    ],
+    "21.6 Write integration test: Auto-advance doesn't trigger on page 6": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570836994
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574095673
+      }
+    ],
+    "21.7 Write integration test: Audio cleanup on component unmount": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570837135
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574096920
+      }
+    ],
+    "21.8 Write integration test: Narration requests are made for each page": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570837378
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574097303
+      }
+    ],
+    "21.9 Write integration test: Clicking next button cancels pending narration fetch": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570837514
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574099782
+      }
+    ],
+    "22.1 Write integration test: Narration failure doesn't break story": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570837654
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574078280
+      }
+    ],
+    "22.2 Write integration test: Audio play() promise rejection is handled": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570837788
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574095540
+      }
+    ],
+    "22.3 Write integration test: Network error during narration": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570837922
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574093389
+      }
+    ],
+    "23.1 Write integration test: Cannot reach backend on story generation": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570838053
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574078682
+      }
+    ],
+    "23.2 Write integration test: User can retry after backend error": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570838203
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574098804
+      }
+    ],
+    "23.3 Write integration test: Different error messages for different failures": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570838352
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574108787
+      }
+    ],
+    "24.1 Write unit test: Empty input prevents story generation": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570838492
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574079050
+      }
+    ],
+    "24.2 Write unit test: Only commas input is invalid": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570838654
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574095967
+      }
+    ],
+    "24.3 Write unit test: Whitespace-only input is invalid": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570838811
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574096536
+      }
+    ],
+    "24.4 Write integration test: Backend validation for empty familyMembers": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570838963
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574098315
+      }
+    ],
+    "25.1 Write integration test: App recovers from failed generation attempt": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570839131
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574079583
+      }
+    ],
+    "25.2 Write integration test: Page state resets on new story generation": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570839287
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574107478
+      }
+    ],
+    "25.3 Write integration test: Multiple rapid story generations": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570839436
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574101955
+      }
+    ],
+    "26.1 Write manual test: Up arrow behavior": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570839577
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574079977
+      }
+    ],
+    "26.2 Write manual test: Down arrow behavior": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570839737
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574097716
+      }
+    ],
+    "26.3 Write manual test: Right arrow on Story Screen": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570839888
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574100615
+      }
+    ],
+    "26.4 Write manual test: Left arrow on Story Screen": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570840125
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574106429
+      }
+    ],
+    "26.5 Write manual test: Enter on Setup Screen": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570840304
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574101113
+      }
+    ],
+    "26.6 Write manual test: Back button on Story Screen": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570840428
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574109482
+      }
+    ],
+    "26.7 Write manual test: Enter on Story Screen advances page": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570840578
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574107876
+      }
+    ],
+    "27.1 Write manual test: Rapid key presses on Setup Screen": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570840706
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574080344
+      }
+    ],
+    "27.2 Write manual test: Rapid key presses on Story Screen": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570840846
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574108423
+      }
+    ],
+    "27.3 Write manual test: Key press before page loads": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570840990
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574109162
+      }
+    ],
+    "27.4 Write manual test: Long family names on Fire TV": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570841148
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574099206
+      }
+    ],
+    "27.5 Write manual test: Many family members input": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570841287
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574106831
+      }
+    ],
+    "28.1 Write manual test: Text readability from TV distance": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570841421
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574080937
+      }
+    ],
+    "28.2 Write manual test: Color contrast on Fire TV": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570841554
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574100157
+      }
+    ],
+    "28.3 Write manual test: Animation smoothness on Fire TV": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570841717
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574071990
+      }
+    ],
+    "28.4 Write manual test: Audio playback on Fire TV speakers": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570841847
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574071605
+      }
+    ],
+    "28.5 Write manual test: Layout on different Fire TV resolutions": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570841983
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574071286
+      }
+    ],
+    "29.1 Verify README contains setup instructions": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570842123
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574070638
+      }
+    ],
+    "29.2 Verify .env.example files are complete": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570842286
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574070312
+      }
+    ],
+    "29.3 Verify API documentation is accurate": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570842447
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574069865
+      }
+    ],
+    "29.4 Document testing setup and execution": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570842645
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574069371
+      }
+    ],
+    "29.5 Create deployment guide": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570842818
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574068972
+      }
+    ],
+    "30.1 Verify all unit tests pass": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570843137
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574068548
+      }
+    ],
+    "30.2 Verify all API integration tests pass": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570843296
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574068253
+      }
+    ],
+    "30.3 Verify all error scenario tests pass": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570843444
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574067804
+      }
+    ],
+    "30.4 Verify no console errors on standard flows": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570843585
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574067424
+      }
+    ],
+    "30.5 Verify performance baselines": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570843736
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574066976
+      }
+    ],
+    "31.1 Perform end-to-end story generation flow": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570843873
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574066644
+      }
+    ],
+    "31.2 Perform complete error recovery flow": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570844009
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574066225
+      }
+    ],
+    "31.3 Verify all requirements checklist": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570844152
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574065730
+      }
+    ],
+    "32.1 Backend ready for production deployment": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570844284
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574065390
+      }
+    ],
+    "32.2 Frontend ready for production deployment": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570844420
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574065010
+      }
+    ],
+    "32.3 Deployment documentation complete": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570844575
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574064605
+      }
+    ],
+    "32.4 Fire TV deployment verified": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789570844742
+      },
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574064228
+      }
+    ],
+    "1. Verify Requirement 1 - Story Generation from Family Input": [
+      {
+        "executionId": "a852a701-607e-4b0d-a95f-1ce461354add",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789571055363
+      }
+    ],
+    "4. Verify Requirement 4 - Story Display with Page Navigation": [
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789573844486
+      }
+    ],
+    "5. Verify Requirement 5 - Audio Narration": [
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789573854110
+      }
+    ],
+    "6. Verify Requirement 6 - Fire TV Remote Integration": [
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789573863748
+      }
+    ],
+    "7. Verify Requirement 7 - Theme Selection": [
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789573864255
+      }
+    ],
+    "8. Verify Requirement 8 - Error Handling": [
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789573865279
+      }
+    ],
+    "11. Verify Requirement 11 - Multi-Page Story Persistence": [
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789573876071
+      }
+    ],
+    "12. Verify Requirement 12 - Keyboard Input Validation": [
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789573876805
+      }
+    ],
+    "10. Verify Requirement 10 - Configuration": [
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789573877230
+      }
+    ],
+    "9. Verify Requirement 9 - Visual Design": [
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789573877897
+      }
+    ],
+    "13. SetupScreen Component Unit Tests": [
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789573969331
+      }
+    ],
+    "14. StoryScreen Component Unit Tests": [
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789573972347
+      }
+    ],
+    "15. LoadingScreen Component Unit Tests": [
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789573973355
+      }
+    ],
+    "16. App Component State Management Tests": [
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789573975356
+      }
+    ],
+    "17. Keyboard Event Handling Tests": [
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574001260
+      }
+    ],
+    "32. Deployment Readiness": [
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574065620
+      }
+    ],
+    "31. Final Acceptance Tests": [
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574066788
+      }
+    ],
+    "30. Pre-Deployment Validation": [
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574068751
+      }
+    ],
+    "29. Documentation Tasks": [
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574070848
+      }
+    ],
+    "18. POST /generate-story Endpoint Tests": [
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574081828
+      }
+    ],
+    "19. POST /narrate Endpoint Tests": [
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574084824
+      }
+    ],
+    "20. GET /health Endpoint Tests": [
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574085076
+      }
+    ],
+    "22. Audio Error Handling Tests": [
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574095783
+      }
+    ],
+    "24. Input Validation Error Tests": [
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574098459
+      }
+    ],
+    "21. Audio Playback Integration Tests": [
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574099928
+      }
+    ],
+    "28. Fire TV Display Testing": [
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574100296
+      }
+    ],
+    "25. State Recovery Tests": [
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574107642
+      }
+    ],
+    "23. Backend Unreachable Tests": [
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574108924
+      }
+    ],
+    "27. Fire TV Edge Cases": [
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574109303
+      }
+    ],
+    "26. Fire TV Remote Button Mapping Tests": [
+      {
+        "executionId": "9d596633-9b8d-4f83-bd94-b7f447de6da1",
+        "chatSessionId": "sess_ce785bca-e921-46ef-9081-aad0d92f56de",
+        "timestamp": 1789574109621
+      }
+    ]
+  }
+}
