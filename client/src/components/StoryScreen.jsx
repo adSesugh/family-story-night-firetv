@@ -34,7 +34,7 @@ export default function StoryScreen({ pages, pageIndex, turnKey, onTurn }) {
   const isLast = pageIndex === pages.length - 1;
 
   return (
-    <div className="relative z-10 flex w-full max-w-3xl flex-col items-center">
+    <div className="relative z-10 flex w-full max-w-3xl flex-col items-center h-full justify-center">
       <Swiper
         ref={swiperRef}
         modules={[Keyboard, Navigation]}
@@ -64,7 +64,7 @@ export default function StoryScreen({ pages, pageIndex, turnKey, onTurn }) {
       />
 
       {/* Navigation Controls */}
-      <div className="relative z-20 mt-8 flex w-full items-center justify-between px-12 font-sans text-base text-starlight">
+      {/* <div className="relative z-20 mt-8 flex w-full items-center justify-between px-12 font-sans text-base text-starlight">
         <button
           onClick={handlePrev}
           className={`transition-all focus:outline-none ${
@@ -90,7 +90,7 @@ export default function StoryScreen({ pages, pageIndex, turnKey, onTurn }) {
         >
           Next →
         </button>
-      </div>
+      </div> */}
     </div>
   );
 }
