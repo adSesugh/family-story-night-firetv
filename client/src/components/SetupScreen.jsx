@@ -111,11 +111,10 @@ export default function SetupScreen({
               key={length}
               type="button"
               onClick={() => setStoryLength && setStoryLength(length)}
-              className={`flex-1 rounded-sm px-3 py-2 font-sans text-xs font-medium transition-colors ${
-                storyLength === length
-                  ? "bg-lamp text-dusk font-semibold shadow-sm"
-                  : "bg-starlight/20 text-parchment hover:bg-starlight/30"
-              }`}
+              className={`flex-1 rounded-sm px-3 py-2 font-sans text-xs font-medium transition-colors ${storyLength === length
+                ? "bg-lamp text-dusk font-semibold shadow-sm"
+                : "bg-starlight/20 text-parchment hover:bg-starlight/30"
+                }`}
               aria-pressed={storyLength === length}
             >
               {label}
@@ -123,28 +122,30 @@ export default function SetupScreen({
           ))}
         </div>
       </div>
-      {allowHistory && hasHistory && (
-        <button
-          type="button"
-          onClick={onViewHistory}
-          className="mr-2 mt-8 rounded-sm bg-starlight/20 px-8 py-3 font-sans text-lg font-medium text-parchment transition-transform hover:scale-[1.02] focus:outline-none"
-        >
-          <History /> View History
-        </button>
-      )}
 
       {error && <p className="mt-6 font-sans text-base text-red-300">{error}</p>}
       {customThemeError && (
         <p className="mt-2 font-sans text-base text-red-300">{customThemeError}</p>
       )}
 
-      <button
-        type="button"
-        onClick={onSubmit}
-        className="mt-8 rounded-sm bg-lamp px-8 py-3 font-sans text-lg font-medium text-dusk transition-transform hover:scale-[1.02] focus:outline-none"
-      >
-        Begin the story
-      </button>
+      <div className="flex gap-2 mt-8">
+        {allowHistory && hasHistory && (
+          <button
+            type="button"
+            onClick={onViewHistory}
+            className="flex gap-2 items-center rounded-sm bg-starlight/20 px-8 py-2 font-sans text-lg font-medium text-parchment transition-transform hover:scale-[1.02] focus:outline-none"
+          >
+            <History size={16} /> View History
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={onSubmit}
+          className="rounded-sm bg-lamp px-8 py-2 font-sans text-lg font-medium text-dusk transition-transform hover:scale-[1.02] focus:outline-none"
+        >
+          Begin the story
+        </button>
+      </div>
       <p className="mt-3 font-sans text-sm text-starlight/60">or press Enter</p>
     </div>
   );
