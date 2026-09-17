@@ -47,7 +47,7 @@ export default function HistoryScreen({ onSelect, onBack }) {
           className="flex items-center gap-2 rounded-sm bg-starlight/20 px-6 py-2 font-sans text-base text-parchment transition-colors hover:bg-starlight/30"
         >
           <ArrowLeft className="h-4 w-4" />
-          <span>← Back</span>
+          <span>Back</span>
         </button>
       </div>
 
