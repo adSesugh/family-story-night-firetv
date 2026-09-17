@@ -64,14 +64,14 @@ export default function StoryScreen({
           const illustrationUrl = illustrations[idx] || (typeof page === "object" && page.illustration ? page.illustration.url : null);
           return (
             <SwiperSlide key={idx} className="flex items-center justify-center px-16 py-14">
-              <div className="grid h-full max-h-[38rem] w-full max-w-6xl grid-cols-2 overflow-hidden rounded-sm bg-panel/60 shadow-2xl shadow-black/40 backdrop-blur-sm">
+              <div className="grid h-full max-h-[38rem] w-full max-w-6xl grid-cols-2 grid-rows-1 min-h-0 overflow-hidden rounded-sm bg-panel/60 shadow-2xl shadow-black/40 backdrop-blur-sm">
                 {/* Illustration column — fills the full height/width of its half */}
-                <div className="relative h-full w-full bg-dusk/40">
+                <div className="relative h-full w-full min-h-0 overflow-hidden bg-dusk/40">
                   {illustrationUrl ? (
                     <img
                       src={illustrationUrl}
                       alt={`Illustration for page ${idx + 1}`}
-                      className="h-full w-full object-cover"
+                      className="absolute inset-0 h-full w-full object-cover"
                       onError={(e) => {
                         e.currentTarget.style.display = "none";
                       }}
@@ -88,7 +88,7 @@ export default function StoryScreen({
                 </div>
 
                 {/* Text column — centered vertically and horizontally */}
-                <div className="flex h-full w-full items-center justify-center px-12 md:px-16 text-center">
+                <div className="flex h-full w-full min-h-0 items-center justify-center px-12 md:px-16 text-center">
                   <p
                     key={turnKey}
                     className="animate-page-in font-serif text-[1.65rem] md:text-2xl leading-[1.65] text-parchment text-center w-full"
