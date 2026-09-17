@@ -87,11 +87,11 @@ export default function StoryScreen({
                   <div className="pointer-events-none absolute inset-0 shadow-[inset_0_0_40px_rgba(0,0,0,0.35)]" />
                 </div>
 
-                {/* Text column — starts naturally from top with balanced padding like a storybook */}
-                <div className="flex h-full w-full flex-col justify-center px-12 md:px-16 pt-12 md:pt-14 pb-8 overflow-y-auto">
+                {/* Text column — centered vertically and horizontally */}
+                <div className="flex h-full w-full items-center justify-center px-12 md:px-16 text-center">
                   <p
                     key={turnKey}
-                    className="animate-page-in font-serif text-[1.65rem] leading-[1.65] text-parchment text-left"
+                    className="animate-page-in font-serif text-[1.65rem] md:text-2xl leading-[1.65] text-parchment text-center w-full"
                   >
                     {pageText}
                   </p>
