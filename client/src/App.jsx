@@ -382,32 +382,83 @@ export default function App() {
     };
   }, [screen, pageIndex, pages.length, turnTo]);
 
-  // Fire TV remote maps to standard keyboard events (arrow keys, Enter, Back)
+  // Fire TV remote & Gamepad controller event mapping
+  // Supports: D-pad navigation (37, 38, 39, 40), Select/A/X/Y (13), Play/Pause (179), Rewind (227), Fast Forward (228), Back/Gamepad B (4, 8, 27)
   useEffect(() => {
     const handleKeyDown = (e) => {
+      const isSelect = e.key === "Enter" || e.keyCode === 13 || e.which === 13;
+      const isUp = e.key === "ArrowUp" || e.keyCode === 38 || e.which === 38;
+      const isDown = e.key === "ArrowDown" || e.keyCode === 40 || e.which === 40;
+      const isLeft = e.key === "ArrowLeft" || e.keyCode === 37 || e.which === 37;
+      const isRight = e.key === "ArrowRight" || e.keyCode === 39 || e.which === 39;
+      const isPlayPause = e.key === "MediaPlayPause" || e.keyCode === 179 || e.which === 179;
+      const isRewind =
+        e.key === "MediaRewind" ||
+        e.key === "MediaTrackPrevious" ||
+        e.keyCode === 227 ||
+        e.which === 227;
+      const isFastForward =
+        e.key === "MediaFastForward" ||
+        e.key === "MediaTrackNext" ||
+        e.keyCode === 228 ||
+        e.which === 228;
+      const isBack =
+        e.key === "GoBack" ||
+        e.key === "Backspace" ||
+        e.key === "Escape" ||
+        e.keyCode === 4 ||
+        e.which === 4 ||
+        e.keyCode === 8 ||
+        e.which === 8 ||
+        e.keyCode === 27 ||
+        e.which === 27;
+
       if (screen === "setup") {
-        if (e.key === "ArrowDown") setThemeIndex((i) => (i + 1) % THEMES.length);
-        if (e.key === "ArrowUp") setThemeIndex((i) => (i - 1 + THEMES.length) % THEMES.length);
-        if (e.key === "Enter") generateStory();
+        if (e.target?.tagName === "INPUT" || e.target?.tagName === "TEXTAREA") {
+          if (isSelect) {
+            e.preventDefault();
+            generateStory();
+          }
+          return;
+        }
+        if (isDown) {
+          e.preventDefault();
+          setThemeIndex((i) => (i + 1) % THEMES.length);
+        }
+        if (isUp) {
+          e.preventDefault();
+          setThemeIndex((i) => (i - 1 + THEMES.length) % THEMES.length);
+        }
+        if (isSelect) {
+          e.preventDefault();
+          generateStory();
+        }
       } else if (screen === "story") {
-        if (e.key === "ArrowRight" || e.key === "Enter") {
+        if (isPlayPause) {
+          e.preventDefault();
+          handleToggleNarration();
+          return;
+        }
+        if (isRight || isFastForward || isSelect) {
+          e.preventDefault();
           if (pageIndex < pages.length - 1) turnTo(pageIndex + 1);
-        }
-        if (e.key === "ArrowLeft") {
+        } else if (isLeft || isRewind) {
+          e.preventDefault();
           if (pageIndex > 0) turnTo(pageIndex - 1);
-        }
-        if (e.key === "Backspace" || e.key === "Escape") {
+        } else if (isBack) {
+          e.preventDefault();
           setScreen("setup");
         }
       } else if (screen === "history" || screen === "settings") {
-        if (e.key === "Backspace" || e.key === "Escape") {
+        if (isBack) {
+          e.preventDefault();
           setScreen("setup");
         }
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [screen, pageIndex, pages.length, generateStory, turnTo]);
+  }, [screen, pageIndex, pages.length, generateStory, turnTo, handleToggleNarration]);
 
   return (
     <div className="relative flex h-screen w-screen items-center justify-center overflow-hidden bg-dusk text-parchment">
