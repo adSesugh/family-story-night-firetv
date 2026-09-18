@@ -234,17 +234,23 @@ export default function App() {
     []
   );
 
+  const PRIMING_AUDIO_SRC = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=";
+
   // Prime audio element during user gesture so browser permits autoplay after async operations
   const primeAudio = useCallback(() => {
     if (audioRef.current) {
       try {
         isPrimingAudioRef.current = true;
-        audioRef.current.src = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=";
+        audioRef.current.src = PRIMING_AUDIO_SRC;
         const playPromise = audioRef.current.play();
         if (playPromise !== undefined) {
           playPromise
             .then(() => {
-              if (audioRef.current && audioRef.current.src && audioRef.current.src.startsWith("data:")) {
+              if (
+                audioRef.current &&
+                audioRef.current.src &&
+                (audioRef.current.src === PRIMING_AUDIO_SRC || audioRef.current.src.includes("data:audio/wav"))
+              ) {
                 audioRef.current.pause();
                 audioRef.current.removeAttribute("src");
               }
@@ -879,7 +885,24 @@ export default function App() {
 
         if (contentType.includes("application/json") || (!res.blob && typeof res.json === "function")) {
           const data = await res.json();
-          audioUrl = data.audio;
+          if (data.audio) {
+            try {
+              if (typeof data.audio === "string" && data.audio.startsWith("data:") && typeof URL.createObjectURL === "function") {
+                const base64Parts = data.audio.split(",");
+                const byteCharacters = atob(base64Parts[1] || base64Parts[0]);
+                const byteNumbers = new Uint8Array(byteCharacters.length);
+                for (let i = 0; i < byteCharacters.length; i++) {
+                  byteNumbers[i] = byteCharacters.charCodeAt(i);
+                }
+                const audioBlob = new Blob([byteNumbers], { type: "audio/mpeg" });
+                audioUrl = URL.createObjectURL(audioBlob);
+              } else {
+                audioUrl = data.audio;
+              }
+            } catch (e) {
+              audioUrl = data.audio;
+            }
+          }
           marks = Array.isArray(data.speechMarks) ? data.speechMarks : [];
         } else if (typeof res.blob === "function") {
           const blob = await res.blob();
@@ -928,8 +951,12 @@ export default function App() {
     const handleEnded = () => {
       if (screen !== "story") return;
 
-      // CRITICAL: Ignore silent priming audio (data URLs) or uninitialized audio
-      if (isPrimingAudioRef.current || !audio.src || audio.src.startsWith("data:")) {
+      // CRITICAL: Ignore silent priming audio or uninitialized audio
+      const isPrimingSrc =
+        audio.src === PRIMING_AUDIO_SRC ||
+        audio.src.includes("data:audio/wav");
+
+      if (isPrimingAudioRef.current || !audio.src || isPrimingSrc) {
         return;
       }
 
