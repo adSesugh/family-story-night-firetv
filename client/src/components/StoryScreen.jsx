@@ -122,18 +122,18 @@ export default function StoryScreen({
             <SwiperSlide key={idx} className="flex items-center justify-center p-2.5 pt-12 pb-3 sm:p-6 sm:pt-16 sm:pb-10 md:px-14 md:py-12">
               <div className="flex flex-col landscape:flex-row md:grid md:grid-cols-2 h-full max-h-[92vh] md:max-h-[38rem] w-full max-w-6xl min-h-0 overflow-hidden rounded-xl md:rounded-sm bg-panel/60 shadow-2xl shadow-black/40 backdrop-blur-sm">
                 {/* Illustration column with Ken Burns cinematic camera movement and ambient particles */}
-                <div className="relative h-[48vh] sm:h-[54vh] landscape:h-full landscape:w-1/2 md:w-full md:h-full w-full min-h-0 overflow-hidden bg-night/95 shrink-0 md:shrink flex items-center justify-center">
+                <div className="relative h-56 sm:h-72 landscape:h-full landscape:w-1/2 md:w-full md:h-full w-full max-h-[42vh] sm:max-h-[48vh] md:max-h-none min-h-0 overflow-hidden bg-night/95 shrink-0 md:shrink flex items-center justify-center p-2.5 sm:p-4 md:p-0">
                   {illustrationUrl ? (
                     <>
                       {/* Ambient blurred backdrop for seamless edge blending on mobile */}
                       <div
-                        className="absolute inset-0 block md:hidden bg-cover bg-center blur-2xl opacity-40 scale-110 pointer-events-none"
+                        className="absolute inset-0 block md:hidden bg-cover bg-center blur-2xl opacity-30 scale-110 pointer-events-none"
                         style={{ backgroundImage: `url(${illustrationUrl})` }}
                       />
                       <img
                         src={illustrationUrl}
                         alt={`Illustration for page ${idx + 1}`}
-                        className={`relative z-10 h-full w-full object-contain md:object-cover ${kenBurnsClass} transition-opacity duration-700 select-none`}
+                        className={`relative z-10 max-h-full max-w-full w-auto h-auto object-contain md:absolute md:inset-0 md:h-full md:w-full md:object-cover ${kenBurnsClass} transition-opacity duration-700 select-none shadow-md md:shadow-none rounded-lg md:rounded-none`}
                         onError={(e) => {
                           e.currentTarget.style.display = "none";
                         }}
@@ -169,15 +169,14 @@ export default function StoryScreen({
                   <p
                     key={turnKey}
                     data-testid="page-text"
-                    className={`animate-page-in font-serif text-base sm:text-xl md:text-2xl lg:text-3xl leading-relaxed text-center w-full transition-colors duration-1000 ${
-                      windDown ? "text-parchment/85" : "text-parchment"
-                    }`}
+                    className={`animate-page-in font-serif text-lg sm:text-xl md:text-2xl lg:text-3xl leading-relaxed text-center w-full transition-colors duration-1000 ${windDown ? "text-parchment/85" : "text-parchment"
+                      }`}
                   >
                     {activeSpeechMark &&
-                    idx === pageIndex &&
-                    typeof activeSpeechMark.start === "number" &&
-                    typeof activeSpeechMark.end === "number" &&
-                    activeSpeechMark.end <= pageText.length ? (
+                      idx === pageIndex &&
+                      typeof activeSpeechMark.start === "number" &&
+                      typeof activeSpeechMark.end === "number" &&
+                      activeSpeechMark.end <= pageText.length ? (
                       <>
                         <span>{pageText.slice(0, activeSpeechMark.start)}</span>
                         <span
@@ -240,11 +239,10 @@ export default function StoryScreen({
                     data-testid="next-stored-chapter-btn"
                     onClick={onContinueNextStoredChapter}
                     onMouseEnter={() => onFocusIndexChange && onFocusIndexChange(0)}
-                    className={`group relative flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 w-full p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl transition-all duration-200 shadow-xl cursor-pointer ${
-                      pageIndex >= pages.length && focusIndex === 0
+                    className={`group relative flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 w-full p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl transition-all duration-200 shadow-xl cursor-pointer ${pageIndex >= pages.length && focusIndex === 0
                         ? "border-2 border-lamp bg-panel ring-4 ring-lamp/80 shadow-lamp/30 -translate-y-1 scale-[1.02]"
                         : "border border-lamp/40 bg-panel/90 hover:border-lamp hover:bg-panel"
-                    }`}
+                      }`}
                   >
                     <div className="flex flex-col text-left">
                       <span className="font-sans text-[10px] sm:text-xs font-bold uppercase tracking-wider text-lamp mb-0.5">
@@ -306,11 +304,10 @@ export default function StoryScreen({
                           type="button"
                           data-testid="voice-twist-btn"
                           onClick={twistSpeech.toggleListening}
-                          className={`flex items-center gap-2 px-4 py-2 rounded-full font-sans text-xs font-semibold tracking-wide transition-all cursor-pointer ${
-                            twistSpeech.isListening
+                          className={`flex items-center gap-2 px-4 py-2 rounded-full font-sans text-xs font-semibold tracking-wide transition-all cursor-pointer ${twistSpeech.isListening
                               ? "bg-lamp text-night animate-pulse shadow-lg shadow-lamp/50 scale-105"
                               : "bg-panel/90 text-lamp border border-lamp/40 hover:bg-lamp/20"
-                          }`}
+                            }`}
                         >
                           {twistSpeech.isListening ? (
                             <>
