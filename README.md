@@ -36,6 +36,9 @@ export AWS_ACCESS_KEY_ID=your_key
 export AWS_SECRET_ACCESS_KEY=your_secret
 export AWS_REGION=us-east-1
 export BEDROCK_MODEL_ID=anthropic.claude-3-5-sonnet-20241022-v2:0
+export BEDROCK_IMAGE_MODEL_ID=amazon.nova-canvas-v1:0
+export BEDROCK_IMAGE_REGION=us-west-2
+export POLLY_ENGINE=standard
 ```
 
 ### 2. Install & run the backend
@@ -59,11 +62,3 @@ npm start   # runs on http://localhost:3000
 Once you're happy with it locally, use Amazon's [Web App Tester](https://developer.amazon.com/docs/web-app-startkit/web-app-tester-overview.html)
 to sideload and test on a real Fire TV device or the Vega/Fire TV simulator,
 then package with the Amazon Web App Starter Kit for submission.
-
-## Hackathon submission checklist
-
-- [ ] Demo video (<3 min) showing the app running on a real Fire TV or simulator
-- [ ] Public GitHub repo with OSS license visible in the About section
-- [ ] Product feedback write-up (Bedrock + Polly: what worked, friction, etc.)
-- [ ] AWS Builder mini challenge: describe Bedrock + Polly integration in your feedback answer
-- [ ] (Optional) Friction log entries for bonus judging points
