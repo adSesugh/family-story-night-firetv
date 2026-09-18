@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from "react";
-import { Play, Square, Check, Volume2, Moon, Compass, Sparkles, Sun } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import { Play, Square, Check, Volume2, Moon, Compass, Sparkles, Sun, Plus, Trash2, Heart } from "lucide-react";
 import { VOICES } from "../constants/voices";
+import { loadCustomVoices, deleteCustomVoice } from "../utils/customVoices";
+import FamilyVoiceStudioModal from "./FamilyVoiceStudioModal";
 
 const VOICE_ICONS = {
   Joanna: Moon,
@@ -15,31 +17,65 @@ export default function VoiceSelector({
   variant = "cards", // "cards" | "compact"
   id = "voice-selector",
 }) {
+  const [customVoices, setCustomVoices] = useState([]);
   const [playingVoiceId, setPlayingVoiceId] = useState(null);
+  const [isStudioOpen, setIsStudioOpen] = useState(false);
+  const customAudioPlayerRef = useRef(null);
+
+  const refreshVoices = () => {
+    setCustomVoices(loadCustomVoices());
+  };
 
   useEffect(() => {
+    refreshVoices();
     return () => {
       if (typeof window !== "undefined" && "speechSynthesis" in window) {
         window.speechSynthesis.cancel();
       }
+      if (customAudioPlayerRef.current) {
+        customAudioPlayerRef.current.pause();
+        customAudioPlayerRef.current = null;
+      }
     };
   }, []);
+
+  const allVoices = [...customVoices, ...VOICES];
 
   const handlePreview = (e, voiceObj) => {
     e.stopPropagation();
 
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) {
-      return;
+    // Stop speech synthesis if running
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+    }
+    // Stop custom audio if running
+    if (customAudioPlayerRef.current) {
+      customAudioPlayerRef.current.pause();
+      customAudioPlayerRef.current = null;
     }
 
     if (playingVoiceId === voiceObj.id) {
-      window.speechSynthesis.cancel();
       setPlayingVoiceId(null);
       return;
     }
 
-    window.speechSynthesis.cancel();
     setPlayingVoiceId(voiceObj.id);
+
+    // If custom voice has a recorded audio sample, play that!
+    if (voiceObj.isCustom && voiceObj.audioDataUrl) {
+      const audio = new Audio(voiceObj.audioDataUrl);
+      customAudioPlayerRef.current = audio;
+      audio.onended = () => setPlayingVoiceId(null);
+      audio.onerror = () => setPlayingVoiceId(null);
+      audio.play().catch(() => setPlayingVoiceId(null));
+      return;
+    }
+
+    // Fallback to SpeechSynthesis
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) {
+      setPlayingVoiceId(null);
+      return;
+    }
 
     const utterance = new SpeechSynthesisUtterance(voiceObj.previewSnippet);
     utterance.rate = 0.92;
@@ -63,6 +99,22 @@ export default function VoiceSelector({
     if (onChange) onChange(voiceId);
   };
 
+  const handleDeleteCustomVoice = (e, voiceId) => {
+    e.stopPropagation();
+    deleteCustomVoice(voiceId);
+    refreshVoices();
+    if (value === voiceId) {
+      handleSelect("Joanna");
+    }
+  };
+
+  const handleVoiceCreated = (newVoice) => {
+    refreshVoices();
+    if (newVoice?.id) {
+      handleSelect(newVoice.id);
+    }
+  };
+
   return (
     <div className="w-full">
       {/* Accessible native select for test automation & screen readers */}
@@ -74,7 +126,7 @@ export default function VoiceSelector({
         className="sr-only"
         tabIndex={-1}
       >
-        {VOICES.map((v) => (
+        {allVoices.map((v) => (
           <option key={v.id} value={v.id}>
             {v.name}
           </option>
@@ -84,10 +136,11 @@ export default function VoiceSelector({
       {/* ── Rich Card Grid Variant ── */}
       {variant === "cards" ? (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {VOICES.map((v) => {
+          {/* Custom Voices first (with special badge) then built-in */}
+          {allVoices.map((v) => {
             const isSelected = value === v.id;
             const isPlaying = playingVoiceId === v.id;
-            const IconComponent = VOICE_ICONS[v.id] || Volume2;
+            const IconComponent = v.isCustom ? Heart : VOICE_ICONS[v.id] || Volume2;
 
             return (
               <div
@@ -102,9 +155,9 @@ export default function VoiceSelector({
                     handleSelect(v.id);
                   }
                 }}
-                className={`group relative flex flex-col justify-between rounded-lg border p-4 text-left transition-all duration-200 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#E8A33D] ${
+                className={`group relative flex flex-col justify-between rounded-xl border p-4 text-left transition-all duration-200 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-lamp ${
                   isSelected
-                    ? "border-[#E8A33D] bg-gradient-to-b from-[#E8A33D]/15 to-starlight/5 shadow-md shadow-[#E8A33D]/10"
+                    ? "border-lamp bg-gradient-to-b from-lamp/20 to-starlight/5 shadow-md shadow-lamp/15 ring-2 ring-lamp/60"
                     : "border-starlight/20 bg-panel/70 hover:border-starlight/40 hover:bg-panel/90"
                 }`}
               >
@@ -114,29 +167,51 @@ export default function VoiceSelector({
                       <div
                         className={`flex h-9 w-9 items-center justify-center rounded-full transition-transform group-hover:scale-105 ${
                           isSelected
-                            ? "bg-[#E8A33D]/25 text-[#E8A33D] ring-2 ring-[#E8A33D]/50"
+                            ? "bg-lamp/25 text-lamp ring-2 ring-lamp/50"
+                            : v.isCustom
+                            ? "bg-rose-500/20 text-rose-300"
                             : "bg-starlight/15 text-starlight"
                         }`}
                       >
-                        <IconComponent className="h-4 w-4" />
+                        {v.avatar && v.isCustom ? (
+                          <span className="text-base">{v.avatar}</span>
+                        ) : (
+                          <IconComponent className="h-4 w-4" />
+                        )}
                       </div>
                       <div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="font-serif text-base font-medium text-parchment">
-                            {v.displayName || v.id}
+                            {v.displayName || v.name}
                           </span>
+                          {v.isCustom && (
+                            <span className="flex items-center gap-0.5 rounded-full bg-rose-500/20 px-2 py-0.5 text-[9px] font-semibold text-rose-300 ring-1 ring-rose-500/40">
+                              <Sparkles className="h-2.5 w-2.5" />
+                              Family Voice Clone
+                            </span>
+                          )}
                           {isSelected && (
-                            <span className="flex items-center gap-1 rounded-full bg-[#E8A33D]/20 px-2 py-0.5 text-[10px] font-medium text-[#E8A33D] ring-1 ring-[#E8A33D]/40">
+                            <span className="flex items-center gap-1 rounded-full bg-lamp/20 px-2 py-0.5 text-[10px] font-medium text-lamp ring-1 ring-lamp/40">
                               <Check className="h-2.5 w-2.5" />
                               Active
                             </span>
                           )}
                         </div>
-                        <span className="text-xs text-starlight/70">
-                          {v.tagline}
-                        </span>
+                        <span className="text-xs text-starlight/70">{v.tagline}</span>
                       </div>
                     </div>
+
+                    {v.isCustom && (
+                      <button
+                        type="button"
+                        onClick={(e) => handleDeleteCustomVoice(e, v.id)}
+                        className="opacity-60 hover:opacity-100 p-1 text-starlight/60 hover:text-red-400 transition-colors"
+                        title="Delete custom voice"
+                        aria-label={`Delete ${v.displayName} voice`}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                   </div>
 
                   <p className="mt-2.5 line-clamp-2 text-xs leading-relaxed text-starlight/80">
@@ -146,19 +221,17 @@ export default function VoiceSelector({
 
                 {/* Footer with Audio Preview Button */}
                 <div className="mt-3.5 flex items-center justify-between border-t border-starlight/10 pt-2.5">
-                  <span className="text-[11px] text-starlight/50">
-                    {v.pitch}
-                  </span>
+                  <span className="text-[11px] text-starlight/50">{v.pitch}</span>
 
                   <button
                     type="button"
                     onClick={(e) => handlePreview(e, v)}
-                    className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors focus:outline-none ${
+                    className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors focus:outline-none cursor-pointer ${
                       isPlaying
-                        ? "bg-[#E8A33D] text-dusk"
+                        ? "bg-lamp text-night font-bold"
                         : "bg-starlight/15 text-parchment hover:bg-starlight/25"
                     }`}
-                    aria-label={`Preview ${v.displayName} voice`}
+                    aria-label={`Preview ${v.displayName || v.name} voice`}
                   >
                     {isPlaying ? (
                       <>
@@ -176,13 +249,38 @@ export default function VoiceSelector({
               </div>
             );
           })}
+
+          {/* "+ Record Loved One's Voice" Action Card */}
+          <div
+            role="button"
+            tabIndex={0}
+            data-testid="record-family-voice-btn"
+            onClick={() => setIsStudioOpen(true)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                setIsStudioOpen(true);
+              }
+            }}
+            className="group flex flex-col items-center justify-center rounded-xl border border-dashed border-lamp/40 bg-panel/40 p-4 text-center hover:border-lamp hover:bg-panel/70 transition-all cursor-pointer min-h-[140px]"
+          >
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-lamp/15 text-lamp group-hover:scale-110 transition-transform mb-2">
+              <Plus className="h-5 w-5" />
+            </div>
+            <span className="font-serif text-sm font-semibold text-parchment group-hover:text-lamp transition-colors">
+              + Record Loved One&apos;s Voice
+            </span>
+            <p className="mt-1 text-[11px] text-starlight/70 max-w-[200px]">
+              Mom, Dad, or grandparents reading bedtime tales in their familiar voice
+            </p>
+          </div>
         </div>
       ) : (
         /* ── Compact Variant ── */
         <div className="flex flex-wrap gap-2">
-          {VOICES.map((v) => {
+          {allVoices.map((v) => {
             const isSelected = value === v.id;
-            const IconComponent = VOICE_ICONS[v.id] || Volume2;
+            const IconComponent = v.isCustom ? Heart : VOICE_ICONS[v.id] || Volume2;
 
             return (
               <button
@@ -191,23 +289,41 @@ export default function VoiceSelector({
                 onClick={() => handleSelect(v.id)}
                 className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-left text-xs font-medium transition-all ${
                   isSelected
-                    ? "border-[#E8A33D] bg-[#E8A33D]/20 text-parchment shadow-sm"
+                    ? "border-lamp bg-lamp/20 text-parchment shadow-sm ring-1 ring-lamp/60"
                     : "border-starlight/20 bg-dusk/70 text-starlight hover:border-starlight/40 hover:text-parchment"
                 }`}
                 aria-pressed={isSelected}
               >
-                <IconComponent className={`h-3.5 w-3.5 ${isSelected ? "text-[#E8A33D]" : "text-starlight/70"}`} />
+                <IconComponent className={`h-3.5 w-3.5 ${isSelected ? "text-lamp" : "text-starlight/70"}`} />
                 <div>
-                  <div className="font-serif text-xs font-medium text-parchment">
-                    {v.displayName || v.id}
+                  <div className="font-serif text-xs font-medium text-parchment flex items-center gap-1">
+                    <span>{v.displayName || v.name}</span>
+                    {v.isCustom && <span className="text-[9px] text-rose-300">⭐</span>}
                   </div>
                   <div className="text-[10px] text-starlight/70">{v.tagline}</div>
                 </div>
               </button>
             );
           })}
+          <button
+            type="button"
+            data-testid="compact-record-family-voice-btn"
+            onClick={() => setIsStudioOpen(true)}
+            className="flex items-center gap-1.5 rounded-lg border border-dashed border-lamp/40 bg-panel/30 px-3 py-2 text-xs text-lamp hover:border-lamp hover:bg-panel/60 transition-all cursor-pointer"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            <span>Record Voice</span>
+          </button>
         </div>
       )}
+
+      {/* Voice Studio Recording Modal */}
+      <FamilyVoiceStudioModal
+        isOpen={isStudioOpen}
+        onClose={() => setIsStudioOpen(false)}
+        onVoiceCreated={handleVoiceCreated}
+      />
     </div>
   );
 }
+

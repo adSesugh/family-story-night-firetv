@@ -1,0 +1,80 @@
+const CUSTOM_VOICES_STORAGE_KEY = "family_custom_voices";
+
+/**
+ * Load all custom voice profiles from localStorage.
+ * @returns {Array<Object>}
+ */
+export function loadCustomVoices() {
+  if (typeof window === "undefined" || !window.localStorage) {
+    return [];
+  }
+  try {
+    const raw = window.localStorage.getItem(CUSTOM_VOICES_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (err) {
+    console.warn("Failed to load custom voices:", err);
+    return [];
+  }
+}
+
+/**
+ * Save a new custom voice profile or update an existing one.
+ * @param {Object} voiceProfile
+ * @param {string} voiceProfile.name - e.g. "Mom's Bedtime Voice"
+ * @param {string} voiceProfile.role - e.g. "Mom", "Dad", "Grandma"
+ * @param {string} [voiceProfile.baseVoice] - Baseline Polly voice (Joanna, Matthew, Emma, Ivy)
+ * @param {string} [voiceProfile.audioDataUrl] - base64/data URL of recorded voice sample
+ * @returns {Object} The saved voice profile
+ */
+export function saveCustomVoice({ name, role = "Family", baseVoice = "Joanna", audioDataUrl = "" }) {
+  if (typeof window === "undefined" || !window.localStorage) {
+    return null;
+  }
+  try {
+    const existing = loadCustomVoices();
+    const id = `custom_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const newProfile = {
+      id,
+      name: name.trim() || `${role}'s Voice`,
+      displayName: name.trim() || `${role}'s Voice`,
+      tagline: `Recorded Voice • ${role}`,
+      description: `Personalized voice clone for bedtime stories read by ${name || role}.`,
+      avatar: role.toLowerCase().includes("dad") ? "👨" : role.toLowerCase().includes("mom") ? "👩" : role.toLowerCase().includes("grand") ? "👵" : "🎙️",
+      pitch: baseVoice === "Matthew" ? "Deep baritone" : baseVoice === "Ivy" ? "Bright & youthful" : "Warm storyteller",
+      previewSnippet: "The stars are shining softly tonight. Close your eyes and dream of magic.",
+      baseVoice,
+      audioDataUrl,
+      isCustom: true,
+      createdAt: new Date().toISOString(),
+    };
+
+    const updated = [newProfile, ...existing];
+    window.localStorage.setItem(CUSTOM_VOICES_STORAGE_KEY, JSON.stringify(updated));
+    return newProfile;
+  } catch (err) {
+    console.error("Failed to save custom voice:", err);
+    return null;
+  }
+}
+
+/**
+ * Delete a custom voice profile by ID.
+ * @param {string} voiceId
+ * @returns {boolean}
+ */
+export function deleteCustomVoice(voiceId) {
+  if (typeof window === "undefined" || !window.localStorage) {
+    return false;
+  }
+  try {
+    const existing = loadCustomVoices();
+    const filtered = existing.filter((v) => v.id !== voiceId);
+    window.localStorage.setItem(CUSTOM_VOICES_STORAGE_KEY, JSON.stringify(filtered));
+    return true;
+  } catch (err) {
+    console.error("Failed to delete custom voice:", err);
+    return false;
+  }
+}

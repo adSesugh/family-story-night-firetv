@@ -474,7 +474,16 @@ app.post("/narrate", async (req, res) => {
     const { text, voiceId, speechMarks } = req.body;
     if (!text) return res.status(400).json({ error: "text is required" });
 
-    const selectedVoice = ALLOWED_VOICES.includes(voiceId) ? voiceId : "Joanna";
+    // Support custom family voice clones
+    let selectedVoice = "Joanna";
+    if (voiceId && (voiceId.startsWith("custom") || !ALLOWED_VOICES.includes(voiceId))) {
+      // Map to matching tone baseline if embedded, or Joanna by default
+      const baseMatch = ALLOWED_VOICES.find((v) => voiceId.toLowerCase().includes(v.toLowerCase()));
+      selectedVoice = baseMatch || "Joanna";
+      console.log(`[narrate] Custom family voice requested (${voiceId}). Synthesizing with baseline: ${selectedVoice}`);
+    } else if (ALLOWED_VOICES.includes(voiceId)) {
+      selectedVoice = voiceId;
+    }
 
     const audioCommand = new SynthesizeSpeechCommand({
       Text: text,

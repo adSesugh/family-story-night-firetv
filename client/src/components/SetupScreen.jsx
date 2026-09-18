@@ -257,6 +257,22 @@ export default function SetupScreen({
         </div>
       </div>
 
+      {/* Narrator Voice & Loved One's Cloned Voice */}
+      {setVoice && (
+        <div className="mt-6">
+          <div className="flex items-center justify-between mb-2">
+            <span className="block font-sans text-sm text-starlight">Narrator Voice</span>
+            <span className="text-[11px] text-starlight/60">Choose storyteller or record loved one</span>
+          </div>
+          <VoiceSelector
+            id="setup-voice-select"
+            value={voice}
+            onChange={setVoice}
+            variant="compact"
+          />
+        </div>
+      )}
+
       {error && <p className="mt-6 font-sans text-base text-red-300">{error}</p>}
       {customThemeError && (
         <p className="mt-2 font-sans text-base text-red-300">{customThemeError}</p>

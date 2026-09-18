@@ -1,0 +1,150 @@
+import React from "react";
+import { render, screen, fireEvent, act } from "@testing-library/react";
+import "@testing-library/jest-dom";
+import { loadCustomVoices, saveCustomVoice, deleteCustomVoice } from "../utils/customVoices";
+import VoiceSelector from "../components/VoiceSelector";
+import FamilyVoiceStudioModal from "../components/FamilyVoiceStudioModal";
+
+describe("Personalized Voice Clones (Family Voice Studio)", () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+    jest.clearAllMocks();
+  });
+
+  describe("customVoices utility", () => {
+    it("starts with empty custom voices", () => {
+      expect(loadCustomVoices()).toEqual([]);
+    });
+
+    it("saves and loads custom voice profiles", () => {
+      const saved = saveCustomVoice({
+        name: "Mom's Bedtime Voice",
+        role: "Mom",
+        baseVoice: "Joanna",
+        audioDataUrl: "data:audio/webm;base64,mockAudioData",
+      });
+
+      expect(saved).toBeTruthy();
+      expect(saved.id).toMatch(/^custom_/);
+      expect(saved.name).toBe("Mom's Bedtime Voice");
+      expect(saved.isCustom).toBe(true);
+      expect(saved.avatar).toBe("👩");
+
+      const list = loadCustomVoices();
+      expect(list).toHaveLength(1);
+      expect(list[0].id).toBe(saved.id);
+    });
+
+    it("deletes a custom voice profile", () => {
+      const saved1 = saveCustomVoice({ name: "Mom", role: "Mom" });
+      const saved2 = saveCustomVoice({ name: "Dad", role: "Dad" });
+      expect(loadCustomVoices()).toHaveLength(2);
+
+      const deleted = deleteCustomVoice(saved1.id);
+      expect(deleted).toBe(true);
+
+      const updated = loadCustomVoices();
+      expect(updated).toHaveLength(1);
+      expect(updated[0].id).toBe(saved2.id);
+    });
+  });
+
+  describe("FamilyVoiceStudioModal component", () => {
+    it("renders studio dialog with reading script and controls when open", () => {
+      render(
+        <FamilyVoiceStudioModal
+          isOpen={true}
+          onClose={jest.fn()}
+          onVoiceCreated={jest.fn()}
+        />
+      );
+
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+      expect(screen.getByText(/Family Voice Studio/i)).toBeInTheDocument();
+      expect(screen.getByText(/The stars are shining softly tonight/i)).toBeInTheDocument();
+      expect(screen.getByTestId("start-recording-btn")).toBeInTheDocument();
+      expect(screen.getByTestId("save-voice-clone-btn")).toBeInTheDocument();
+    });
+
+    it("updates role and input name when role buttons are clicked", () => {
+      render(
+        <FamilyVoiceStudioModal
+          isOpen={true}
+          onClose={jest.fn()}
+          onVoiceCreated={jest.fn()}
+        />
+      );
+
+      const dadBtn = screen.getByRole("button", { name: "Dad" });
+      fireEvent.click(dadBtn);
+
+      const input = screen.getByTestId("voice-name-input");
+      expect(input.value).toBe("Dad's Bedtime Voice");
+    });
+
+    it("saves custom voice and triggers onVoiceCreated", () => {
+      const onVoiceCreated = jest.fn();
+      const onClose = jest.fn();
+
+      render(
+        <FamilyVoiceStudioModal
+          isOpen={true}
+          onClose={onClose}
+          onVoiceCreated={onVoiceCreated}
+        />
+      );
+
+      const input = screen.getByTestId("voice-name-input");
+      fireEvent.change(input, { target: { value: "Grandma Susan" } });
+
+      fireEvent.click(screen.getByTestId("save-voice-clone-btn"));
+
+      expect(onVoiceCreated).toHaveBeenCalled();
+      const createdVoice = onVoiceCreated.mock.calls[0][0];
+      expect(createdVoice.name).toBe("Grandma Susan");
+      expect(onClose).toHaveBeenCalled();
+    });
+  });
+
+  describe("VoiceSelector with Custom Voices", () => {
+    it("displays saved custom voice with Family Voice Clone badge", () => {
+      saveCustomVoice({
+        name: "Mom's Bedtime Voice",
+        role: "Mom",
+        baseVoice: "Joanna",
+      });
+
+      render(<VoiceSelector value="Joanna" onChange={jest.fn()} variant="cards" />);
+
+      expect(screen.getAllByText("Mom's Bedtime Voice").length).toBeGreaterThanOrEqual(1);
+      expect(screen.getByText(/Family Voice Clone/i)).toBeInTheDocument();
+      expect(screen.getByTestId("record-family-voice-btn")).toBeInTheDocument();
+    });
+
+    it("selects custom voice when clicked", () => {
+      const saved = saveCustomVoice({
+        name: "Dad's Voice",
+        role: "Dad",
+        baseVoice: "Matthew",
+      });
+
+      const onChange = jest.fn();
+      render(<VoiceSelector value="Joanna" onChange={onChange} variant="cards" />);
+
+      const dadMatches = screen.getAllByText("Dad's Voice");
+      const dadCard = dadMatches.find((el) => el.closest('[role="button"]')).closest('[role="button"]');
+      fireEvent.click(dadCard);
+
+      expect(onChange).toHaveBeenCalledWith(saved.id);
+    });
+
+    it("opens Family Voice Studio when + Record Loved One's Voice is clicked", () => {
+      render(<VoiceSelector value="Joanna" onChange={jest.fn()} variant="cards" />);
+
+      fireEvent.click(screen.getByTestId("record-family-voice-btn"));
+
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+      expect(screen.getByText(/Family Voice Studio/i)).toBeInTheDocument();
+    });
+  });
+});
