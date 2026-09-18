@@ -108,7 +108,7 @@ AWS_SECRET_ACCESS_KEY=your_aws_secret_key
 AWS_REGION=us-east-1
 BEDROCK_MODEL_ID=anthropic.claude-3-5-sonnet-20241022-v2:0
 BEDROCK_IMAGE_MODEL_ID=amazon.nova-canvas-v1:0
-BEDROCK_IMAGE_REGION=us-west-2
+BEDROCK_IMAGE_REGION=us-east-1
 POLLY_ENGINE=standard
 PORT=4000
 ```
