@@ -130,7 +130,8 @@ export function saveStory(story) {
 }
 
 /**
- * Update an existing story in history by id (e.g. to attach newly generated illustrations).
+ * Update an existing story in history by id (e.g. to advance chapters or attach newly generated illustrations).
+ * Preserves the original cover illustration and firstPage excerpt if not explicitly overwritten.
  *
  * @param {string} id
  * @param {Partial<Story>} updates
@@ -141,9 +142,32 @@ export function updateStory(id, updates) {
     const stories = loadHistory();
     const index = stories.findIndex((s) => s.id === id);
     if (index === -1) return null;
-    stories[index] = { ...stories[index], ...updates };
+
+    const existing = stories[index];
+    const updatedStory = {
+      ...existing,
+      ...updates,
+      updatedAt: new Date().toISOString(),
+    };
+
+    stories[index] = updatedStory;
     safeSaveStories(stories);
-    return stories[index];
+    return updatedStory;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Retrieve a single story from history by id.
+ *
+ * @param {string} id
+ * @returns {Story | null}
+ */
+export function getStoryById(id) {
+  try {
+    const stories = loadHistory();
+    return stories.find((s) => s.id === id) || null;
   } catch {
     return null;
   }

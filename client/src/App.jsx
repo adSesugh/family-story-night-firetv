@@ -43,6 +43,8 @@ export default function App() {
   const [chapter, setChapter] = useState(1);
   const [activeChoiceTitle, setActiveChoiceTitle] = useState("");
   const [conclusionFocusIndex, setConclusionFocusIndex] = useState(0);
+  const [currentStoryId, setCurrentStoryId] = useState(null);
+  const [activeStoryMetadata, setActiveStoryMetadata] = useState(null); // { theme, familyMembers, category }
 
   const currentCategory = THEME_CATEGORIES.find((c) => c.id === category) || THEME_CATEGORIES[0];
   const activeThemes = currentCategory.themes;
@@ -313,6 +315,14 @@ export default function App() {
         choices: storyChoices,
         chapter: storyChapter,
       });
+
+      setCurrentStoryId(savedStory?.id || null);
+      setActiveStoryMetadata({
+        theme: activeTheme,
+        familyMembers,
+        category,
+      });
+
       // Reload history
       setHistory(loadHistory());
 
@@ -359,6 +369,12 @@ export default function App() {
 
   const handleSelectStory = useCallback((story) => {
     primeAudio();
+    setCurrentStoryId(story.id || null);
+    setActiveStoryMetadata({
+      theme: story.theme,
+      familyMembers: story.familyMembers || [],
+      category: story.category || "adventures",
+    });
     setPages(story.pages);
     setLesson(story.lesson || "");
     setChoices(story.choices || []);
@@ -387,11 +403,16 @@ export default function App() {
       setScreen("loading");
 
       try {
-        const activeTheme = themeMode === "custom" ? customTheme : (activeThemes[themeIndex] || activeThemes[0]);
-        const familyMembers = names
-          .split(",")
-          .map((n) => n.trim())
-          .filter(Boolean);
+        const activeTheme =
+          activeStoryMetadata?.theme ||
+          (themeMode === "custom" ? customTheme : (activeThemes[themeIndex] || activeThemes[0]));
+        const familyMembers =
+          activeStoryMetadata?.familyMembers ||
+          names
+            .split(",")
+            .map((n) => n.trim())
+            .filter(Boolean);
+        const storyCategory = activeStoryMetadata?.category || category;
 
         const lastPage = pages[pages.length - 1];
         const lastPageText = typeof lastPage === "object" ? lastPage?.text : lastPage;
@@ -403,12 +424,12 @@ export default function App() {
           body: JSON.stringify({
             familyMembers,
             theme: activeTheme,
-            isCustomTheme: themeMode === "custom",
+            isCustomTheme: !activeStoryMetadata && themeMode === "custom",
             storyLength,
             selectedChoice,
             chapter: nextChapter,
             previousSummary,
-            category,
+            category: storyCategory,
           }),
         });
 
@@ -465,23 +486,41 @@ export default function App() {
         storyStartTimeRef.current = Date.now();
         setScreen("story");
 
-        const savedStory = saveStory({
-          familyMembers,
-          theme: activeTheme,
-          category,
-          pages: storyPages.map((p, idx) => {
-            const text = typeof p === "object" ? p.text : p;
-            const scene = typeof p === "object" ? p.scene : undefined;
-            return idx === 0 && storedIllustrations[0]
-              ? { text, scene, illustration: { url: storedIllustrations[0], alt: `Illustration for page 1` } }
-              : { text, scene };
-          }),
-          illustrations: storedIllustrations,
-          firstPage: typeof firstRaw === "string" ? firstRaw : firstRaw?.text || "",
-          lesson: storyLesson,
-          choices: storyChoices,
-          chapter: nextChapter,
+        const formattedPages = storyPages.map((p, idx) => {
+          const text = typeof p === "object" ? p.text : p;
+          const scene = typeof p === "object" ? p.scene : undefined;
+          return idx === 0 && storedIllustrations[0]
+            ? { text, scene, illustration: { url: storedIllustrations[0], alt: `Illustration for page 1` } }
+            : { text, scene };
         });
+
+        let targetStoryId = currentStoryId;
+        if (currentStoryId) {
+          // Update the continuous storybook in-place in history
+          updateStory(currentStoryId, {
+            chapter: nextChapter,
+            pages: formattedPages,
+            illustrations: storedIllustrations,
+            lesson: storyLesson,
+            choices: storyChoices,
+          });
+        } else {
+          // Fallback if no story ID was tracked
+          const savedStory = saveStory({
+            familyMembers,
+            theme: activeTheme,
+            category: storyCategory,
+            pages: formattedPages,
+            illustrations: storedIllustrations,
+            firstPage: typeof firstRaw === "string" ? firstRaw : firstRaw?.text || "",
+            lesson: storyLesson,
+            choices: storyChoices,
+            chapter: nextChapter,
+          });
+          targetStoryId = savedStory?.id || null;
+          setCurrentStoryId(targetStoryId);
+        }
+
         setHistory(loadHistory());
 
         trackEvent("story_generated", {
@@ -489,7 +528,7 @@ export default function App() {
           theme: activeTheme,
           storyLength,
           voice,
-          category,
+          category: storyCategory,
           chapter: nextChapter,
           selectedChoice,
           generationTime: (Date.now() - startTime) / 1000,
@@ -502,7 +541,7 @@ export default function App() {
           seedBase: nextChapter * 500,
           initialIllustrations,
           initialStored: storedIllustrations,
-          savedStoryId: savedStory?.id,
+          savedStoryId: targetStoryId,
           sessionId: currentSessionId,
         });
       } catch (err) {
@@ -511,8 +550,15 @@ export default function App() {
         setScreen("setup");
       }
     },
-    [chapter, themeMode, customTheme, themeIndex, names, pages, storyLength, primeAudio, voice, fetchSubsequentIllustrations, category, activeThemes]
+    [chapter, themeMode, customTheme, themeIndex, names, pages, storyLength, primeAudio, voice, fetchSubsequentIllustrations, category, activeThemes, currentStoryId, activeStoryMetadata]
   );
+
+  const handleReturnHome = useCallback(() => {
+    setCurrentStoryId(null);
+    setActiveStoryMetadata(null);
+    setChapter(1);
+    setScreen("setup");
+  }, []);
 
   const handleBackFromHistory = useCallback(() => {
     setHistory(loadHistory());
@@ -912,7 +958,7 @@ export default function App() {
           choices={choices}
           chapter={chapter}
           onSelectChoice={handleSelectNextChoice}
-          onReturnHome={() => setScreen("setup")}
+          onReturnHome={handleReturnHome}
           focusIndex={conclusionFocusIndex}
           onFocusIndexChange={setConclusionFocusIndex}
         />

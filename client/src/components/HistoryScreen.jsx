@@ -370,9 +370,9 @@ export default function HistoryScreen({ onSelect, onBack }) {
 
                     {/* Bottom Info: Page Count & Chapter */}
                     <div className="absolute bottom-2 left-3 right-3 flex items-center justify-between text-[11px] font-sans font-medium text-starlight drop-shadow">
-                      <span>{formatDate(story.generatedAt)}</span>
+                      <span>{formatDate(story.updatedAt || story.generatedAt)}</span>
                       {pageCount && (
-                        <span className="rounded bg-black/50 px-1.5 py-0.5 text-parchment/90 backdrop-blur-xs">
+                        <span className="rounded bg-black/50 px-1.5 py-0.5 text-parchment/90 backdrop-blur-xs font-semibold">
                           {pageCount}p {story.chapter > 1 ? `• Ch. ${story.chapter}` : ""}
                         </span>
                       )}
@@ -409,7 +409,18 @@ export default function HistoryScreen({ onSelect, onBack }) {
 
                     {/* Action Footer */}
                     <div className="mt-4 flex items-center justify-between border-t border-starlight/10 pt-2.5 font-sans text-xs text-starlight/70 group-hover:text-lamp transition-colors">
-                      <span className="font-medium">Read tonight</span>
+                      <span className="font-medium flex items-center gap-1.5">
+                        {story.chapter > 1 ? (
+                          <>
+                            <span>Continue Ch. {story.chapter}</span>
+                            {story.choices && story.choices.length > 0 && (
+                              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" title="Ready to branch into next chapter" />
+                            )}
+                          </>
+                        ) : (
+                          "Read tonight"
+                        )}
+                      </span>
                       <div className="flex items-center gap-1 font-semibold group-hover:translate-x-1 transition-transform">
                         <Play className="h-3.5 w-3.5 fill-current" />
                       </div>
