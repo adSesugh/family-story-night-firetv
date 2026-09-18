@@ -724,8 +724,8 @@ export default function App() {
         });
       } catch (err) {
         console.error(err);
-        setError("Couldn't weave the next chapter. Returning to story setup.");
-        setScreen("setup");
+        setError("Couldn't weave the next chapter. Please try again or pick another choice.");
+        setScreen("story");
       }
     },
     [chapter, themeMode, customTheme, themeIndex, names, pages, storyLength, primeAudio, voice, fetchSubsequentIllustrations, category, activeThemes, currentStoryId, activeStoryMetadata]
@@ -1150,7 +1150,9 @@ export default function App() {
           }
 
           const numChoices = choices ? choices.length : 0;
-          const homeIndex = numChoices;
+          const hasVoice = typeof window !== "undefined" && Boolean(window.SpeechRecognition || window.webkitSpeechRecognition);
+          const voiceIndex = hasVoice ? numChoices : -1;
+          const homeIndex = hasVoice ? numChoices + 1 : numChoices;
 
           if (isRight) {
             e.preventDefault();
@@ -1167,7 +1169,7 @@ export default function App() {
               setConclusionFocusIndex(0);
             } else if (conclusionFocusIndex === 0) {
               if (pages.length > 0) turnTo(pages.length - 1);
-            } else if (conclusionFocusIndex === homeIndex) {
+            } else if (conclusionFocusIndex === homeIndex || (hasVoice && conclusionFocusIndex === voiceIndex)) {
               setConclusionFocusIndex(0);
             }
             return;
@@ -1176,7 +1178,12 @@ export default function App() {
           if (isDown) {
             e.preventDefault();
             setConclusionFocusIndex((prev) => {
-              if (prev < homeIndex) return homeIndex;
+              if (prev < numChoices) {
+                return hasVoice ? voiceIndex : homeIndex;
+              }
+              if (hasVoice && prev === voiceIndex) {
+                return homeIndex;
+              }
               return 0;
             });
             return;
@@ -1185,7 +1192,12 @@ export default function App() {
           if (isUp) {
             e.preventDefault();
             setConclusionFocusIndex((prev) => {
-              if (prev === homeIndex) return 0;
+              if (prev === homeIndex) {
+                return hasVoice ? voiceIndex : 0;
+              }
+              if (hasVoice && prev === voiceIndex) {
+                return 0;
+              }
               return prev;
             });
             return;
@@ -1195,8 +1207,16 @@ export default function App() {
             e.preventDefault();
             if (conclusionFocusIndex < numChoices && choices[conclusionFocusIndex]) {
               handleSelectNextChoice(choices[conclusionFocusIndex]);
+            } else if (hasVoice && conclusionFocusIndex === voiceIndex) {
+              const weaveBtn = document.getElementById("weave-twist-btn");
+              const voiceBtn = document.getElementById("voice-twist-btn");
+              if (weaveBtn) {
+                weaveBtn.click();
+              } else if (voiceBtn) {
+                voiceBtn.click();
+              }
             } else {
-              setScreen("setup");
+              handleReturnHome();
             }
             return;
           }
@@ -1234,6 +1254,7 @@ export default function App() {
     choices,
     conclusionFocusIndex,
     handleSelectNextChoice,
+    handleReturnHome,
     hasNextStoredChapter,
     handleContinueNextStoredChapter,
   ]);

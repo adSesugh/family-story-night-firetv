@@ -7,6 +7,32 @@ import { useSpeechRecognition } from "../utils/useSpeechRecognition";
 import "swiper/css";
 import "swiper/css/navigation";
 
+// Detects "mobile, portrait" (narrower than Tailwind's `sm` breakpoint, taller than wide).
+// The existing card layout below is already responsive for tablet/desktop and for phones
+// held sideways, where there's enough width for an image-beside-text card. On a phone held
+// upright there just isn't room for that: the illustration box shrinks to a sliver. Rather
+// than layering more `sm:`/`landscape:` utilities on the same markup (which is how the
+// flex-vs-grid conflict happened before), this drives a genuinely different layout — a
+// full-bleed "picture book" page — via a small JS check instead of stacked CSS variants.
+function useBookMode() {
+  const [isBookMode, setIsBookMode] = useState(false);
+  useEffect(() => {
+    const check = () => {
+      const isMobileWidth = window.innerWidth < 640; // below Tailwind's `sm`
+      const isPortrait = window.innerHeight >= window.innerWidth;
+      setIsBookMode(isMobileWidth && isPortrait);
+    };
+    check();
+    window.addEventListener("resize", check);
+    window.addEventListener("orientationchange", check);
+    return () => {
+      window.removeEventListener("resize", check);
+      window.removeEventListener("orientationchange", check);
+    };
+  }, []);
+  return isBookMode;
+}
+
 export default function StoryScreen({
   pages,
   illustrations = [],
@@ -29,6 +55,8 @@ export default function StoryScreen({
 }) {
   const swiperRef = useRef(null);
   const hasConclusion = Boolean(nextStoredChapterNumber || lesson || (choices && choices.length > 0));
+  const isBookMode = useBookMode();
+  const totalSlides = pages.length + (hasConclusion ? 1 : 0);
 
   const [customTwist, setCustomTwist] = useState("");
   const twistSpeech = useSpeechRecognition({
@@ -50,21 +78,33 @@ export default function StoryScreen({
         targetId = focusIndex === 0 ? "next-stored-chapter-btn" : "return-home-btn";
       } else {
         const numChoices = choices ? choices.length : 0;
-        targetId = focusIndex < numChoices ? `choice-btn-${focusIndex}` : "return-home-btn";
+        const hasVoice = twistSpeech.isSupported;
+        const voiceIndex = hasVoice ? numChoices : -1;
+        if (focusIndex < numChoices) {
+          targetId = `choice-btn-${focusIndex}`;
+        } else if (hasVoice && focusIndex === voiceIndex) {
+          targetId = customTwist ? "weave-twist-btn" : "voice-twist-btn";
+        } else {
+          targetId = "return-home-btn";
+        }
       }
       const el = document.getElementById(targetId);
       if (el && typeof el.focus === "function") {
         el.focus();
       }
     }
-  }, [pageIndex, pages.length, focusIndex, choices, nextStoredChapterNumber]);
+  }, [pageIndex, pages.length, focusIndex, choices, nextStoredChapterNumber, twistSpeech.isSupported, customTwist]);
 
   const handleSlideChange = (swiper) => {
     onTurn(swiper.activeIndex);
   };
 
   return (
-    <div data-testid="story-screen" className="relative z-10 flex h-screen w-full items-center justify-center">
+    // h-dvh (dynamic viewport height) instead of h-screen: on mobile browsers h-screen
+    // is measured against the *largest* possible viewport, so content gets clipped
+    // behind the address bar / home-indicator when the chrome is showing. h-screen is
+    // kept as a fallback for older browsers that don't support dvh.
+    <div data-testid="story-screen" className="relative z-10 flex h-screen h-dvh w-full items-center justify-center">
       {/* Bedtime Dimmer Veil (Wind-Down Routine) */}
       {windDown && (
         <div
@@ -118,86 +158,191 @@ export default function StoryScreen({
           const illustrationUrl = illustrations[idx] || (typeof page === "object" && page.illustration ? page.illustration.url : null);
           const kenBurnsClass = `animate-kenburns-${idx % 4}`;
 
-          return (
-            <SwiperSlide key={idx} className="flex items-center justify-center p-2.5 pt-12 pb-3 sm:p-6 sm:pt-16 sm:pb-10 md:px-14 md:py-12">
-              <div className="flex flex-col landscape:flex-row md:grid md:grid-cols-2 h-full max-h-[92vh] md:max-h-[38rem] w-full max-w-6xl min-h-0 overflow-hidden rounded-xl md:rounded-sm bg-panel/60 shadow-2xl shadow-black/40 backdrop-blur-sm">
-                {/* Illustration column with Ken Burns cinematic camera movement and ambient particles */}
-                <div className="relative h-72 sm:h-84 landscape:h-full landscape:w-1/2 md:w-full md:h-full w-full min-h-0 overflow-hidden bg-dusk/40 shrink-0 md:shrink">
-                  {illustrationUrl ? (
-                    <>
-                      <img
-                        src={illustrationUrl}
-                        alt={`Illustration for page ${idx + 1}`}
-                        className={`absolute inset-0 h-full w-full object-cover ${kenBurnsClass} transition-opacity duration-700 select-none`}
-                        onError={(e) => {
-                          e.currentTarget.style.display = "none";
-                        }}
-                      />
-                      {/* Ambient floating stardust & firefly motes */}
-                      <AmbientParticles count={14} windDown={windDown} />
-                    </>
-                  ) : (
-                    <div className="relative flex h-full w-full flex-col items-center justify-center bg-gradient-to-b from-dusk/60 via-night/80 to-dusk/90 overflow-hidden p-4">
-                      <div className="absolute inset-0 bg-radial-at-c from-lamp/10 via-transparent to-transparent animate-pulse" />
-                      <AmbientParticles count={10} windDown={windDown} />
-                      <div className="relative z-10 flex flex-col items-center gap-2 sm:gap-3 px-4 text-center">
-                        <div className="flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-lamp/15 border border-lamp/30 shadow-lg shadow-lamp/10 text-lamp animate-bounce duration-1000">
-                          <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
-                          </svg>
-                        </div>
-                        <span className="font-serif text-base sm:text-lg md:text-xl italic text-starlight/80 tracking-wide">
-                          Bringing scene to life&hellip;
-                        </span>
-                        <span className="text-[10px] sm:text-xs uppercase font-sans tracking-widest text-lamp/70 font-semibold">
-                          Painting Page {idx + 1}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                  {/* Soft inner edge so the image reads as part of the page, not a pasted photo */}
-                  <div className="pointer-events-none absolute inset-0 z-20 shadow-[inset_0_0_40px_rgba(0,0,0,0.35)]" />
-                </div>
-
-                {/* Text column — centered vertically and horizontally */}
-                <div className="flex flex-1 h-full w-full landscape:w-1/2 md:w-full min-h-0 items-center justify-center px-4 py-3 sm:px-8 sm:py-6 md:px-12 md:py-8 lg:px-16 text-center overflow-y-auto">
-                  <p
-                    key={turnKey}
-                    data-testid="page-text"
-                    className={`animate-page-in font-serif text-lg sm:text-xl md:text-2xl lg:text-3xl leading-relaxed text-center w-full transition-colors duration-1000 ${windDown ? "text-parchment/85" : "text-parchment"
-                      }`}
+          const pageTextEl = (
+            <>
+              {activeSpeechMark &&
+                idx === pageIndex &&
+                typeof activeSpeechMark.start === "number" &&
+                typeof activeSpeechMark.end === "number" &&
+                activeSpeechMark.end <= pageText.length ? (
+                <>
+                  <span>{pageText.slice(0, activeSpeechMark.start)}</span>
+                  <span
+                    data-testid="karaoke-word"
+                    className="text-lamp font-semibold drop-shadow-[0_0_14px_rgba(232,163,61,0.85)] bg-lamp/15 px-1 py-0.5 rounded transition-all duration-150"
                   >
-                    {activeSpeechMark &&
-                      idx === pageIndex &&
-                      typeof activeSpeechMark.start === "number" &&
-                      typeof activeSpeechMark.end === "number" &&
-                      activeSpeechMark.end <= pageText.length ? (
-                      <>
-                        <span>{pageText.slice(0, activeSpeechMark.start)}</span>
-                        <span
-                          data-testid="karaoke-word"
-                          className="text-lamp font-semibold drop-shadow-[0_0_14px_rgba(232,163,61,0.85)] bg-lamp/15 px-1 py-0.5 rounded transition-all duration-150"
-                        >
-                          {pageText.slice(activeSpeechMark.start, activeSpeechMark.end)}
-                        </span>
-                        <span className="opacity-80">{pageText.slice(activeSpeechMark.end)}</span>
-                      </>
-                    ) : (
-                      pageText
-                    )}
-                  </p>
+                    {pageText.slice(activeSpeechMark.start, activeSpeechMark.end)}
+                  </span>
+                  <span className="opacity-80">{pageText.slice(activeSpeechMark.end)}</span>
+                </>
+              ) : (
+                pageText
+              )}
+            </>
+          );
+
+          const illustrationLayer = illustrationUrl ? (
+            <>
+              {/*
+                Fix: `object-cover` fills the box by cropping whatever doesn't fit,
+                and on mobile the box's aspect ratio is much further from the
+                illustration's than on desktop, so far more of the image was getting
+                cut off. This blurred, scaled-up copy fills the box edge-to-edge behind
+                the real image so there's no empty letterbox bar, without cropping the
+                illustration itself.
+              */}
+              <img
+                src={illustrationUrl}
+                alt=""
+                aria-hidden="true"
+                className="absolute inset-0 h-full w-full object-cover scale-110 blur-2xl opacity-60 select-none md:hidden"
+              />
+              {/*
+                object-contain on mobile shows the whole illustration with no
+                cropping; object-cover kicks back in from sm: up, where the box is
+                large enough (and closer to the source aspect ratio) that a full
+                edge-to-edge image reads better than letterboxing.
+              */}
+              <img
+                src={illustrationUrl}
+                alt={`Illustration for page ${idx + 1}`}
+                className={`absolute inset-0 h-full w-full object-contain sm:object-cover ${kenBurnsClass} transition-opacity duration-700 select-none`}
+                onError={(e) => {
+                  e.currentTarget.style.display = "none";
+                }}
+              />
+              {/* Ambient floating stardust & firefly motes */}
+              <AmbientParticles count={14} windDown={windDown} />
+            </>
+          ) : (
+            <div className="relative flex h-full w-full flex-col items-center justify-center bg-gradient-to-b from-dusk/60 via-night/80 to-dusk/90 overflow-hidden p-4">
+              <div className="absolute inset-0 bg-radial-at-c from-lamp/10 via-transparent to-transparent animate-pulse" />
+              <AmbientParticles count={10} windDown={windDown} />
+              <div className="relative z-10 flex flex-col items-center gap-2 sm:gap-3 px-4 text-center">
+                <div className="flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-lamp/15 border border-lamp/30 shadow-lg shadow-lamp/10 text-lamp animate-bounce duration-1000">
+                  <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+                  </svg>
                 </div>
+                <span className="font-serif text-base sm:text-lg md:text-xl italic text-starlight/80 tracking-wide">
+                  Bringing scene to life&hellip;
+                </span>
+                <span className="text-[10px] sm:text-xs uppercase font-sans tracking-widest text-lamp/70 font-semibold">
+                  Painting Page {idx + 1}
+                </span>
               </div>
+            </div>
+          );
+
+          return (
+            <SwiperSlide
+              key={idx}
+              className={
+                isBookMode
+                  ? "flex items-stretch justify-center p-0"
+                  : "flex items-center justify-center p-2.5 pt-12 pb-3 sm:p-6 sm:pt-16 sm:pb-10 md:px-14 md:py-12"
+              }
+            >
+              {isBookMode ? (
+                /*
+                  Picture-book layout for mobile portrait: a full-bleed illustration edge to
+                  edge at the top (no card border eating into it) and the text on a page-like
+                  panel underneath that overlaps the image slightly, like a lifted page corner.
+                  Dot pagination replaces the "Page X of Y" text, which sits outside this card
+                  and would otherwise float disconnected from the page below it.
+                */
+                <div className="flex h-full w-full flex-col">
+                  <div className="relative h-[54vh] min-h-0 w-full shrink-0 overflow-hidden bg-dusk/40">
+                    {illustrationLayer}
+                    {/* Scrim so the top-corner Listen / wind-down chrome stays legible over any illustration */}
+                    <div className="pointer-events-none absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-night/60 to-transparent" />
+                    <div className="pointer-events-none absolute inset-0 shadow-[inset_0_0_40px_rgba(0,0,0,0.35)]" />
+                  </div>
+
+                  <div className="relative -mt-6 flex flex-1 min-h-0 flex-col rounded-t-[2rem] bg-panel/95 px-5 pt-6 pb-3 shadow-[0_-12px_30px_rgba(0,0,0,0.35)]">
+                    <div className="flex flex-1 min-h-0 items-center justify-center overflow-y-auto">
+                      <p
+                        key={turnKey}
+                        data-testid="page-text"
+                        className={`animate-page-in font-serif text-lg leading-relaxed text-center w-full transition-colors duration-1000 ${windDown ? "text-parchment/85" : "text-parchment"
+                          }`}
+                      >
+                        {pageTextEl}
+                      </p>
+                    </div>
+                    <div className="flex items-center justify-center gap-2 pt-3 pb-1">
+                      {Array.from({ length: totalSlides }).map((_, i) => (
+                        <button
+                          key={i}
+                          type="button"
+                          aria-label={`Go to page ${i + 1}`}
+                          onClick={() => swiperRef.current && swiperRef.current.swiper && swiperRef.current.swiper.slideTo(i)}
+                          className={`h-1.5 rounded-full transition-all cursor-pointer ${i === pageIndex ? "w-5 bg-lamp" : "w-1.5 bg-starlight/30"
+                            }`}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                /*
+                  Layout fix: `landscape:` and `md:` utilities used to be applied independently
+                  (flex-col / landscape:flex-row / md:grid), which meant a landscape TABLET
+                  (width >= 768px, orientation landscape) matched both `landscape:flex-row` and
+                  `md:grid` at once — flex and grid both set `display`, so the result depended on
+                  Tailwind's generated CSS order rather than intent. Scoping the landscape variant
+                  to `max-md:` means "landscape phone" gets the side-by-side treatment, while the
+                  `md:` breakpoint (tablet/desktop, any orientation) always uses the grid layout.
+                */
+                <div className="flex flex-col max-md:landscape:flex-row md:grid md:grid-cols-2 h-full max-h-[92vh] md:max-h-[38rem] w-full max-w-6xl min-h-0 overflow-hidden rounded-xl md:rounded-sm bg-panel/60 shadow-2xl shadow-black/40 backdrop-blur-sm">
+                  {/* Illustration column with Ken Burns cinematic camera movement and ambient particles */}
+                  <div
+                    className="relative h-56 xs:h-64 sm:h-80 max-md:landscape:h-full max-md:landscape:w-1/2
+                      md:w-full md:h-full w-full min-h-0 overflow-hidden bg-dusk/40 shrink-0 md:shrink"
+                  >
+                    {illustrationLayer}
+                    {/* Soft inner edge so the image reads as part of the page, not a pasted photo */}
+                    <div className="pointer-events-none absolute inset-0 z-20 shadow-[inset_0_0_40px_rgba(0,0,0,0.35)]" />
+                  </div>
+
+                  {/* Text column — centered vertically and horizontally */}
+                  <div
+                    className="flex flex-1 h-full w-full max-md:landscape:w-1/2 md:w-full min-h-0
+                      items-center justify-center px-4 py-3 sm:px-8 sm:py-6 md:px-12 md:py-8 lg:px-16 text-center overflow-y-auto"
+                  >
+                    <p
+                      key={turnKey}
+                      data-testid="page-text"
+                      className={`animate-page-in font-serif leading-relaxed text-center w-full transition-colors duration-1000
+                        text-base max-md:landscape:text-sm sm:text-xl md:text-2xl lg:text-3xl
+                        ${windDown ? "text-parchment/85" : "text-parchment"}`}
+                    >
+                      {pageTextEl}
+                    </p>
+                  </div>
+                </div>
+              )}
             </SwiperSlide>
           );
         })}
 
         {/* Conclusion, Bedtime Lesson & Interactive Next Chapter Choices Slide */}
         {hasConclusion && (
-          <SwiperSlide key="conclusion" className="flex items-center justify-center p-3 pt-12 pb-12 sm:p-6 sm:pt-16 sm:pb-8 md:px-10 md:py-10 min-h-0">
+          <SwiperSlide
+            key="conclusion"
+            className={
+              isBookMode
+                ? "flex items-stretch justify-center p-0 min-h-0"
+                : "flex items-center justify-center p-3 pt-12 pb-12 sm:p-6 sm:pt-16 sm:pb-8 md:px-10 md:py-10 min-h-0"
+            }
+          >
             <div
               data-testid="story-conclusion"
-              className="flex flex-col items-center justify-between w-full max-w-4xl h-full max-h-[88vh] md:max-h-[38rem] min-h-0 p-4 sm:p-6 md:p-8 rounded-xl bg-panel/75 border border-starlight/20 shadow-2xl shadow-black/50 backdrop-blur-md text-center overflow-y-auto"
+              className={
+                isBookMode
+                  ? "flex flex-col items-center justify-start gap-y-4 w-full h-full min-h-0 pt-16 pb-4 px-5 rounded-t-[2rem] bg-panel/95 text-center overflow-y-auto"
+                  : "flex flex-col items-center justify-start gap-y-4 sm:gap-y-5 w-full max-w-4xl h-full max-h-[88vh] md:max-h-[38rem] min-h-0 p-4 sm:p-6 md:p-8 rounded-xl bg-panel/75 border border-starlight/20 shadow-2xl shadow-black/50 backdrop-blur-md text-center overflow-y-auto"
+              }
             >
               {/* Header */}
               <div className="flex flex-col items-center gap-1">
@@ -214,7 +359,7 @@ export default function StoryScreen({
               {lesson && (
                 <div
                   data-testid="story-lesson"
-                  className="my-2 sm:my-3 w-full max-w-2xl rounded-xl bg-dusk/60 border border-lamp/30 p-3 sm:p-4 md:p-5 shadow-inner text-center"
+                  className="w-full max-w-2xl rounded-xl bg-dusk/60 border border-lamp/30 p-3 sm:p-4 md:p-5 shadow-inner text-center"
                 >
                   <div className="flex items-center justify-center gap-1.5 mb-1 text-lamp font-sans text-xs md:text-sm tracking-wider uppercase font-semibold">
                     <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-lamp animate-pulse" />
@@ -228,7 +373,7 @@ export default function StoryScreen({
 
               {/* Next Stored Chapter Action (Fast Path) */}
               {nextStoredChapterNumber ? (
-                <div className="w-full max-w-xl my-2 sm:my-4">
+                <div className="w-full max-w-xl">
                   <button
                     id="next-stored-chapter-btn"
                     data-testid="next-stored-chapter-btn"
@@ -256,7 +401,7 @@ export default function StoryScreen({
               ) : (
                 /* Next Adventure Frontier Choices (AI Generation) */
                 choices && choices.length > 0 && (
-                  <div className="w-full max-w-3xl my-2">
+                  <div className="w-full max-w-3xl">
                     <div className="flex items-center justify-center gap-1.5 sm:gap-2 mb-4 sm:mb-3 text-starlight/80 font-sans text-xs md:text-sm uppercase tracking-wider font-semibold">
                       <Compass className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-lamp" />
                       <span>What should happen in the next adventure?</span>
@@ -295,50 +440,76 @@ export default function StoryScreen({
                     {/* Tell the TV what to do next (Voice Twist Dictation) */}
                     {twistSpeech.isSupported && (
                       <div className="mt-3 flex flex-col items-center gap-2">
-                        <button
-                          type="button"
-                          data-testid="voice-twist-btn"
-                          onClick={twistSpeech.toggleListening}
-                          className={`flex items-center gap-2 px-4 py-2 rounded-full font-sans text-xs font-semibold tracking-wide transition-all cursor-pointer ${twistSpeech.isListening
-                            ? "bg-lamp text-night animate-pulse shadow-lg shadow-lamp/50 scale-105"
-                            : "bg-panel/90 text-lamp border border-lamp/40 hover:bg-lamp/20"
-                            }`}
-                        >
-                          {twistSpeech.isListening ? (
+                        {(() => {
+                          const numChoices = choices ? choices.length : 0;
+                          const isVoiceFocused = pageIndex >= pages.length && focusIndex === numChoices;
+                          return (
                             <>
-                              <MicOff size={15} />
-                              <span>Listening... speak your twist</span>
+                              <button
+                                type="button"
+                                id="voice-twist-btn"
+                                data-testid="voice-twist-btn"
+                                onClick={twistSpeech.toggleListening}
+                                onMouseEnter={() => onFocusIndexChange && onFocusIndexChange(numChoices)}
+                                className={`flex items-center gap-2 px-4 py-2 rounded-full font-sans text-xs font-semibold tracking-wide transition-all cursor-pointer ${twistSpeech.isListening
+                                  ? "bg-lamp text-night animate-pulse shadow-lg shadow-lamp/50 scale-105 ring-4 ring-lamp/80"
+                                  : isVoiceFocused && !customTwist
+                                  ? "border-2 border-lamp bg-panel text-lamp ring-4 ring-lamp/80 shadow-lamp/30 scale-105"
+                                  : "bg-panel/90 text-lamp border border-lamp/40 hover:bg-lamp/20"
+                                  }`}
+                              >
+                                {twistSpeech.isListening ? (
+                                  <>
+                                    <MicOff size={15} />
+                                    <span>Listening... speak your twist</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Mic size={15} />
+                                    <span>Tell the TV what to do next (Voice)</span>
+                                  </>
+                                )}
+                              </button>
+                              {customTwist && (
+                                <div className="flex items-center gap-2 px-4 py-1.5 rounded-lg bg-panel/80 border border-lamp/30 animate-fade-in">
+                                  <span className="font-serif italic text-sm text-parchment">&ldquo;{customTwist}&rdquo;</span>
+                                  <button
+                                    type="button"
+                                    id="weave-twist-btn"
+                                    data-testid="weave-twist-btn"
+                                    onClick={() => onSelectChoice && onSelectChoice(customTwist)}
+                                    onMouseEnter={() => onFocusIndexChange && onFocusIndexChange(numChoices)}
+                                    className={`px-3 py-1.5 rounded-lg bg-lamp text-night font-sans font-bold text-xs hover:bg-lamp/90 cursor-pointer shadow transition-all ${isVoiceFocused
+                                      ? "ring-4 ring-lamp/90 scale-105 border border-white"
+                                      : ""
+                                      }`}
+                                  >
+                                    Weave Twist &rarr;
+                                  </button>
+                                </div>
+                              )}
                             </>
-                          ) : (
-                            <>
-                              <Mic size={15} />
-                              <span>Tell the TV what to do next (Voice)</span>
-                            </>
-                          )}
-                        </button>
-                        {customTwist && (
-                          <div className="flex items-center gap-2 px-4 py-1.5 rounded-lg bg-panel/80 border border-lamp/30 animate-fade-in">
-                            <span className="font-serif italic text-sm text-parchment">&ldquo;{customTwist}&rdquo;</span>
-                            <button
-                              type="button"
-                              data-testid="weave-twist-btn"
-                              onClick={() => onSelectChoice && onSelectChoice(customTwist)}
-                              className="px-2.5 py-1 rounded bg-lamp text-night font-sans font-bold text-xs hover:bg-lamp/90 cursor-pointer shadow"
-                            >
-                              Weave Twist &rarr;
-                            </button>
-                          </div>
-                        )}
+                          );
+                        })()}
                       </div>
                     )}
                   </div>
                 )
               )}
 
-              {/* Return to Home option */}
-              <div className="-mt-16 sm:mt-3 mb-1.5 sm:mb-0 pt-2 border-t border-starlight/10 w-full flex justify-center shrink-0">
+              {/*
+                Fix: the old `-mt-16 sm:mt-3` negative-margin hack was pulling this button
+                up over the choice grid on mobile to compensate for stacked content height —
+                a fragile trick that overlaps buttons whenever there are 2 choices instead of
+                the layout's assumed count, or on unusually short viewports. The parent uses
+                `justify-between` and is scrollable (`overflow-y-auto`), so `mt-auto` lets it
+                sit naturally at the bottom without any manual offset or risk of overlap.
+              */}
+              <div className="mt-auto pt-2 border-t border-starlight/10 w-full flex justify-center shrink-0">
                 {(() => {
-                  const targetHomeIndex = nextStoredChapterNumber ? 1 : (choices ? choices.length : 0);
+                  const numChoices = choices ? choices.length : 0;
+                  const voiceOffset = twistSpeech.isSupported ? 1 : 0;
+                  const targetHomeIndex = nextStoredChapterNumber ? 1 : (numChoices + voiceOffset);
                   const isHomeFocused = pageIndex >= pages.length && focusIndex === targetHomeIndex;
                   return (
                     <button
@@ -368,12 +539,14 @@ export default function StoryScreen({
         style={{ background: "radial-gradient(circle, #7C93C9 0%, transparent 70%)" }}
       />
 
-      {/* Page indicator */}
-      <div className="pointer-events-none absolute bottom-10 sm:bottom-8 left-1/2 z-20 -translate-x-1/2 font-sans text-xs sm:text-sm text-starlight/70">
-        {pageIndex >= pages.length
-          ? `Chapter ${chapter} • The End`
-          : `Page ${pageIndex + 1} of ${pages.length}`}
-      </div>
+      {/* Page indicator — hidden in book mode, where dot pagination inside the page panel replaces it */}
+      {!isBookMode && (
+        <div className="pointer-events-none absolute bottom-10 sm:bottom-8 max-md:landscape:bottom-2 left-1/2 z-20 -translate-x-1/2 font-sans text-xs sm:text-sm text-starlight/70">
+          {pageIndex >= pages.length
+            ? `Chapter ${chapter} • The End`
+            : `Page ${pageIndex + 1} of ${pages.length}`}
+        </div>
+      )}
     </div>
   );
 }
