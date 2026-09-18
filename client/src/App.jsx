@@ -412,6 +412,18 @@ export default function App() {
         e.which === 8 ||
         e.keyCode === 27 ||
         e.which === 27;
+      const isHome =
+        e.key === "Home" ||
+        e.key === "BrowserHome" ||
+        e.keyCode === 36 ||
+        e.which === 36;
+
+      // Global Home key: return to home screen (setup) from any screen
+      if (isHome) {
+        e.preventDefault();
+        setScreen("setup");
+        return;
+      }
 
       if (screen === "setup") {
         if (e.target?.tagName === "INPUT" || e.target?.tagName === "TEXTAREA") {

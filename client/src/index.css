@@ -17,6 +17,7 @@
       opacity: 0;
       transform: translateY(8px);
     }
+
     100% {
       opacity: 1;
       transform: translateY(0);
@@ -26,6 +27,7 @@
 
 * {
   box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
 }
 
 html,
@@ -41,7 +43,7 @@ body {
   background: #151030;
 }
 
-/* Visible focus ring for remote/keyboard navigation, never suppressed */
+/* Visible high-contrast focus ring for Fire TV remote and keyboard navigation */
 /* :focus-visible {
   outline: 2px solid #e8a33d;
   outline-offset: 4px;

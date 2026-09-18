@@ -182,4 +182,24 @@ describe("Fire TV Remote & Gamepad Controller Support", () => {
       expect(screen.getByPlaceholderText(/Maya, Dad/i)).toBeInTheDocument();
     });
   });
+
+  test("Home key (keyCode 36 / 'Home') navigates directly to home screen from story screen", async () => {
+    render(<App />);
+
+    const input = screen.getByPlaceholderText(/Maya, Dad/i);
+    fireEvent.change(input, { target: { value: "Liam" } });
+    fireEvent.click(screen.getByRole("button", { name: /Begin the story/i }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("story-screen")).toBeInTheDocument();
+    });
+
+    // Press Home key
+    fireEvent.keyDown(window, { key: "Home", keyCode: 36 });
+
+    await waitFor(() => {
+      expect(screen.queryByTestId("story-screen")).not.toBeInTheDocument();
+      expect(screen.getByPlaceholderText(/Maya, Dad/i)).toBeInTheDocument();
+    });
+  });
 });

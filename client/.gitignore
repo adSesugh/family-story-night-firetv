@@ -12,6 +12,7 @@ yarn.lock
 dist/
 build/
 .vite/
+*.zip
 
 # IDE
 .vscode/
