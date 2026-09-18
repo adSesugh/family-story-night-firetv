@@ -202,8 +202,10 @@ export default function App() {
       .map((n) => n.trim())
       .filter(Boolean);
 
-    // Validate that at least one family member was provided
-    if (familyMembers.length === 0) {
+    const isBibleCategory = category === "bible";
+
+    // Validate that at least one family member was provided (optional for Bible stories)
+    if (familyMembers.length === 0 && !isBibleCategory) {
       setError("Please enter at least one family member name");
       return;
     }

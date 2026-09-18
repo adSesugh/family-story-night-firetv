@@ -258,5 +258,27 @@ Return ONLY a valid JSON object with this exact structure:
       expect(prompt).toContain("no violence");
       expect(prompt).toContain("faith-and-character bedtime lesson");
     });
+
+    it('builds prompt for Bible story when familyMembers is empty (optional family members)', () => {
+      const familyMembers = [];
+      const theme = "David and Goliath: faith over fear";
+      const category = 'bible';
+
+      const isBibleStory = category === 'bible';
+      expect(isBibleStory).toBe(true);
+
+      const familyWeave =
+        familyMembers.length > 0
+          ? `Weave these family members: ${familyMembers.join(", ")} into the story with warmth, reverence, and joy as gentle helpers, companions, or witnesses who learn timeless virtues alongside the biblical figures.`
+          : `Focus reverently and warmly on the biblical characters and their inspiring journey, making the timeless virtues easy for young children to understand and cherish.`;
+
+      const prompt = `Write a short, gentle, inspiring bedtime Bible story (6 pages, 2-3 sentences per page) \
+based on: ${theme}. \
+${familyWeave}`;
+
+      expect(prompt).toContain("David and Goliath");
+      expect(prompt).toContain("Focus reverently and warmly on the biblical characters");
+      expect(prompt).not.toContain("Weave these family members");
+    });
   });
 });

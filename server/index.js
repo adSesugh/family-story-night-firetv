@@ -195,7 +195,13 @@ app.post("/generate-story", async (req, res) => {
       category = "adventures",
     } = req.body;
 
-    if (familyMembers.length === 0) {
+    const isBibleStory =
+      category === "bible" ||
+      /\b(noah|ark|david|goliath|daniel|lion'?s den|jonah|whale|big fish|samaritan|bethlehem|jesus|moses|creation|eden|bible|scripture|rainbow promise|starry night in bethlehem)\b/i.test(
+        theme
+      );
+
+    if (familyMembers.length === 0 && !isBibleStory) {
       return res.status(400).json({ error: "familyMembers is required" });
     }
 
@@ -207,12 +213,6 @@ app.post("/generate-story", async (req, res) => {
     if (!ALLOWED_STORY_LENGTHS.includes(parsedLength)) {
       return res.status(400).json({ error: "storyLength must be 4, 6, or 8" });
     }
-
-    const isBibleStory =
-      category === "bible" ||
-      /\b(noah|ark|david|goliath|daniel|lion'?s den|jonah|whale|big fish|samaritan|bethlehem|jesus|moses|creation|eden|bible|scripture|rainbow promise|starry night in bethlehem)\b/i.test(
-        theme
-      );
 
     console.log(
       `[generate-story] category: ${category}, isBible: ${isBibleStory}, isCustomTheme: ${isCustomTheme}, length: ${parsedLength}, theme: "${theme}", chapter: ${chapter}` +
@@ -228,9 +228,14 @@ app.post("/generate-story", async (req, res) => {
 
     let prompt;
     if (isBibleStory) {
+      const familyWeave =
+        familyMembers.length > 0
+          ? `Weave these family members: ${familyMembers.join(", ")} into the story with warmth, reverence, and joy as gentle helpers, companions, or witnesses who learn timeless virtues alongside the biblical figures.`
+          : `Focus reverently and warmly on the biblical characters and their inspiring journey, making the timeless virtues easy for young children to understand and cherish.`;
+
       prompt = `Write a short, gentle, inspiring bedtime Bible story (${parsedLength} pages, 2-3 sentences per page) \
 based on: ${theme}.${contextClause} \
-Weave these family members: ${familyMembers.join(", ")} into the story with warmth, reverence, and joy as gentle helpers, companions, or witnesses who learn timeless virtues alongside the biblical figures. \
+${familyWeave} \
 Make it peaceful, comforting, and bedtime-appropriate (strictly no violence, frightening elements, or harsh conflict). \
 Important rules: do not use dashes, hyphenated words, or em dashes anywhere in the story text. \
 Write every sentence in plain language with standard punctuation only. \
@@ -238,8 +243,8 @@ Include a heartwarming faith-and-character bedtime lesson or moral (1-2 sentence
 Return ONLY a valid JSON object with this exact structure:
 {
   "pages": ["page 1 text", ...],
-  "lesson": "Bedtime moral or takeaway",
-  "choices": ["Choice 1 for next chapter", "Choice 2 for next chapter"]
+  "lesson": "Tonight's lesson or moral",
+  "choices": ["Option 1", "Option 2"]
 }`;
     } else {
       prompt = `Write a short, warm bedtime story (${parsedLength} pages, 2-3 sentences per page) \

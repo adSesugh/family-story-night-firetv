@@ -47,17 +47,26 @@ export default function SetupScreen({
       )}
 
       <p className="font-sans text-lg text-starlight">Family Story Night</p>
-      <h1 className="mt-2 font-serif text-6xl leading-tight text-parchment">
-        Who&rsquo;s in tonight&rsquo;s story?
+      <h1 className="mt-2 font-serif text-5xl leading-tight text-parchment">
+        {category === "bible" ? "Who\u2019s listening tonight?" : "Who\u2019s in tonight\u2019s story?"}
       </h1>
 
       <input
         className="mt-10 w-full rounded-sm border-b-2 border-starlight/40 bg-transparent px-1 py-3 font-serif text-3xl text-parchment placeholder:text-starlight/50 focus:border-[#e8a33d] focus:outline-none"
         value={names}
         onChange={(e) => setNames(e.target.value)}
-        placeholder="Maya, Dad, Biscuit the dog"
+        placeholder={
+          category === "bible"
+            ? "(Optional) Maya, Dad... or leave blank"
+            : "Maya, Dad, Biscuit the dog"
+        }
         autoFocus
       />
+      {category === "bible" && (
+        <p className="mt-2 font-sans text-xs text-starlight/60">
+          Names are optional for Bible stories &mdash; leave blank for the classic story, or enter names to weave family in.
+        </p>
+      )}
 
       {/* Theme Section */}
       <div className="mt-8">
@@ -86,11 +95,10 @@ export default function SetupScreen({
                             setThemeIndex(0);
                           }
                         }}
-                        className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full font-sans text-xs font-semibold transition-all ${
-                          isSelected
+                        className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full font-sans text-xs font-semibold transition-all ${isSelected
                             ? "bg-lamp/25 text-lamp border border-lamp/60 shadow-md shadow-lamp/10"
                             : "bg-starlight/10 text-starlight/75 border border-transparent hover:bg-starlight/20 hover:text-parchment"
-                        }`}
+                          }`}
                       >
                         <IconComponent size={14} />
                         <span>{cat.label}</span>
@@ -112,9 +120,8 @@ export default function SetupScreen({
                     key={i}
                     type="button"
                     onClick={() => setThemeIndex(i)}
-                    className={`h-2.5 w-2.5 rounded-full transition-colors ${
-                      i === themeIndex ? "bg-lamp scale-110" : "bg-starlight/30 hover:bg-starlight/50"
-                    }`}
+                    className={`h-2.5 w-2.5 rounded-full transition-colors ${i === themeIndex ? "bg-lamp scale-110" : "bg-starlight/30 hover:bg-starlight/50"
+                      }`}
                     aria-label={`Theme ${i + 1}`}
                   />
                 ))}

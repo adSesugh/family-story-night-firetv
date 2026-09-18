@@ -148,8 +148,8 @@ describe("Bible Stories Integration & Category Selection", () => {
       // Verify theme switched to Bible preset
       expect(screen.getByText(/Noah's Ark/i)).toBeInTheDocument();
 
-      // Enter names and begin story
-      const input = screen.getByPlaceholderText("Maya, Dad, Biscuit the dog");
+      // Enter names and begin story (placeholder adapts dynamically)
+      const input = screen.getByPlaceholderText(/\(Optional\) Maya, Dad/i);
       fireEvent.change(input, { target: { value: "Maya, Dad" } });
       fireEvent.click(screen.getByRole("button", { name: "Begin the story" }));
 
@@ -163,6 +163,77 @@ describe("Bible Stories Integration & Category Selection", () => {
       expect(generateStoryBody.category).toBe("bible");
       expect(generateStoryBody.theme).toContain("Noah's Ark");
       expect(generateStoryBody.familyMembers).toEqual(["Maya", "Dad"]);
+    });
+
+    it("generates a Bible story WITHOUT entering names (family members are optional)", async () => {
+      let generateStoryBody = null;
+
+      global.fetch = jest.fn(async (url, opt) => {
+        const urlStr = String(url);
+        if (urlStr.includes("/generate-story")) {
+          generateStoryBody = JSON.parse(opt.body);
+          return {
+            ok: true,
+            json: async () => ({
+              pages: [
+                "Noah built a great wooden ark under the warm golden sun.",
+                "All the creatures rested peacefully as starlight filled the sky.",
+              ],
+              lesson: "Trust and hope bring peace to every heart.",
+              choices: [
+                "Watch the morning sunrise over the peaceful waters",
+                "Release the gentle dove",
+              ],
+              chapter: 1,
+            }),
+          };
+        }
+        if (urlStr.includes("/illustrate")) {
+          return {
+            ok: true,
+            blob: async () => new Blob(["fake-img"], { type: "image/png" }),
+          };
+        }
+        if (urlStr.includes("/narrate")) {
+          return {
+            ok: true,
+            blob: async () => new Blob(["fake-audio"], { type: "audio/mpeg" }),
+          };
+        }
+        return { ok: false };
+      });
+
+      render(<App />);
+
+      // Switch to Bible Stories category
+      const bibleTab = screen.getByTestId("category-tab-bible");
+      fireEvent.click(bibleTab);
+
+      // Verify header and hint indicate optional names
+      expect(screen.getByText(/Who’s listening tonight\?/i)).toBeInTheDocument();
+      expect(screen.getByText(/Names are optional for Bible stories/i)).toBeInTheDocument();
+
+      // DO NOT enter any names, click Begin the story directly
+      fireEvent.click(screen.getByRole("button", { name: "Begin the story" }));
+
+      // Verify no validation error is shown and story screen appears
+      await waitFor(() => {
+        expect(screen.getByTestId("story-screen")).toBeInTheDocument();
+      });
+
+      expect(screen.queryByText(/Please enter at least one family member name/i)).not.toBeInTheDocument();
+      expect(generateStoryBody).not.toBeNull();
+      expect(generateStoryBody.category).toBe("bible");
+      expect(generateStoryBody.familyMembers).toEqual([]);
+    });
+
+    it("still requires at least one name when category is 'adventures'", () => {
+      render(<App />);
+
+      // In adventures category with empty names
+      fireEvent.click(screen.getByRole("button", { name: "Begin the story" }));
+
+      expect(screen.getByText(/Please enter at least one family member name/i)).toBeInTheDocument();
     });
 
     it("switches categories using remote ArrowLeft and ArrowRight on setup screen", () => {

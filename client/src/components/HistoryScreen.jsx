@@ -75,7 +75,11 @@ export default function HistoryScreen({ onSelect, onBack }) {
                     {formatDate(story.generatedAt)}
                   </p>
                   <p className="mt-1 font-sans text-base text-parchment">
-                    {story.familyMembers.join(", ")}
+                    {Array.isArray(story.familyMembers) && story.familyMembers.length > 0
+                      ? story.familyMembers.join(", ")
+                      : story.category === "bible"
+                      ? "Classic Bible Story"
+                      : "Classic Story"}
                   </p>
                   <p className="mt-1 font-sans text-sm text-starlight/70">
                     Theme: {story.theme}
