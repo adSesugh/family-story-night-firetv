@@ -195,9 +195,8 @@ async function generateIllustration(pageText, theme, seed, retries = 3, scenePro
 
 const ALLOWED_VOICES = ["Joanna", "Matthew", "Emma", "Ivy"];
 const ALLOWED_STORY_LENGTHS = [4, 6, 8];
-// Ensure ample headroom so that pages, scene prompts, lesson, and choices never truncate mid-JSON
-// const MAX_TOKENS_BY_LENGTH = { 4: 2048, 6: 3072, 8: 4096 };
-const MAX_TOKENS_BY_LENGTH = { 4: 750, 6: 950, 8: 1200 };
+// Ensure sufficient token headroom so full pages, visual scenes, unique morals, and next choices never truncate mid-JSON
+const MAX_TOKENS_BY_LENGTH = { 4: 1200, 6: 1650, 8: 2100 };
 
 /**
  * POST /generate-story
@@ -245,16 +244,19 @@ app.post("/generate-story", async (req, res) => {
       return res.status(400).json({ error: "storyLength must be 4, 6, or 8" });
     }
 
+    const currentChapterNum = Number(chapter) || 1;
+    const nextChapterNum = currentChapterNum + 1;
+
     console.log(
-      `[generate-story] category: ${category}, isBible: ${isBibleStory}, isCustomTheme: ${isCustomTheme}, length: ${parsedLength}, theme: "${theme}", chapter: ${chapter}` +
+      `[generate-story] category: ${category}, isBible: ${isBibleStory}, isCustomTheme: ${isCustomTheme}, length: ${parsedLength}, theme: "${theme}", chapter: ${currentChapterNum}` +
       (selectedChoice ? `, choice: "${selectedChoice}"` : "")
     );
 
-    const maxTokens = MAX_TOKENS_BY_LENGTH[parsedLength] || 2500;
+    const maxTokens = MAX_TOKENS_BY_LENGTH[parsedLength] || 1650;
 
     let contextClause = "";
     if (selectedChoice) {
-      contextClause = ` This is Chapter ${chapter} of their journey. In the previous chapter${previousSummary ? ` (${previousSummary})` : ""}, they decided: "${selectedChoice}". Continue the story seamlessly from this choice while staying comforting and bedtime-friendly.`;
+      contextClause = ` This is Chapter ${currentChapterNum} of their ongoing journey. In the previous chapter${previousSummary ? ` (${previousSummary})` : ""}, they decided: "${selectedChoice}". Continue the story seamlessly from this choice while staying comforting and bedtime-friendly.`;
     }
 
     let prompt;
@@ -264,7 +266,7 @@ app.post("/generate-story", async (req, res) => {
           ? `Weave these family members: ${familyMembers.join(", ")} into the story with warmth, reverence, and joy as gentle helpers, companions, or witnesses who learn timeless virtues alongside the biblical figures.`
           : `Focus reverently and warmly on the biblical characters and their inspiring journey, making the timeless virtues easy for young children to understand and cherish.`;
 
-      prompt = `Write a short, gentle, inspiring bedtime Bible story (${parsedLength} pages, 2-3 sentences per page) \
+      prompt = `Write Chapter ${currentChapterNum} of a gentle, inspiring bedtime Bible story (${parsedLength} pages, 2-3 sentences per page) \
 based on: ${theme}.${contextClause} \
 ${familyWeave} \
 Make it peaceful, comforting, and bedtime-appropriate (strictly no violence, frightening elements, or harsh conflict). \
@@ -273,18 +275,20 @@ Write every sentence in plain language with standard punctuation only. \
 For each page, provide: \
 1. "text": The gentle story text for children (2-3 sentences). \
 2. "scene": A concise 1-2 sentence visual description for the illustrator (characters, specific action, props, environment, and warm bedtime lighting on this exact page; no words or text in image). \
-Include a heartwarming faith-and-character bedtime lesson or moral (1-2 sentences highlighting virtues like courage, kindness, faith, gratitude, or love), and 2 distinct, intriguing choices for what could happen in the next chapter. \
+Include: \
+- "lesson": A fresh, uplifting bedtime moral or virtue learned specifically from Chapter ${currentChapterNum}'s events (1-2 sentences). Do NOT repeat generic morals. \
+- "choices": Exactly 2 brand-new, distinct and creative choices for what could happen next in Chapter ${nextChapterNum}, directly following from the conclusion of Chapter ${currentChapterNum}. \
 Return ONLY a valid JSON object with this exact structure:
 {
   "pages": [
     { "text": "page 1 story text", "scene": "concise visual description of page 1 scene" },
     { "text": "page 2 story text", "scene": "concise visual description of page 2 scene" }
   ],
-  "lesson": "Tonight's lesson or moral",
-  "choices": ["Option 1", "Option 2"]
+  "lesson": "Unique moral from Chapter ${currentChapterNum}",
+  "choices": ["Option 1 for Chapter ${nextChapterNum}", "Option 2 for Chapter ${nextChapterNum}"]
 }`;
     } else {
-      prompt = `Write a short, warm bedtime story (${parsedLength} pages, 2-3 sentences per page) \
+      prompt = `Write Chapter ${currentChapterNum} of a warm bedtime story (${parsedLength} pages, 2-3 sentences per page) \
 starring these family members: ${familyMembers.join(", ")}. Theme: ${theme}.${contextClause} \
 Make it gentle, imaginative, and suitable for all ages. \
 Important rules: do not use dashes, hyphenated words, or em dashes anywhere in the story text. \
@@ -292,15 +296,17 @@ Write every sentence in plain language with standard punctuation only. \
 For each page, provide: \
 1. "text": The gentle story text for children (2-3 sentences). \
 2. "scene": A concise 1-2 sentence visual description for the illustrator (characters, specific action, props, environment, and warm bedtime lighting on this exact page; no words or text in image). \
-Include a heartwarming bedtime lesson or moral learned from the story (1-2 sentences), and 2 distinct, intriguing choices for what could happen in the next chapter. \
+Include: \
+- "lesson": A fresh, heartwarming bedtime moral or takeaway learned specifically from Chapter ${currentChapterNum}'s events (1-2 sentences). Do NOT repeat generic morals. \
+- "choices": Exactly 2 brand-new, distinct and creative choices for what could happen next in Chapter ${nextChapterNum}, directly following from the conclusion of Chapter ${currentChapterNum}. \
 Return ONLY a valid JSON object with this exact structure:
 {
   "pages": [
     { "text": "page 1 story text", "scene": "concise visual description of page 1 scene" },
     { "text": "page 2 story text", "scene": "concise visual description of page 2 scene" }
   ],
-  "lesson": "Bedtime moral or takeaway",
-  "choices": ["Choice 1 for next chapter", "Choice 2 for next chapter"]
+  "lesson": "Unique moral from Chapter ${currentChapterNum}",
+  "choices": ["Option 1 for Chapter ${nextChapterNum}", "Option 2 for Chapter ${nextChapterNum}"]
 }`;
     }
 
@@ -320,10 +326,10 @@ Return ONLY a valid JSON object with this exact structure:
     const text = responseBody.content?.[0]?.text?.trim() || "{}";
 
     let pages = [];
-    let lesson = "Every journey is special when shared with the ones we love.";
+    let lesson = `Every step of our bedtime journey in ${theme} brings warm memories to cherish.`;
     let choices = [
-      "Follow the soft glowing light deeper into the enchanted path",
-      "Build a warm, cozy campsite under the starry sky",
+      `Explore further along the starlit path into Chapter ${nextChapterNum}`,
+      `Rest by the cozy campsite and discover a quiet surprise in Chapter ${nextChapterNum}`,
     ];
 
     try {
@@ -353,7 +359,7 @@ Return ONLY a valid JSON object with this exact structure:
       }
     } catch (parseErr) {
       console.warn("[generate-story] JSON parse failed, extracting resiliently...", parseErr.message);
-      // Resilient fallback: extract "text" fields via regex
+      // Resilient fallback 1: extract "text" fields via regex
       const textMatches = [];
       const textRegex = /"text"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"/g;
       let match;
@@ -374,6 +380,34 @@ Return ONLY a valid JSON object with this exact structure:
           .map((l) => l.replace(/^[{\[\]},`"'\s]+|[{\[\]},`"'\s]+$/g, "").trim())
           .filter((l) => l.length > 25 && !/^(pages|lesson|choices|scene|text):/i.test(l))
           .slice(0, parsedLength);
+      }
+
+      // Resilient fallback 2: extract "lesson" via regex if model produced it
+      const lessonMatch = text.match(/"lesson"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"/);
+      if (lessonMatch) {
+        try {
+          lesson = JSON.parse(`"${lessonMatch[1]}"`);
+        } catch {
+          lesson = lessonMatch[1];
+        }
+      }
+
+      // Resilient fallback 3: extract "choices" via regex if model produced it
+      const choicesMatch = text.match(/"choices"\s*:\s*\[([\s\S]*?)\]/);
+      if (choicesMatch) {
+        const extractedChoices = [];
+        const choiceRegex = /"([^"\\]*(?:\\.[^"\\]*)*)"/g;
+        let cMatch;
+        while ((cMatch = choiceRegex.exec(choicesMatch[1])) !== null) {
+          try {
+            extractedChoices.push(JSON.parse(`"${cMatch[1]}"`));
+          } catch {
+            extractedChoices.push(cMatch[1]);
+          }
+        }
+        if (extractedChoices.length > 0) {
+          choices = extractedChoices;
+        }
       }
     }
 
