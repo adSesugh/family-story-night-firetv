@@ -72,6 +72,25 @@ function createBedtimeFallbackSvg(theme = "Bedtime Adventure") {
 }
 
 /**
+ * Clean narrative page text to extract concrete visual elements if no dedicated scene prompt exists.
+ */
+function extractVisualScene(pageText, theme) {
+  if (!pageText) return theme || "a cozy bedtime story";
+  // Strip dialogue and non-visual conversational filler
+  let cleaned = pageText
+    .replace(/"[^"]*"/g, "")
+    .replace(/“[^”]*”/g, "")
+    .replace(/\b(he said|she said|they said|he whispered|she whispered|they smiled|suddenly|remembered|thought to himself|felt a sense of|wondered)\b/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (cleaned.length < 15) {
+    cleaned = pageText.slice(0, 300);
+  }
+  return cleaned.slice(0, 320);
+}
+
+/**
  * Generates a child-friendly illustration for a story page using Amazon Nova Canvas
  * or Stability SD 3.5 Large (auto-detected from model configuration).
  * Returns { url, alt } on success, or null on failure (graceful degradation).
@@ -80,22 +99,31 @@ function createBedtimeFallbackSvg(theme = "Bedtime Adventure") {
  * @param {string} theme - The story theme
  * @param {number} seed - Seed for reproducible generation (0–858,993,459)
  * @param {number} retries - Retry count
+ * @param {string} [scenePrompt] - Explicit visual scene description for this page
  * @returns {Promise<{url: string, alt: string} | null>}
  */
-async function generateIllustration(pageText, theme, seed, retries = 3) {
+async function generateIllustration(pageText, theme, seed, retries = 3, scenePrompt = null) {
   const isBibleIllustration =
     /\b(noah|ark|david|goliath|daniel|lion'?s den|jonah|samaritan|bethlehem|jesus|moses|creation|bible|scripture|rainbow promise|starry night in bethlehem)\b/i.test(
-      theme + " " + pageText
+      theme + " " + pageText + " " + (scenePrompt || "")
     );
 
-  const stylePrefix = isBibleIllustration
-    ? "Children's storybook illustration, soft luminous watercolor style, radiant golden bedtime light, warm and peaceful biblical storybook aesthetic. "
-    : "Children's storybook illustration, soft watercolor style, warm and cozy bedtime aesthetic. ";
+  // The primary visual subject comes directly from the page's scene description or page text
+  const primaryScene =
+    typeof scenePrompt === "string" && scenePrompt.trim().length > 10
+      ? scenePrompt.trim()
+      : extractVisualScene(pageText, theme);
 
+  const styleDescriptor = isBibleIllustration
+    ? "Children's storybook watercolor painting, radiant golden bedtime lighting, ancient Mediterranean atmosphere, warm luminous washes, serene biblical storybook art"
+    : "Children's storybook watercolor painting, soft gentle luminous washes, warm golden starlight illumination, cozy bedtime aesthetic";
+
+  // Crucial: Primary visual subject and action MUST come first so the diffusion model
+  // focuses strictly on the exact actions, characters, and props described on this page.
   const illustrationPrompt =
-    stylePrefix +
-    `Scene: ${pageText.slice(0, 200)}. Theme: ${theme}. ` +
-    `Gentle, safe for children, no text or words in the image, no scary elements.`;
+    `${primaryScene}. ` +
+    `Style: ${styleDescriptor}. ` +
+    `Bedtime storybook, gentle, safe for children, no text, no words, no letters, no scary elements.`;
 
   let requestPayload;
   if (isNovaCanvas) {
@@ -139,11 +167,11 @@ async function generateIllustration(pageText, theme, seed, retries = 3) {
       alt: `Illustration for: ${pageText.slice(0, 80)}`,
     };
   } catch (err) {
-    // 1. If Bedrock rejects prompt via ValidationException (e.g. content filter on page words), retry with clean theme prompt
+    // 1. If Bedrock rejects prompt via ValidationException (e.g. content filter on page words), retry with clean scene prompt
     if (err.name === "ValidationException" && retries > 0) {
-      console.warn("Bedrock ValidationException on page prompt; retrying with clean theme prompt...", err.message);
-      const safeThemeText = `A gentle bedtime adventure in ${theme}, starry night, peaceful, cozy, warm light.`;
-      return generateIllustration(safeThemeText, theme, seed, retries - 1);
+      console.warn("Bedrock ValidationException on page prompt; retrying with clean scene prompt...", err.message);
+      const safeSceneText = `${primaryScene.slice(0, 100)}, warm soft watercolor illustration, peaceful bedtime.`;
+      return generateIllustration(safeSceneText, theme, seed, retries - 1);
     }
 
     // 2. Retry on rate limits or transient errors
@@ -158,7 +186,7 @@ async function generateIllustration(pageText, theme, seed, retries = 3) {
       const waitMs = (4 - retries) * 1500 + Math.random() * 500;
       console.log(`Image generation retry (${err.name || "error"}) in ${waitMs}ms... (${retries} retries left)`);
       await new Promise((resolve) => setTimeout(resolve, waitMs));
-      return generateIllustration(pageText, theme, seed, retries - 1);
+      return generateIllustration(pageText, theme, seed, retries - 1, scenePrompt);
     }
     throw err;
   }
@@ -239,10 +267,16 @@ ${familyWeave} \
 Make it peaceful, comforting, and bedtime-appropriate (strictly no violence, frightening elements, or harsh conflict). \
 Important rules: do not use dashes, hyphenated words, or em dashes anywhere in the story text. \
 Write every sentence in plain language with standard punctuation only. \
+For each page, provide: \
+1. "text": The gentle story text for children (2-3 sentences). \
+2. "scene": A vivid, specific visual scene description for the illustrator showing what is happening on THIS EXACT page (describe the characters, concrete actions, props, environment, and warm lighting visible in this moment). \
 Include a heartwarming faith-and-character bedtime lesson or moral (1-2 sentences highlighting virtues like courage, kindness, faith, gratitude, or love), and 2 distinct, intriguing choices for what could happen in the next chapter. \
 Return ONLY a valid JSON object with this exact structure:
 {
-  "pages": ["page 1 text", ...],
+  "pages": [
+    { "text": "page 1 story text", "scene": "vivid visual description of page 1 scene" },
+    { "text": "page 2 story text", "scene": "vivid visual description of page 2 scene" }
+  ],
   "lesson": "Tonight's lesson or moral",
   "choices": ["Option 1", "Option 2"]
 }`;
@@ -252,10 +286,16 @@ starring these family members: ${familyMembers.join(", ")}. Theme: ${theme}.${co
 Make it gentle, imaginative, and suitable for all ages. \
 Important rules: do not use dashes, hyphenated words, or em dashes anywhere in the story text. \
 Write every sentence in plain language with standard punctuation only. \
+For each page, provide: \
+1. "text": The gentle story text for children (2-3 sentences). \
+2. "scene": A vivid, specific visual scene description for the illustrator showing what is happening on THIS EXACT page (describe the characters, concrete actions, props, environment, and warm lighting visible in this moment). \
 Include a heartwarming bedtime lesson or moral learned from the story (1-2 sentences), and 2 distinct, intriguing choices for what could happen in the next chapter. \
 Return ONLY a valid JSON object with this exact structure:
 {
-  "pages": ["page 1 text", ...],
+  "pages": [
+    { "text": "page 1 story text", "scene": "vivid visual description of page 1 scene" },
+    { "text": "page 2 story text", "scene": "vivid visual description of page 2 scene" }
+  ],
   "lesson": "Bedtime moral or takeaway",
   "choices": ["Choice 1 for next chapter", "Choice 2 for next chapter"]
 }`;
@@ -317,15 +357,15 @@ Return ONLY a valid JSON object with this exact structure:
 
 /**
  * POST /illustrate
- * body: { text: string, theme: string, seed?: number }
+ * body: { text: string, theme: string, scene?: string, seed?: number }
  * returns: image/png stream
  */
 app.post("/illustrate", async (req, res) => {
-  const { text, theme = "a cozy adventure", seed = Math.floor(Math.random() * 858993459) } = req.body;
-  if (!text) return res.status(400).json({ error: "text is required" });
+  const { text, theme = "a cozy adventure", scene, seed = Math.floor(Math.random() * 858993459) } = req.body;
+  if (!text && !scene) return res.status(400).json({ error: "text or scene is required" });
 
   try {
-    const illustration = await generateIllustration(text, theme, seed);
+    const illustration = await generateIllustration(text || "", theme, seed, 3, scene);
     if (illustration && illustration.url) {
       const base64Data = illustration.url.replace(/^data:image\/png;base64,/, "");
       const imageBuffer = Buffer.from(base64Data, "base64");

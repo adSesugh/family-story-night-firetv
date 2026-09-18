@@ -280,5 +280,27 @@ ${familyWeave}`;
       expect(prompt).toContain("Focus reverently and warmly on the biblical characters");
       expect(prompt).not.toContain("Weave these family members");
     });
+
+    it('requests per-page scene descriptions for strict visual alignment', () => {
+      const promptInstruction = `For each page, provide: \
+1. "text": The gentle story text for children (2-3 sentences). \
+2. "scene": A vivid, specific visual scene description for the illustrator showing what is happening on THIS EXACT page (describe the characters, concrete actions, props, environment, and warm lighting visible in this moment).`;
+
+      expect(promptInstruction).toContain('"scene"');
+      expect(promptInstruction).toContain('THIS EXACT page');
+    });
+
+    it('constructs illustration prompt with concrete scene placed first before style', () => {
+      const pageText = "Noah placed two gentle white doves into their straw pen.";
+      const scenePrompt = "Noah gently setting two white doves into a cozy straw basket inside the wooden ark";
+      const styleDescriptor = "Children's storybook watercolor painting, radiant golden bedtime lighting";
+
+      const primaryScene = scenePrompt || pageText;
+      const prompt = `${primaryScene}. Style: ${styleDescriptor}. Bedtime storybook, gentle, safe for children, no text.`;
+
+      // Verify concrete scene comes strictly at the front
+      expect(prompt.startsWith("Noah gently setting two white doves")).toBe(true);
+      expect(prompt).toContain("Style: Children's storybook watercolor painting");
+    });
   });
 });

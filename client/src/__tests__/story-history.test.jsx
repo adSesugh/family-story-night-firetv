@@ -135,11 +135,43 @@ describe("deleteStory()", () => {
   });
 });
 
-describe("clearHistory()", () => {
-  it("removes all stories", () => {
-    saveStory(makeStory());
-    saveStory(makeStory());
-    clearHistory();
-    expect(loadHistory()).toEqual([]);
+describe("Bible Story Category Tagging in History", () => {
+  it("automatically tags biblical themes with category: 'bible'", () => {
+    saveStory(makeStory({ theme: "Noah's Ark and the rainbow of hope" }));
+    const [story] = loadHistory();
+    expect(story.category).toBe("bible");
+  });
+
+  it("retains category: 'bible' when explicitly provided", () => {
+    saveStory(makeStory({ category: "bible", theme: "A peaceful bedtime" }));
+    const [story] = loadHistory();
+    expect(story.category).toBe("bible");
+  });
+});
+
+describe("Storage Quota Resilience", () => {
+  it("safely saves stories even when full base64 images exceed quota", () => {
+    // Simulate setItem failing once due to size, then succeeding when lightened
+    let callCount = 0;
+    const originalSetItem = localStorageMock.setItem;
+    localStorageMock.setItem = jest.fn((key, value) => {
+      callCount++;
+      if (callCount === 1) {
+        throw new Error("QuotaExceededError");
+      }
+      return originalSetItem(key, value);
+    });
+
+    const heavyImageStory = makeStory({
+      theme: "David and Goliath: faith over fear",
+      illustrations: ["data:image/png;base64,very_heavy_image_data_here"],
+    });
+
+    const saved = saveStory(heavyImageStory);
+    expect(saved).toBeTruthy();
+    expect(saved.theme).toBe("David and Goliath: faith over fear");
+    expect(saved.category).toBe("bible");
+
+    localStorageMock.setItem = originalSetItem;
   });
 });

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { BookOpen, ArrowLeft, Trash2, Sparkles, Play, Calendar } from "lucide-react";
-import { loadHistory, deleteStory, clearHistory } from "../utils/storyHistory";
+import { loadHistory, deleteStory, clearHistory, isBiblicalStory } from "../utils/storyHistory";
 
 const PAGE_BATCH_SIZE = 8;
 
@@ -43,8 +43,8 @@ export default function HistoryScreen({ onSelect, onBack }) {
   // Filter stories
   const filteredStories = useMemo(() => {
     return history.filter((story) => {
-      if (filter === "bible") return story.category === "bible";
-      if (filter === "adventures") return story.category !== "bible";
+      if (filter === "bible") return isBiblicalStory(story);
+      if (filter === "adventures") return !isBiblicalStory(story);
       return true;
     });
   }, [history, filter]);
@@ -94,11 +94,11 @@ export default function HistoryScreen({ onSelect, onBack }) {
   };
 
   const adventureCount = useMemo(
-    () => history.filter((s) => s.category !== "bible").length,
+    () => history.filter((s) => !isBiblicalStory(s)).length,
     [history]
   );
   const bibleCount = useMemo(
-    () => history.filter((s) => s.category === "bible").length,
+    () => history.filter((s) => isBiblicalStory(s)).length,
     [history]
   );
 
@@ -257,7 +257,7 @@ export default function HistoryScreen({ onSelect, onBack }) {
                 story.illustrations?.[0] ||
                 (Array.isArray(story.pages) && story.pages[0]?.illustration?.url) ||
                 null;
-              const isBible = story.category === "bible";
+              const isBible = isBiblicalStory(story);
               const familyText =
                 Array.isArray(story.familyMembers) && story.familyMembers.length > 0
                   ? story.familyMembers.join(", ")

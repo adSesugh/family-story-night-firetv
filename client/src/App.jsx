@@ -92,11 +92,13 @@ export default function App() {
           try {
             const rawPage = storyPages[idx];
             const pageText = typeof rawPage === "object" ? rawPage.text : rawPage;
+            const pageScene = typeof rawPage === "object" ? rawPage.scene : undefined;
             const res = await fetch(`${API_BASE}/illustrate`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 text: pageText,
+                scene: pageScene,
                 theme: activeTheme,
                 seed: seedBase + idx * 1000,
               }),
@@ -141,14 +143,17 @@ export default function App() {
         if (savedStoryId) {
           updateStory(savedStoryId, {
             illustrations: currentStoredUrls,
-            pages: storyPages.map((text, i) =>
-              currentStoredUrls[i]
+            pages: storyPages.map((p, i) => {
+              const text = typeof p === "object" ? p.text : p;
+              const scene = typeof p === "object" ? p.scene : undefined;
+              return currentStoredUrls[i]
                 ? {
-                    text: typeof text === "object" ? text.text : text,
+                    text,
+                    scene,
                     illustration: { url: currentStoredUrls[i], alt: `Illustration for page ${i + 1}` },
                   }
-                : text
-            ),
+                : { text, scene };
+            }),
           });
           setHistory(loadHistory());
         }
@@ -244,6 +249,10 @@ export default function App() {
       const storyChapter = data.chapter || 1;
       const genDuration = (Date.now() - startTime) / 1000;
 
+      const firstRaw = storyPages[0];
+      const firstPageText = typeof firstRaw === "object" ? firstRaw.text : firstRaw;
+      const firstPageScene = typeof firstRaw === "object" ? firstRaw.scene : undefined;
+
       // 1. Fetch first illustration immediately so it displays as soon as the story screen opens
       let firstIllustrationDisplay = null;
       let firstIllustrationStored = null;
@@ -251,7 +260,12 @@ export default function App() {
         const illRes = await fetch(`${API_BASE}/illustrate`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text: storyPages[0], theme: activeTheme, seed: 0 }),
+          body: JSON.stringify({
+            text: firstPageText,
+            scene: firstPageScene,
+            theme: activeTheme,
+            seed: 0,
+          }),
         });
         if (illRes.ok) {
           const blob = await illRes.blob();
@@ -282,18 +296,19 @@ export default function App() {
       setScreen("story");
 
       // Save story to history with the initial illustration
-      const firstPage = storyPages[0];
       const savedStory = saveStory({
         familyMembers,
         theme: activeTheme,
         category,
-        pages: storyPages.map((text, idx) => (
-          idx === 0 && storedIllustrations[0]
-            ? { text, illustration: { url: storedIllustrations[0], alt: `Illustration for page 1` } }
-            : text
-        )),
+        pages: storyPages.map((p, idx) => {
+          const text = typeof p === "object" ? p.text : p;
+          const scene = typeof p === "object" ? p.scene : undefined;
+          return idx === 0 && storedIllustrations[0]
+            ? { text, scene, illustration: { url: storedIllustrations[0], alt: `Illustration for page 1` } }
+            : { text, scene };
+        }),
         illustrations: storedIllustrations,
-        firstPage: typeof firstPage === "string" ? firstPage : firstPage.text,
+        firstPage: typeof firstRaw === "string" ? firstRaw : firstRaw?.text || "",
         lesson: storyLesson,
         choices: storyChoices,
         chapter: storyChapter,
@@ -338,6 +353,7 @@ export default function App() {
   }, [pages.length]);
 
   const handleViewHistory = useCallback(() => {
+    setHistory(loadHistory());
     setScreen("history");
   }, []);
 
@@ -402,13 +418,22 @@ export default function App() {
         const storyLesson = data.lesson || "";
         const storyChoices = data.choices || [];
 
+        const firstRaw = storyPages[0];
+        const firstPageText = typeof firstRaw === "object" ? firstRaw.text : firstRaw;
+        const firstPageScene = typeof firstRaw === "object" ? firstRaw.scene : undefined;
+
         let firstIllustrationDisplay = null;
         let firstIllustrationStored = null;
         try {
           const illRes = await fetch(`${API_BASE}/illustrate`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ text: storyPages[0], theme: activeTheme, seed: nextChapter * 500 }),
+            body: JSON.stringify({
+              text: firstPageText,
+              scene: firstPageScene,
+              theme: activeTheme,
+              seed: nextChapter * 500,
+            }),
           });
           if (illRes.ok) {
             const blob = await illRes.blob();
@@ -440,18 +465,19 @@ export default function App() {
         storyStartTimeRef.current = Date.now();
         setScreen("story");
 
-        const firstPage = storyPages[0];
         const savedStory = saveStory({
           familyMembers,
           theme: activeTheme,
           category,
-          pages: storyPages.map((text, idx) =>
-            idx === 0 && storedIllustrations[0]
-              ? { text, illustration: { url: storedIllustrations[0], alt: `Illustration for page 1` } }
-              : text
-          ),
+          pages: storyPages.map((p, idx) => {
+            const text = typeof p === "object" ? p.text : p;
+            const scene = typeof p === "object" ? p.scene : undefined;
+            return idx === 0 && storedIllustrations[0]
+              ? { text, scene, illustration: { url: storedIllustrations[0], alt: `Illustration for page 1` } }
+              : { text, scene };
+          }),
           illustrations: storedIllustrations,
-          firstPage: typeof firstPage === "string" ? firstPage : firstPage?.text,
+          firstPage: typeof firstRaw === "string" ? firstRaw : firstRaw?.text || "",
           lesson: storyLesson,
           choices: storyChoices,
           chapter: nextChapter,
@@ -489,6 +515,7 @@ export default function App() {
   );
 
   const handleBackFromHistory = useCallback(() => {
+    setHistory(loadHistory());
     setScreen("setup");
   }, []);
 

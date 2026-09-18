@@ -4,8 +4,17 @@ import "@testing-library/jest-dom";
 import HistoryScreen from "../components/HistoryScreen";
 import * as storyHistory from "../utils/storyHistory";
 
-// Mock storyHistory module
-jest.mock("../utils/storyHistory");
+// Mock storyHistory module preserving isBiblicalStory
+jest.mock("../utils/storyHistory", () => {
+  const actual = jest.requireActual("../utils/storyHistory");
+  return {
+    ...actual,
+    loadHistory: jest.fn(),
+    deleteStory: jest.fn(),
+    clearHistory: jest.fn(),
+    saveStory: jest.fn(),
+  };
+});
 
 // Mock IntersectionObserver
 let observerCallback = null;
