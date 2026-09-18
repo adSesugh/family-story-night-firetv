@@ -41,6 +41,8 @@ export default function App() {
   const [lesson, setLesson] = useState("");
   const [choices, setChoices] = useState([]);
   const [chapter, setChapter] = useState(1);
+  const [activeStoryChapters, setActiveStoryChapters] = useState([]);
+  const [activeChapterIndex, setActiveChapterIndex] = useState(0);
   const [activeChoiceTitle, setActiveChoiceTitle] = useState("");
   const [conclusionFocusIndex, setConclusionFocusIndex] = useState(0);
   const [currentStoryId, setCurrentStoryId] = useState(null);
@@ -73,6 +75,7 @@ export default function App() {
       initialStored,
       savedStoryId,
       sessionId,
+      targetChapterIndex = 0,
     }) => {
       const currentDisplayUrls = [...initialIllustrations];
       const currentStoredUrls = [...initialStored];
@@ -141,8 +144,56 @@ export default function App() {
           return next;
         });
 
+        // Update activeStoryChapters for current chapter
+        setActiveStoryChapters((prev) => {
+          if (!prev || prev.length === 0) return prev;
+          const next = [...prev];
+          if (next[targetChapterIndex]) {
+            next[targetChapterIndex] = {
+              ...next[targetChapterIndex],
+              illustrations: currentStoredUrls,
+              pages: storyPages.map((p, i) => {
+                const text = typeof p === "object" ? p.text : p;
+                const scene = typeof p === "object" ? p.scene : undefined;
+                return currentStoredUrls[i]
+                  ? {
+                      text,
+                      scene,
+                      illustration: { url: currentStoredUrls[i], alt: `Illustration for page ${i + 1}` },
+                    }
+                  : { text, scene };
+              }),
+            };
+          }
+          return next;
+        });
+
         // Persist to localStorage immediately
         if (savedStoryId) {
+          const latestStories = loadHistory();
+          const currentStory = latestStories.find((s) => s.id === savedStoryId);
+          const existingChapters = currentStory?.chapters || [];
+          const updatedChapters = existingChapters.map((ch, cIdx) => {
+            if (cIdx === targetChapterIndex) {
+              return {
+                ...ch,
+                illustrations: currentStoredUrls,
+                pages: storyPages.map((p, i) => {
+                  const text = typeof p === "object" ? p.text : p;
+                  const scene = typeof p === "object" ? p.scene : undefined;
+                  return currentStoredUrls[i]
+                    ? {
+                        text,
+                        scene,
+                        illustration: { url: currentStoredUrls[i], alt: `Illustration for page ${i + 1}` },
+                      }
+                    : { text, scene };
+                }),
+              };
+            }
+            return ch;
+          });
+
           updateStory(savedStoryId, {
             illustrations: currentStoredUrls,
             pages: storyPages.map((p, i) => {
@@ -156,6 +207,7 @@ export default function App() {
                   }
                 : { text, scene };
             }),
+            chapters: updatedChapters.length > 0 ? updatedChapters : undefined,
           });
           setHistory(loadHistory());
         }
@@ -297,23 +349,37 @@ export default function App() {
       storyStartTimeRef.current = Date.now();
       setScreen("story");
 
+      const formattedPages = storyPages.map((p, idx) => {
+        const text = typeof p === "object" ? p.text : p;
+        const scene = typeof p === "object" ? p.scene : undefined;
+        return idx === 0 && storedIllustrations[0]
+          ? { text, scene, illustration: { url: storedIllustrations[0], alt: `Illustration for page 1` } }
+          : { text, scene };
+      });
+
+      const initialChapterData = {
+        chapter: storyChapter,
+        pages: formattedPages,
+        illustrations: storedIllustrations,
+        lesson: storyLesson,
+        choices: storyChoices,
+      };
+
+      setActiveStoryChapters([initialChapterData]);
+      setActiveChapterIndex(0);
+
       // Save story to history with the initial illustration
       const savedStory = saveStory({
         familyMembers,
         theme: activeTheme,
         category,
-        pages: storyPages.map((p, idx) => {
-          const text = typeof p === "object" ? p.text : p;
-          const scene = typeof p === "object" ? p.scene : undefined;
-          return idx === 0 && storedIllustrations[0]
-            ? { text, scene, illustration: { url: storedIllustrations[0], alt: `Illustration for page 1` } }
-            : { text, scene };
-        }),
+        pages: formattedPages,
         illustrations: storedIllustrations,
         firstPage: typeof firstRaw === "string" ? firstRaw : firstRaw?.text || "",
         lesson: storyLesson,
         choices: storyChoices,
         chapter: storyChapter,
+        chapters: [initialChapterData],
       });
 
       setCurrentStoryId(savedStory?.id || null);
@@ -345,6 +411,7 @@ export default function App() {
         initialStored: storedIllustrations,
         savedStoryId: savedStory?.id,
         sessionId: currentSessionId,
+        targetChapterIndex: 0,
       });
     } catch (err) {
       console.error(err);
@@ -375,21 +442,65 @@ export default function App() {
       familyMembers: story.familyMembers || [],
       category: story.category || "adventures",
     });
-    setPages(story.pages);
-    setLesson(story.lesson || "");
-    setChoices(story.choices || []);
-    setChapter(story.chapter || 1);
+
+    const storyChapters =
+      Array.isArray(story.chapters) && story.chapters.length > 0
+        ? story.chapters
+        : [
+            {
+              chapter: story.chapter || 1,
+              pages: story.pages || [],
+              illustrations: story.illustrations || [],
+              lesson: story.lesson || "",
+              choices: story.choices || [],
+            },
+          ];
+
+    setActiveStoryChapters(storyChapters);
+    setActiveChapterIndex(0);
+
+    const firstChapter = storyChapters[0];
+    setPages(firstChapter.pages || []);
+    setLesson(firstChapter.lesson || "");
+    setChoices(firstChapter.choices || []);
+    setChapter(firstChapter.chapter || 1);
+
     const restoredIllustrations =
-      story.illustrations ||
-      (Array.isArray(story.pages)
-        ? story.pages.map((p) => (typeof p === "object" && p?.illustration?.url ? p.illustration.url : null))
+      firstChapter.illustrations ||
+      (Array.isArray(firstChapter.pages)
+        ? firstChapter.pages.map((p) => (typeof p === "object" && p?.illustration?.url ? p.illustration.url : null))
         : []);
     setIllustrations(restoredIllustrations || []);
     setPageIndex(0);
     setTurnKey((k) => k + 1);
+    setConclusionFocusIndex(0);
     storyStartTimeRef.current = Date.now();
     setScreen("story");
   }, [primeAudio]);
+
+  const handleContinueNextStoredChapter = useCallback(() => {
+    if (activeChapterIndex >= activeStoryChapters.length - 1) return;
+    primeAudio();
+    const nextIdx = activeChapterIndex + 1;
+    const nextChapterData = activeStoryChapters[nextIdx];
+    if (!nextChapterData) return;
+
+    setActiveChapterIndex(nextIdx);
+    setPages(nextChapterData.pages || []);
+    setLesson(nextChapterData.lesson || "");
+    setChoices(nextChapterData.choices || []);
+    setChapter(nextChapterData.chapter || nextIdx + 1);
+
+    const restoredIllustrations =
+      nextChapterData.illustrations ||
+      (Array.isArray(nextChapterData.pages)
+        ? nextChapterData.pages.map((p) => (typeof p === "object" && p?.illustration?.url ? p.illustration.url : null))
+        : []);
+    setIllustrations(restoredIllustrations || []);
+    setPageIndex(0);
+    setTurnKey((k) => k + 1);
+    setConclusionFocusIndex(0);
+  }, [activeChapterIndex, activeStoryChapters, primeAudio]);
 
   const handleSelectNextChoice = useCallback(
     async (selectedChoice) => {
@@ -494,6 +605,20 @@ export default function App() {
             : { text, scene };
         });
 
+        const newChapterData = {
+          chapter: nextChapter,
+          pages: formattedPages,
+          illustrations: storedIllustrations,
+          lesson: storyLesson,
+          choices: storyChoices,
+          selectedChoice,
+        };
+
+        const updatedChapters = [...activeStoryChapters, newChapterData];
+        setActiveStoryChapters(updatedChapters);
+        const newChapterIndex = updatedChapters.length - 1;
+        setActiveChapterIndex(newChapterIndex);
+
         let targetStoryId = currentStoryId;
         if (currentStoryId) {
           // Update the continuous storybook in-place in history
@@ -503,6 +628,7 @@ export default function App() {
             illustrations: storedIllustrations,
             lesson: storyLesson,
             choices: storyChoices,
+            chapters: updatedChapters,
           });
         } else {
           // Fallback if no story ID was tracked
@@ -516,6 +642,7 @@ export default function App() {
             lesson: storyLesson,
             choices: storyChoices,
             chapter: nextChapter,
+            chapters: updatedChapters,
           });
           targetStoryId = savedStory?.id || null;
           setCurrentStoryId(targetStoryId);
@@ -543,6 +670,7 @@ export default function App() {
           initialStored: storedIllustrations,
           savedStoryId: targetStoryId,
           sessionId: currentSessionId,
+          targetChapterIndex: newChapterIndex,
         });
       } catch (err) {
         console.error(err);
@@ -705,6 +833,11 @@ export default function App() {
     };
   }, [screen, pageIndex, pages.length, turnTo, lesson, choices]);
 
+  const hasNextStoredChapter = activeChapterIndex < activeStoryChapters.length - 1;
+  const nextStoredChapterNumber = hasNextStoredChapter
+    ? (activeStoryChapters[activeChapterIndex + 1]?.chapter || (chapter + 1))
+    : null;
+
   // Fire TV remote & Gamepad controller event mapping
   // Supports: D-pad navigation (37, 38, 39, 40), Select/A/X/Y (13), Play/Pause (179), Rewind (227), Fast Forward (228), Back/Gamepad B (4, 8, 27)
   useEffect(() => {
@@ -791,9 +924,6 @@ export default function App() {
 
         const onConclusion = pageIndex >= pages.length;
         if (onConclusion) {
-          const numChoices = choices ? choices.length : 0;
-          const homeIndex = numChoices;
-
           if (isBack) {
             e.preventDefault();
             setScreen("setup");
@@ -805,6 +935,46 @@ export default function App() {
             if (pages.length > 0) turnTo(pages.length - 1);
             return;
           }
+
+          if (hasNextStoredChapter) {
+            // Next stored chapter is index 0, return home is index 1
+            if (isDown) {
+              e.preventDefault();
+              setConclusionFocusIndex(1);
+              return;
+            }
+            if (isUp) {
+              e.preventDefault();
+              setConclusionFocusIndex(0);
+              return;
+            }
+            if (isLeft) {
+              e.preventDefault();
+              if (conclusionFocusIndex === 1) {
+                setConclusionFocusIndex(0);
+              } else if (conclusionFocusIndex === 0) {
+                if (pages.length > 0) turnTo(pages.length - 1);
+              }
+              return;
+            }
+            if (isRight) {
+              e.preventDefault();
+              return;
+            }
+            if (isSelect) {
+              e.preventDefault();
+              if (conclusionFocusIndex === 0) {
+                handleContinueNextStoredChapter();
+              } else {
+                setScreen("setup");
+              }
+              return;
+            }
+            return;
+          }
+
+          const numChoices = choices ? choices.length : 0;
+          const homeIndex = numChoices;
 
           if (isRight) {
             e.preventDefault();
@@ -857,7 +1027,7 @@ export default function App() {
           return;
         }
 
-        const maxPage = lesson || (choices && choices.length > 0) ? pages.length : pages.length - 1;
+        const maxPage = hasNextStoredChapter || lesson || (choices && choices.length > 0) ? pages.length : pages.length - 1;
         if (isRight || isFastForward || isSelect) {
           e.preventDefault();
           if (pageIndex < maxPage) turnTo(pageIndex + 1);
@@ -888,6 +1058,8 @@ export default function App() {
     choices,
     conclusionFocusIndex,
     handleSelectNextChoice,
+    hasNextStoredChapter,
+    handleContinueNextStoredChapter,
   ]);
 
   return (
@@ -957,6 +1129,8 @@ export default function App() {
           lesson={lesson}
           choices={choices}
           chapter={chapter}
+          nextStoredChapterNumber={nextStoredChapterNumber}
+          onContinueNextStoredChapter={handleContinueNextStoredChapter}
           onSelectChoice={handleSelectNextChoice}
           onReturnHome={handleReturnHome}
           focusIndex={conclusionFocusIndex}

@@ -373,7 +373,7 @@ export default function HistoryScreen({ onSelect, onBack }) {
                       <span>{formatDate(story.updatedAt || story.generatedAt)}</span>
                       {pageCount && (
                         <span className="rounded bg-black/50 px-1.5 py-0.5 text-parchment/90 backdrop-blur-xs font-semibold">
-                          {pageCount}p {story.chapter > 1 ? `• Ch. ${story.chapter}` : ""}
+                          {pageCount}p {story.chapters?.length > 1 ? `• Ch. 1–${story.chapters.length}` : (story.chapter > 1 ? `• Ch. ${story.chapter}` : "")}
                         </span>
                       )}
                     </div>
@@ -410,7 +410,12 @@ export default function HistoryScreen({ onSelect, onBack }) {
                     {/* Action Footer */}
                     <div className="mt-4 flex items-center justify-between border-t border-starlight/10 pt-2.5 font-sans text-xs text-starlight/70 group-hover:text-lamp transition-colors">
                       <span className="font-medium flex items-center gap-1.5">
-                        {story.chapter > 1 ? (
+                        {story.chapters?.length > 1 ? (
+                          <>
+                            <span>Read from Ch. 1 ({story.chapters.length} Chapters)</span>
+                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" title="Multi-chapter storybook" />
+                          </>
+                        ) : story.chapter > 1 ? (
                           <>
                             <span>Continue Ch. {story.chapter}</span>
                             {story.choices && story.choices.length > 0 && (

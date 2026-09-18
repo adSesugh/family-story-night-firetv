@@ -2,7 +2,8 @@ import { StorageService } from "./storage";
 
 /**
  * @typedef {{ text: string, scene?: string, illustration?: { url: string, alt: string } | null }} StoryPage
- * @typedef {{ id: string, generatedAt: string, familyMembers: string[], theme: string, category?: string, pages: (string|StoryPage)[], firstPage: string, lesson?: string, choices?: string[], chapter?: number }} Story
+ * @typedef {{ chapter: number, pages: (string|StoryPage)[], illustrations?: Array<{ url: string, alt: string }>, lesson?: string, choices?: string[], selectedChoice?: string }} StoryChapter
+ * @typedef {{ id: string, generatedAt: string, familyMembers: string[], theme: string, category?: string, pages: (string|StoryPage)[], firstPage: string, lesson?: string, choices?: string[], chapter?: number, chapters?: StoryChapter[], updatedAt?: string }} Story
  */
 
 const STORAGE_KEY = "familyStoryNight_history";
@@ -50,7 +51,7 @@ function safeSaveStories(stories) {
 
   console.warn("Storage quota reached; lightening image data to guarantee story persistence...");
 
-  // 2. Second attempt: keep only the first cover illustration per story
+  // 2. Second attempt: keep only the first cover illustration per story and per chapter
   const lightenedStories = stories.map((s) => ({
     ...s,
     illustrations: Array.isArray(s.illustrations) && s.illustrations.length > 0 ? [s.illustrations[0]] : [],
@@ -62,6 +63,21 @@ function safeSaveStories(stories) {
           return p;
         })
       : s.pages,
+    chapters: Array.isArray(s.chapters)
+      ? s.chapters.map((ch, chIdx) => ({
+          ...ch,
+          illustrations: chIdx === 0 && Array.isArray(ch.illustrations) && ch.illustrations.length > 0 ? [ch.illustrations[0]] : [],
+          pages: Array.isArray(ch.pages)
+            ? ch.pages.map((p, idx) =>
+                typeof p === "object"
+                  ? chIdx === 0 && idx === 0 && p.illustration
+                    ? p
+                    : { text: p.text, scene: p.scene }
+                  : p
+              )
+            : ch.pages,
+        }))
+      : s.chapters,
   }));
 
   if (StorageService.setItem(STORAGE_KEY, { stories: lightenedStories, version: 1 })) {
@@ -76,6 +92,15 @@ function safeSaveStories(stories) {
     pages: Array.isArray(s.pages)
       ? s.pages.map((p) => (typeof p === "object" ? { text: p.text, scene: p.scene } : p))
       : s.pages,
+    chapters: Array.isArray(s.chapters)
+      ? s.chapters.map((ch) => ({
+          ...ch,
+          illustrations: [],
+          pages: Array.isArray(ch.pages)
+            ? ch.pages.map((p) => (typeof p === "object" ? { text: p.text, scene: p.scene } : p))
+            : ch.pages,
+        }))
+      : s.chapters,
   }));
 
   if (StorageService.setItem(STORAGE_KEY, { stories: textOnlyStories, version: 1 })) {
@@ -109,10 +134,24 @@ export function saveStory(story) {
   const isBible = isBiblicalStory(story);
   const resolvedCategory = isBible ? "bible" : story.category || "adventures";
 
+  const initialChapters =
+    Array.isArray(story.chapters) && story.chapters.length > 0
+      ? story.chapters
+      : [
+          {
+            chapter: story.chapter || 1,
+            pages: story.pages || [],
+            illustrations: story.illustrations || [],
+            lesson: story.lesson || "",
+            choices: story.choices || [],
+          },
+        ];
+
   const saved = {
     ...story,
     id: generateUUID(),
     category: resolvedCategory,
+    chapters: initialChapters,
     generatedAt: new Date().toISOString(),
   };
 
@@ -182,7 +221,23 @@ export function loadHistory() {
   try {
     const data = StorageService.getItem(STORAGE_KEY);
     if (!data || !Array.isArray(data.stories)) return [];
-    return data.stories;
+    return data.stories.map((s) => {
+      if (!Array.isArray(s.chapters) || s.chapters.length === 0) {
+        return {
+          ...s,
+          chapters: [
+            {
+              chapter: s.chapter || 1,
+              pages: s.pages || [],
+              illustrations: s.illustrations || [],
+              lesson: s.lesson || "",
+              choices: s.choices || [],
+            },
+          ],
+        };
+      }
+      return s;
+    });
   } catch {
     return [];
   }
