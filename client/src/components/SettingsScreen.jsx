@@ -126,16 +126,16 @@ export default function SettingsScreen({
   };
 
   return (
-    <div className="relative z-10 flex h-full max-h-[92vh] w-full max-w-5xl flex-col overflow-y-auto px-6 py-6 sm:px-10">
+    <div className="relative z-10 flex h-full max-h-[95vh] w-full max-w-5xl flex-col overflow-y-auto px-4 py-4 sm:px-8 sm:py-6 md:px-10">
       {/* Header */}
-      <div className="mb-6 flex items-center justify-between border-b border-starlight/20 pb-4">
+      <div className="mb-4 sm:mb-6 flex items-center justify-between border-b border-starlight/20 pb-3 sm:pb-4">
         <div>
-          <p className="font-sans text-sm text-starlight">Family Story Night</p>
-          <h1 className="font-serif text-3xl sm:text-4xl text-parchment">Settings</h1>
+          <p className="font-sans text-xs sm:text-sm text-starlight">Family Story Night</p>
+          <h1 className="font-serif text-2xl sm:text-3xl md:text-4xl text-parchment">Settings</h1>
         </div>
         <button
           onClick={onBack}
-          className="flex items-center gap-2 rounded-sm bg-starlight/20 px-5 py-2 font-sans text-base text-parchment transition-colors hover:bg-starlight/30 focus:outline-none"
+          className="flex items-center gap-1.5 sm:gap-2 rounded-sm bg-starlight/20 px-3.5 sm:px-5 py-1.5 sm:py-2 font-sans text-sm sm:text-base text-parchment transition-colors hover:bg-starlight/30 focus:outline-none cursor-pointer"
         >
           <ArrowLeft className="h-4 w-4" />
           <span>Back</span>
@@ -143,10 +143,10 @@ export default function SettingsScreen({
       </div>
 
       {/* Two-column layout */}
-      <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
         {/* ── Column 1: Story Preferences (Voice & Theme) ── */}
         <div className="space-y-6">
-          <div className="rounded-sm bg-panel/60 p-6 shadow-lg">
+          <div className="rounded-sm bg-panel/60 p-4 sm:p-6 shadow-lg">
             <div className="flex items-center gap-2.5 border-b border-starlight/20 pb-3">
               <Mic className="h-5 w-5 text-[#E8A33D]" />
               <h2 className="font-serif text-2xl text-parchment">

@@ -131,20 +131,20 @@ export default function HistoryScreen({ onSelect, onBack }) {
   );
 
   return (
-    <div className="relative z-10 flex h-full w-full flex-col px-6 md:px-12 py-6 overflow-hidden text-parchment">
+    <div className="relative z-10 flex h-full w-full flex-col px-4 sm:px-8 md:px-12 py-4 sm:py-6 overflow-hidden text-parchment">
       {/* Top Bar */}
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4 border-b border-starlight/15 pb-5">
+      <div className="mb-4 sm:mb-6 flex flex-wrap items-center justify-between gap-3 sm:gap-4 border-b border-starlight/15 pb-4 sm:pb-5">
         {/* Title & Total Badge */}
-        <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-lamp/20 border border-lamp/40 text-lamp shadow-md shadow-lamp/10">
-            <BookOpen className="h-6 w-6" />
+        <div className="flex items-center gap-2.5 sm:gap-3">
+          <div className="flex h-9 w-9 sm:h-11 sm:w-11 items-center justify-center rounded-xl bg-lamp/20 border border-lamp/40 text-lamp shadow-md shadow-lamp/10">
+            <BookOpen className="h-5 w-5 sm:h-6 sm:w-6" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="font-serif text-3xl md:text-4xl font-bold leading-none text-parchment">
+              <h1 className="font-serif text-2xl sm:text-3xl md:text-4xl font-bold leading-none text-parchment">
                 Story History
               </h1>
-              <span className="rounded-full bg-starlight/20 px-2.5 py-0.5 font-sans text-xs font-semibold text-starlight">
+              <span className="rounded-full bg-starlight/20 px-2 sm:px-2.5 py-0.5 font-sans text-[10px] sm:text-xs font-semibold text-starlight">
                 {history.length} {history.length === 1 ? "story" : "stories"}
               </span>
             </div>

@@ -43,26 +43,28 @@ export default function SetupScreen({
   });
 
   return (
-    <div className="relative z-10 w-full max-w-2xl px-12">
-      {onOpenSettings && (
-        <button
-          type="button"
-          onClick={onOpenSettings}
-          className="absolute -top-10 right-12 flex items-center gap-1.5 rounded-sm bg-starlight/15 px-3 py-1.5 font-sans text-sm text-starlight transition-colors hover:bg-starlight/25 hover:text-parchment"
-          aria-label="Parent Settings"
-        >
-          <CogIcon size={16} /> Settings
-        </button>
-      )}
+    <div className="relative z-10 w-full max-w-2xl px-4 sm:px-8 md:px-12 py-6 sm:py-8 my-auto overflow-y-auto max-h-[95vh]">
+      <div className="flex items-center justify-between gap-2 mb-2">
+        <p className="font-sans text-sm sm:text-base md:text-lg text-starlight">Family Story Night</p>
+        {onOpenSettings && (
+          <button
+            type="button"
+            onClick={onOpenSettings}
+            className="flex items-center gap-1.5 rounded-sm bg-starlight/15 px-3 py-1.5 font-sans text-xs sm:text-sm text-starlight transition-colors hover:bg-starlight/25 hover:text-parchment cursor-pointer"
+            aria-label="Parent Settings"
+          >
+            <CogIcon size={16} /> Settings
+          </button>
+        )}
+      </div>
 
-      <p className="font-sans text-lg text-starlight">Family Story Night</p>
-      <h1 className="mt-2 font-serif text-5xl leading-tight text-parchment">
+      <h1 className="mt-1 font-serif text-3xl sm:text-4xl md:text-5xl leading-tight text-parchment">
         {category === "bible" ? "Who\u2019s listening tonight?" : "Who\u2019s in tonight\u2019s story?"}
       </h1>
 
-      <div className="relative mt-10">
+      <div className="relative mt-6 sm:mt-10">
         <input
-          className="w-full rounded-sm border-b-2 border-starlight/40 bg-transparent pr-12 px-1 py-3 font-serif text-3xl text-parchment placeholder:text-starlight/50 focus:border-[#e8a33d] focus:outline-none"
+          className="w-full rounded-sm border-b-2 border-starlight/40 bg-transparent pr-12 px-1 py-2 sm:py-3 font-serif text-xl sm:text-2xl md:text-3xl text-parchment placeholder:text-starlight/50 focus:border-[#e8a33d] focus:outline-none"
           value={names}
           onChange={(e) => setNames(e.target.value)}
           placeholder={
@@ -260,12 +262,12 @@ export default function SetupScreen({
         <p className="mt-2 font-sans text-base text-red-300">{customThemeError}</p>
       )}
 
-      <div className="flex gap-2 mt-8">
+      <div className="flex flex-col sm:flex-row gap-3 mt-6 sm:mt-8">
         {allowHistory && hasHistory && (
           <button
             type="button"
             onClick={onViewHistory}
-            className="flex gap-2 items-center rounded-sm bg-starlight/20 px-8 py-2 font-sans text-lg font-medium text-parchment transition-transform hover:scale-[1.02] focus:outline-none"
+            className="flex justify-center gap-2 items-center rounded-sm bg-starlight/20 px-6 sm:px-8 py-2.5 font-sans text-base sm:text-lg font-medium text-parchment transition-transform hover:scale-[1.02] focus:outline-none cursor-pointer w-full sm:w-auto"
           >
             <History size={16} /> View History
           </button>
@@ -273,12 +275,12 @@ export default function SetupScreen({
         <button
           type="button"
           onClick={onSubmit}
-          className="rounded-sm bg-lamp px-8 py-2 font-sans text-lg font-medium text-dusk transition-transform hover:scale-[1.02] focus:outline-none"
+          className="flex justify-center items-center rounded-sm bg-lamp px-6 sm:px-8 py-2.5 font-sans text-base sm:text-lg font-medium text-dusk transition-transform hover:scale-[1.02] focus:outline-none cursor-pointer w-full sm:w-auto"
         >
           Begin the story
         </button>
       </div>
-      <p className="mt-3 font-sans text-sm text-starlight/60">or press Enter</p>
+      <p className="mt-3 font-sans text-xs sm:text-sm text-starlight/60">or press Enter</p>
     </div>
   );
 }

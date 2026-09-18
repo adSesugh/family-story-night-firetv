@@ -1239,7 +1239,7 @@ export default function App() {
   ]);
 
   return (
-    <div className="relative flex h-screen w-screen items-center justify-center overflow-hidden bg-dusk text-parchment">
+    <div className="relative flex h-full min-h-screen w-full items-center justify-center overflow-hidden bg-dusk text-parchment">
       <audio ref={audioRef} />
 
       {/* Single warm light source behind the page — the one deliberate visual moment */}
@@ -1324,11 +1324,11 @@ export default function App() {
 
 function LoadingScreen({ chapter = 1, choice = "" }) {
   return (
-    <div className="relative z-10 text-center px-6">
-      <p className="font-serif text-3xl md:text-4xl italic text-parchment/90">
+    <div className="relative z-10 text-center px-4 sm:px-6">
+      <p className="font-serif text-2xl sm:text-3xl md:text-4xl italic text-parchment/90">
         {chapter > 1 ? `Weaving Chapter ${chapter}\u2026` : "Turning up the lamp\u2026"}
       </p>
-      <p className="mt-4 font-sans text-base md:text-lg text-starlight/70 max-w-xl mx-auto">
+      <p className="mt-3 sm:mt-4 font-sans text-sm sm:text-base md:text-lg text-starlight/70 max-w-xl mx-auto">
         {choice ? `"${choice}"` : "Painting your illustrations\u2026"}
       </p>
     </div>
