@@ -454,25 +454,79 @@ app.post("/illustrate", async (req, res) => {
 });
 
 /**
+ * Helper to convert an async iterable or readable stream to Buffer
+ */
+async function streamToBuffer(stream) {
+  const chunks = [];
+  for await (const chunk of stream) {
+    chunks.push(typeof chunk === "string" ? Buffer.from(chunk) : chunk);
+  }
+  return Buffer.concat(chunks);
+}
+
+/**
  * POST /narrate
- * body: { text: string, voiceId?: string }
- * returns: audio/mpeg stream
+ * body: { text: string, voiceId?: string, speechMarks?: boolean }
+ * returns: audio/mpeg stream OR { audio: string, speechMarks: Array<{ time, start, end, value }> }
  */
 app.post("/narrate", async (req, res) => {
   try {
-    const { text, voiceId } = req.body;
+    const { text, voiceId, speechMarks } = req.body;
     if (!text) return res.status(400).json({ error: "text is required" });
 
     const selectedVoice = ALLOWED_VOICES.includes(voiceId) ? voiceId : "Joanna";
 
-    const command = new SynthesizeSpeechCommand({
+    const audioCommand = new SynthesizeSpeechCommand({
       Text: text,
       OutputFormat: "mp3",
       VoiceId: selectedVoice,
       Engine: POLLY_ENGINE,
     });
 
-    const response = await polly.send(command);
+    if (speechMarks) {
+      // Concurrently synthesize audio and word-level speech marks
+      const marksCommand = new SynthesizeSpeechCommand({
+        Text: text,
+        OutputFormat: "json",
+        SpeechMarkTypes: ["word"],
+        VoiceId: selectedVoice,
+        Engine: POLLY_ENGINE,
+      });
+
+      const [audioRes, marksRes] = await Promise.all([
+        polly.send(audioCommand),
+        polly.send(marksCommand).catch((err) => {
+          console.warn("Failed to fetch Polly speech marks:", err?.message || err);
+          return null;
+        }),
+      ]);
+
+      const audioBuffer = await streamToBuffer(audioRes.AudioStream);
+
+      let parsedMarks = [];
+      if (marksRes && marksRes.AudioStream) {
+        try {
+          const marksBuffer = await streamToBuffer(marksRes.AudioStream);
+          parsedMarks = marksBuffer
+            .toString("utf-8")
+            .split("\n")
+            .map((l) => l.trim())
+            .filter(Boolean)
+            .map((l) => JSON.parse(l))
+            .filter((m) => m.type === "word");
+        } catch (mErr) {
+          console.warn("Error parsing speech marks lines:", mErr);
+        }
+      }
+
+      return res.json({
+        audio: `data:audio/mpeg;base64,${audioBuffer.toString("base64")}`,
+        speechMarks: parsedMarks,
+      });
+    }
+
+    // Default: stream raw audio/mpeg for backward compatibility
+    const response = await polly.send(audioCommand);
     res.setHeader("Content-Type", "audio/mpeg");
 
     const stream = response.AudioStream;

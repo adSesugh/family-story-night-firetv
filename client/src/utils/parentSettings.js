@@ -9,6 +9,7 @@ export const DEFAULT_PARENT_SETTINGS = {
     allowHistory: true,
     ageRestriction: "all",
     defaultVoice: "Joanna",
+    bedtimeWindDown: true,
     lockedUntil: null,
   },
 };

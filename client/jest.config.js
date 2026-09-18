@@ -2,6 +2,7 @@ export default {
   testEnvironment: 'jsdom',
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   moduleNameMapper: {
+    '^swiper/css.*$': '<rootDir>/jest.setup.js',
     '\\.(css|less|scss|sass)$': 'identity-obj-proxy',
   },
   transform: {

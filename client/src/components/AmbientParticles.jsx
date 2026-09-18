@@ -4,17 +4,22 @@ import { useMemo } from "react";
  * AmbientParticles renders subtle, soothing starlight & firefly particles
  * floating over illustrations to give them a magical, calming "living picture book" feel.
  */
-export default function AmbientParticles({ count = 12 }) {
+export default function AmbientParticles({ count = 12, windDown = false }) {
   const particles = useMemo(() => {
     // Deterministic random-like values for gentle floating motes
     const items = [];
-    const colors = ["#E8A33D", "#FEE48B", "#F4EFE6", "#7C93C9", "#A5B4FC"];
+    // In wind-down mode, use warm amber & candlelight tones; otherwise starry celestial palette
+    const colors = windDown
+      ? ["#E8A33D", "#D97724", "#FEE48B", "#F59E0B", "#FDE68A"]
+      : ["#E8A33D", "#FEE48B", "#F4EFE6", "#7C93C9", "#A5B4FC"];
 
     for (let i = 0; i < count; i++) {
       const size = 3 + ((i * 37) % 5); // 3px to 7px
       const left = 8 + ((i * 83) % 84); // 8% to 92%
       const top = 10 + ((i * 71) % 80); // 10% to 90%
-      const duration = 6 + ((i * 41) % 7); // 6s to 12s
+      // Slow down particle speed significantly in windDown mode for a sleepy, hypnotic float
+      const baseDuration = windDown ? 10 : 6;
+      const duration = baseDuration + ((i * 41) % 8);
       const delay = -((i * 23) % 6); // staggered negative delays
       const color = colors[i % colors.length];
       const isFirefly = i % 3 === 0;
@@ -31,7 +36,7 @@ export default function AmbientParticles({ count = 12 }) {
       });
     }
     return items;
-  }, [count]);
+  }, [count, windDown]);
 
   return (
     <div

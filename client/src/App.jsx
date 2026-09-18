@@ -770,19 +770,51 @@ export default function App() {
   }, []);
 
   const [isNarrating, setIsNarrating] = useState(false);
+  const speechMarksRef = useRef([]);
+  const [activeSpeechMark, setActiveSpeechMark] = useState(null);
 
   useEffect(() => {
     if (!audioRef.current) return;
     const audio = audioRef.current;
 
     const onPlay = () => setIsNarrating(true);
-    const onPause = () => setIsNarrating(false);
+    const onPause = () => {
+      setIsNarrating(false);
+      setActiveSpeechMark(null);
+    };
+    const onEnded = () => {
+      setActiveSpeechMark(null);
+    };
+    const onTimeUpdate = () => {
+      const marks = speechMarksRef.current;
+      if (!marks || marks.length === 0 || !audio) {
+        setActiveSpeechMark(null);
+        return;
+      }
+      const currentTimeMs = (audio.currentTime || 0) * 1000;
+      let currentMark = null;
+      for (let i = 0; i < marks.length; i++) {
+        const mark = marks[i];
+        if (mark.time <= currentTimeMs) {
+          const nextTime = marks[i + 1] ? marks[i + 1].time : mark.time + 1000;
+          if (currentTimeMs < nextTime) {
+            currentMark = mark;
+            break;
+          }
+        }
+      }
+      setActiveSpeechMark(currentMark);
+    };
 
     audio.addEventListener("play", onPlay);
     audio.addEventListener("pause", onPause);
+    audio.addEventListener("ended", onEnded);
+    audio.addEventListener("timeupdate", onTimeUpdate);
     return () => {
       audio.removeEventListener("play", onPlay);
       audio.removeEventListener("pause", onPause);
+      audio.removeEventListener("ended", onEnded);
+      audio.removeEventListener("timeupdate", onTimeUpdate);
     };
   }, []);
 
@@ -802,6 +834,8 @@ export default function App() {
         clearTimeout(turnTimerRef.current);
         turnTimerRef.current = null;
       }
+      speechMarksRef.current = [];
+      setActiveSpeechMark(null);
       if (audioRef.current && typeof audioRef.current.pause === "function") {
         try {
           audioRef.current.pause();
@@ -827,24 +861,41 @@ export default function App() {
 
     if (!textToNarrate) return;
     let cancelled = false;
+    speechMarksRef.current = [];
+    setActiveSpeechMark(null);
 
     (async () => {
       try {
         const res = await fetch(`${API_BASE}/narrate`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text: textToNarrate, voiceId: voice }),
+          body: JSON.stringify({ text: textToNarrate, voiceId: voice, speechMarks: true }),
         });
         if (!res.ok || cancelled) return;
-        const blob = await res.blob();
-        if (typeof URL.createObjectURL !== "function") return;
-        const url = URL.createObjectURL(blob);
-        if (audioRef.current && !cancelled) {
+
+        const contentType = (res.headers && typeof res.headers.get === "function" ? res.headers.get("content-type") : "") || "";
+        let audioUrl = "";
+        let marks = [];
+
+        if (contentType.includes("application/json") || (!res.blob && typeof res.json === "function")) {
+          const data = await res.json();
+          audioUrl = data.audio;
+          marks = Array.isArray(data.speechMarks) ? data.speechMarks : [];
+        } else if (typeof res.blob === "function") {
+          const blob = await res.blob();
+          if (typeof URL.createObjectURL === "function") {
+            audioUrl = URL.createObjectURL(blob);
+          }
+        }
+
+        if (audioRef.current && !cancelled && audioUrl) {
+          speechMarksRef.current = marks;
+          setActiveSpeechMark(null);
           isPrimingAudioRef.current = false;
           if (typeof audioRef.current.pause === "function") {
             try { audioRef.current.pause(); } catch (e) {}
           }
-          audioRef.current.src = url;
+          audioRef.current.src = audioUrl;
           if (typeof audioRef.current.load === "function") {
             try { audioRef.current.load(); } catch (e) {}
           }
@@ -1219,6 +1270,11 @@ export default function App() {
           onReturnHome={handleReturnHome}
           focusIndex={conclusionFocusIndex}
           onFocusIndexChange={setConclusionFocusIndex}
+          activeSpeechMark={activeSpeechMark}
+          windDown={
+            (parentSettings?.settings?.bedtimeWindDown ?? true) &&
+            (chapter > 1 || pageIndex >= 2 || pageIndex >= (pages ? pages.length : 0))
+          }
         />
       )}
     </div>

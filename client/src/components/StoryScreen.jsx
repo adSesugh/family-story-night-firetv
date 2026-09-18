@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Navigation } from "swiper/modules";
-import { Volume2, VolumeX, Sparkles, Compass, Home } from "lucide-react";
+import { Volume2, VolumeX, Sparkles, Compass, Home, Moon } from "lucide-react";
 import AmbientParticles from "./AmbientParticles";
 import "swiper/css";
 import "swiper/css/navigation";
@@ -23,6 +23,8 @@ export default function StoryScreen({
   onReturnHome,
   focusIndex = 0,
   onFocusIndexChange,
+  activeSpeechMark = null,
+  windDown = false,
 }) {
   const swiperRef = useRef(null);
   const hasConclusion = Boolean(nextStoredChapterNumber || lesson || (choices && choices.length > 0));
@@ -57,6 +59,17 @@ export default function StoryScreen({
 
   return (
     <div data-testid="story-screen" className="relative z-10 flex h-screen w-full items-center justify-center">
+      {/* Bedtime Wind-Down indicator */}
+      {windDown && (
+        <div
+          data-testid="wind-down-badge"
+          className="absolute top-6 left-8 z-30 flex items-center gap-2 rounded-full border border-lamp/30 bg-night/80 px-3.5 py-1.5 font-sans text-xs font-medium text-lamp backdrop-blur-md shadow-lg shadow-black/40 animate-fade-in"
+        >
+          <Moon className="h-3.5 w-3.5 text-lamp fill-lamp/20" />
+          <span className="tracking-wide">Bedtime Wind-Down</span>
+        </div>
+      )}
+
       {/* Narration audio status / manual toggle */}
       {onToggleNarration && (
         <button
@@ -108,12 +121,12 @@ export default function StoryScreen({
                         }}
                       />
                       {/* Ambient floating stardust & firefly motes */}
-                      <AmbientParticles count={14} />
+                      <AmbientParticles count={14} windDown={windDown} />
                     </>
                   ) : (
                     <div className="relative flex h-full w-full flex-col items-center justify-center bg-gradient-to-b from-dusk/60 via-night/80 to-dusk/90 overflow-hidden">
                       <div className="absolute inset-0 bg-radial-at-c from-lamp/10 via-transparent to-transparent animate-pulse" />
-                      <AmbientParticles count={10} />
+                      <AmbientParticles count={10} windDown={windDown} />
                       <div className="relative z-10 flex flex-col items-center gap-3 px-6 text-center">
                         <div className="flex items-center justify-center w-12 h-12 rounded-full bg-lamp/15 border border-lamp/30 shadow-lg shadow-lamp/10 text-lamp animate-bounce duration-1000">
                           <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -137,9 +150,29 @@ export default function StoryScreen({
                 <div className="flex h-full w-full min-h-0 items-center justify-center px-12 md:px-16 text-center">
                   <p
                     key={turnKey}
-                    className="animate-page-in font-serif text-[1.70rem] md:text-3xl leading-[1.65] text-parchment text-center w-full"
+                    data-testid="page-text"
+                    className={`animate-page-in font-serif text-[1.70rem] md:text-3xl leading-[1.65] text-center w-full transition-colors duration-1000 ${
+                      windDown ? "text-parchment/85" : "text-parchment"
+                    }`}
                   >
-                    {pageText}
+                    {activeSpeechMark &&
+                    idx === pageIndex &&
+                    typeof activeSpeechMark.start === "number" &&
+                    typeof activeSpeechMark.end === "number" &&
+                    activeSpeechMark.end <= pageText.length ? (
+                      <>
+                        <span>{pageText.slice(0, activeSpeechMark.start)}</span>
+                        <span
+                          data-testid="karaoke-word"
+                          className="text-lamp font-semibold drop-shadow-[0_0_14px_rgba(232,163,61,0.85)] bg-lamp/15 px-1 py-0.5 rounded transition-all duration-150"
+                        >
+                          {pageText.slice(activeSpeechMark.start, activeSpeechMark.end)}
+                        </span>
+                        <span className="opacity-80">{pageText.slice(activeSpeechMark.end)}</span>
+                      </>
+                    ) : (
+                      pageText
+                    )}
                   </p>
                 </div>
               </div>
