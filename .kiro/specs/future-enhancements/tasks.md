@@ -36,19 +36,25 @@ This plan incrementally extends Family Story Night across 7 features — Story H
     - _Requirements: 1.5, 1.6_
 
 - [x] 3. Build `HistoryScreen` component
-  - [x] 3.1 Create `client/src/components/HistoryScreen.jsx`
-    - Render a scrollable list; each row shows: formatted date/time, family member names (joined with commas), theme, and first-50-char preview of `firstPage`
-    - Each row has a clickable area that calls `onSelect(story)` prop
-    - Each row has a "Delete" button that calls `onDelete(story.id)` with a `window.confirm` guard
-    - Render a "Clear all" button at top that calls `onClearAll()` with a `window.confirm` guard
-    - Match the existing design language (dark `bg-dusk`, `text-parchment`, `font-serif` headings, `font-sans` body)
+  - [x] 3.1 Create and enhance `client/src/components/HistoryScreen.jsx`
+    - Render a full-screen responsive storybook grid (`grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4`)
+    - Rich card previews: 16:9 cover art thumbnail, category pill (`🌟 Adventure` or `📖 Bible Story`), formatted timestamp, chapter/page badge, theme title, character listeners, 2-line story excerpt, and bedtime moral takeaway pill
+    - Infinite scroll: progressive batch loading (8 cards per batch) via `IntersectionObserver` with scroll listener fallback
+    - Collection filtering pills: `All`, `Bedtime Adventures`, and `Bible Stories`
+    - Each card has a clickable area and keyboard focus (`tabIndex={0}`, Enter / Space) calling `onSelect(story)` prop
+    - Individual delete button per card with `window.confirm` guard
+    - "Clear all" button at top with `window.confirm` guard
+    - Match bedtime design system (`bg-dusk`, `text-parchment`, `font-serif`, amber glows)
     - _Requirements: 1.3, 1.4_
 
   - [x]* 3.2 Write unit tests for `HistoryScreen`
-    - Test list renders correct count of story rows
-    - Test clicking a row calls `onSelect` with correct story object
-    - Test "Delete" button calls `onDelete` with correct id after confirmation
-    - Test empty state renders without crashing
+    - Test empty state with CTA button
+    - Test initial batching of 8 cards in grid for infinite scroll
+    - Test progressive loading on scroll
+    - Test category filtering (`all`, `adventures`, `bible`)
+    - Test clicking a card calls `onSelect` with story object
+    - Test keyboard Enter key selection on cards
+    - Test individual story deletion and Clear All
     - _Requirements: 1.3, 1.4_
 
 - [x] 4. Wire Story History into `App.jsx`

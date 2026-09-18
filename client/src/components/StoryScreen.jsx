@@ -130,7 +130,7 @@ export default function StoryScreen({
                 <div className="flex h-full w-full min-h-0 items-center justify-center px-12 md:px-16 text-center">
                   <p
                     key={turnKey}
-                    className="animate-page-in font-serif text-[1.65rem] md:text-2xl leading-[1.65] text-parchment text-center w-full"
+                    className="animate-page-in font-serif text-[1.75rem] md:text-3xl leading-[1.65] text-parchment text-center w-full"
                   >
                     {pageText}
                   </p>
@@ -191,11 +191,10 @@ export default function StoryScreen({
                           data-testid={`choice-btn-${cIdx}`}
                           onClick={() => onSelectChoice && onSelectChoice(choice)}
                           onMouseEnter={() => onFocusIndexChange && onFocusIndexChange(cIdx)}
-                          className={`group relative flex flex-col items-start text-left p-4 md:p-5 rounded-xl transition-all duration-200 shadow-lg cursor-pointer ${
-                            isFocused
+                          className={`group relative flex flex-col items-start text-left p-4 md:p-5 rounded-xl transition-all duration-200 shadow-lg cursor-pointer ${isFocused
                               ? "border-2 border-lamp bg-panel ring-4 ring-lamp/80 shadow-lamp/30 -translate-y-1 scale-[1.01]"
                               : "border border-starlight/25 bg-panel/90 hover:border-lamp hover:bg-panel"
-                          }`}
+                            }`}
                         >
                           <div className="flex items-center justify-between w-full mb-1.5">
                             <span className="font-sans text-xs font-bold uppercase tracking-wider text-lamp">
@@ -225,11 +224,10 @@ export default function StoryScreen({
                       data-testid="return-home-btn"
                       onClick={onReturnHome}
                       onMouseEnter={() => onFocusIndexChange && onFocusIndexChange(choices ? choices.length : 0)}
-                      className={`flex items-center gap-2 rounded-full px-5 py-2 text-xs md:text-sm font-sans transition-all cursor-pointer ${
-                        isHomeFocused
+                      className={`flex items-center gap-2 rounded-full px-5 py-2 text-xs md:text-sm font-sans transition-all cursor-pointer ${isHomeFocused
                           ? "border border-lamp bg-starlight/20 text-parchment ring-2 ring-lamp/80 scale-[1.03]"
                           : "border border-transparent text-starlight/70 hover:text-parchment hover:bg-starlight/10 hover:border-starlight/20"
-                      }`}
+                        }`}
                     >
                       <Home className="w-4 h-4" />
                       <span>Return to Home &amp; Start a New Story</span>
