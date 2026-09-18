@@ -199,7 +199,7 @@ export default function StoryScreen({
 
         {/* Conclusion, Bedtime Lesson & Interactive Next Chapter Choices Slide */}
         {hasConclusion && (
-          <SwiperSlide key="conclusion" className="flex items-center justify-center p-3 pt-14 pb-6 sm:p-6 md:px-10 md:py-10 min-h-0">
+          <SwiperSlide key="conclusion" className="flex items-center justify-center p-3 pt-12 pb-12 sm:p-6 sm:pt-16 sm:pb-8 md:px-10 md:py-10 min-h-0">
             <div
               data-testid="story-conclusion"
               className="flex flex-col items-center justify-between w-full max-w-4xl h-full max-h-[88vh] md:max-h-[38rem] min-h-0 p-4 sm:p-6 md:p-8 rounded-xl bg-panel/75 border border-starlight/20 shadow-2xl shadow-black/50 backdrop-blur-md text-center overflow-y-auto"
@@ -341,7 +341,7 @@ export default function StoryScreen({
               )}
 
               {/* Return to Home option */}
-              <div className="mt-3 pt-2 border-t border-starlight/10 w-full flex justify-center">
+              <div className="mt-2 sm:mt-3 mb-1.5 sm:mb-0 pt-2 border-t border-starlight/10 w-full flex justify-center shrink-0">
                 {(() => {
                   const targetHomeIndex = nextStoredChapterNumber ? 1 : (choices ? choices.length : 0);
                   const isHomeFocused = pageIndex >= pages.length && focusIndex === targetHomeIndex;
