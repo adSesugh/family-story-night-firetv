@@ -412,9 +412,36 @@ This plan incrementally extends Family Story Night across 7 features — Story H
 
 ---
 
+### Feature 13: Bible Stories & Category Switcher
+
+- [x] 27. Curated Bible stories collection & category architecture
+  - [x] 27.1 Create `client/src/constants/themes.js`
+    - Define `THEME_CATEGORIES` with `"adventures"` (`"Bedtime Adventures"`) and `"bible"` (`"Bible Stories"`)
+    - Export curated Bible story presets: *Noah's Ark and the rainbow of hope*, *David and Goliath: faith over fear*, *Daniel and the peaceful lions*, *Jonah and the great fish of second chances*, *The Good Samaritan: loving our neighbors*, *A starry bedtime journey to Bethlehem*
+    - Retain existing Bedtime Adventures presets to guarantee 100% backward compatibility
+  - [x] 27.2 Build Category Switcher tabs in `client/src/components/SetupScreen.jsx`
+    - Render dual category tabs (`[ 🌟 Bedtime Adventures ]` and `[ 📖 Bible Stories ]`) with Lucide icons (`Sparkles`, `BookOpen`)
+    - Add glowing active pill styling and high-contrast TV remote focus states
+    - Support Fire TV remote D-pad / arrow navigation (`ArrowLeft` / `ArrowRight` switches category)
+  - [x] 27.3 Wire category state & D-pad switching in `client/src/App.jsx`
+    - Add `category` state (defaulting to `"adventures"`) and derive `activeThemes` dynamically
+    - Propagate `category` into `/generate-story` API payload, story history saving, and analytics tracking
+    - Wire global `ArrowLeft` / `ArrowRight` key listeners on setup screen to toggle categories
+  - [x] 27.4 Faith & values storytelling prompt tuning in `server/index.js`
+    - Detect biblical category/theme queries on `/generate-story`
+    - Frame family members respectfully as humble, gentle helpers/observers learning timeless virtues (faith, courage, kindness, patience, gratitude)
+    - Enforce calming bedtime tone: strictly avoid frightening monsters or violence
+    - Tune Amazon Nova Canvas prompts with golden radiant beams, warm Mediterranean watercolors, starlight, and reverent beauty
+  - [x]* 27.5 Test suites for Bible stories and category switching
+    - Added `server/__tests__/generate-story.test.js` tests verifying Bible prompt construction and moral lesson extraction
+    - Added `client/src/__tests__/bible-stories.test.jsx` verifying tab rendering, D-pad remote switching, and API payload propagation
+
+---
+
 ## Notes
 
-- All 12 features are fully wired, backward compatible, and verified.
-- Full test suite: 19 client test suites (108 tests) and 2 server test suites (23 tests) passing with 0 errors.
+- All 13 features are fully wired, backward compatible, and verified.
+- Full test suite: 20 client test suites (113 tests) and 2 server test suites (24 tests) passing with 0 errors.
 - Build compiles production bundle with zero warnings/errors.
+
 

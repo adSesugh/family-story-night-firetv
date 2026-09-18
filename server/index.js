@@ -83,8 +83,17 @@ function createBedtimeFallbackSvg(theme = "Bedtime Adventure") {
  * @returns {Promise<{url: string, alt: string} | null>}
  */
 async function generateIllustration(pageText, theme, seed, retries = 3) {
+  const isBibleIllustration =
+    /\b(noah|ark|david|goliath|daniel|lion'?s den|jonah|samaritan|bethlehem|jesus|moses|creation|bible|scripture|rainbow promise|starry night in bethlehem)\b/i.test(
+      theme + " " + pageText
+    );
+
+  const stylePrefix = isBibleIllustration
+    ? "Children's storybook illustration, soft luminous watercolor style, radiant golden bedtime light, warm and peaceful biblical storybook aesthetic. "
+    : "Children's storybook illustration, soft watercolor style, warm and cozy bedtime aesthetic. ";
+
   const illustrationPrompt =
-    `Children's storybook illustration, soft watercolor style, warm and cozy bedtime aesthetic. ` +
+    stylePrefix +
     `Scene: ${pageText.slice(0, 200)}. Theme: ${theme}. ` +
     `Gentle, safe for children, no text or words in the image, no scary elements.`;
 
@@ -168,7 +177,8 @@ const MAX_TOKENS_BY_LENGTH = { 4: 750, 6: 950, 8: 1200 };
  *   storyLength?: number,
  *   selectedChoice?: string,
  *   chapter?: number,
- *   previousSummary?: string
+ *   previousSummary?: string,
+ *   category?: string
  * }
  * returns: { pages: Array<string>, lesson: string, choices: Array<string>, chapter: number }
  */
@@ -182,6 +192,7 @@ app.post("/generate-story", async (req, res) => {
       selectedChoice,
       chapter = 1,
       previousSummary,
+      category = "adventures",
     } = req.body;
 
     if (familyMembers.length === 0) {
@@ -197,8 +208,14 @@ app.post("/generate-story", async (req, res) => {
       return res.status(400).json({ error: "storyLength must be 4, 6, or 8" });
     }
 
+    const isBibleStory =
+      category === "bible" ||
+      /\b(noah|ark|david|goliath|daniel|lion'?s den|jonah|whale|big fish|samaritan|bethlehem|jesus|moses|creation|eden|bible|scripture|rainbow promise|starry night in bethlehem)\b/i.test(
+        theme
+      );
+
     console.log(
-      `[generate-story] isCustomTheme: ${isCustomTheme}, length: ${parsedLength}, theme: "${theme}", chapter: ${chapter}` +
+      `[generate-story] category: ${category}, isBible: ${isBibleStory}, isCustomTheme: ${isCustomTheme}, length: ${parsedLength}, theme: "${theme}", chapter: ${chapter}` +
         (selectedChoice ? `, choice: "${selectedChoice}"` : "")
     );
 
@@ -209,7 +226,23 @@ app.post("/generate-story", async (req, res) => {
       contextClause = ` This is Chapter ${chapter} of their journey. In the previous chapter${previousSummary ? ` (${previousSummary})` : ""}, they decided: "${selectedChoice}". Continue the story seamlessly from this choice while staying comforting and bedtime-friendly.`;
     }
 
-    const prompt = `Write a short, warm bedtime story (${parsedLength} pages, 2-3 sentences per page) \
+    let prompt;
+    if (isBibleStory) {
+      prompt = `Write a short, gentle, inspiring bedtime Bible story (${parsedLength} pages, 2-3 sentences per page) \
+based on: ${theme}.${contextClause} \
+Weave these family members: ${familyMembers.join(", ")} into the story with warmth, reverence, and joy as gentle helpers, companions, or witnesses who learn timeless virtues alongside the biblical figures. \
+Make it peaceful, comforting, and bedtime-appropriate (strictly no violence, frightening elements, or harsh conflict). \
+Important rules: do not use dashes, hyphenated words, or em dashes anywhere in the story text. \
+Write every sentence in plain language with standard punctuation only. \
+Include a heartwarming faith-and-character bedtime lesson or moral (1-2 sentences highlighting virtues like courage, kindness, faith, gratitude, or love), and 2 distinct, intriguing choices for what could happen in the next chapter. \
+Return ONLY a valid JSON object with this exact structure:
+{
+  "pages": ["page 1 text", ...],
+  "lesson": "Bedtime moral or takeaway",
+  "choices": ["Choice 1 for next chapter", "Choice 2 for next chapter"]
+}`;
+    } else {
+      prompt = `Write a short, warm bedtime story (${parsedLength} pages, 2-3 sentences per page) \
 starring these family members: ${familyMembers.join(", ")}. Theme: ${theme}.${contextClause} \
 Make it gentle, imaginative, and suitable for all ages. \
 Important rules: do not use dashes, hyphenated words, or em dashes anywhere in the story text. \
@@ -221,6 +254,7 @@ Return ONLY a valid JSON object with this exact structure:
   "lesson": "Bedtime moral or takeaway",
   "choices": ["Choice 1 for next chapter", "Choice 2 for next chapter"]
 }`;
+    }
 
     const command = new InvokeModelCommand({
       modelId: MODEL_ID,

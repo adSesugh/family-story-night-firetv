@@ -221,4 +221,42 @@ describe('Task 2.4: Story Lesson and Next Adventure Choices', () => {
     expect(lesson).toBeTruthy();
     expect(choices).toHaveLength(2);
   });
+
+  describe('Bible Stories faith & values prompt construction', () => {
+    it('detects bible category and builds gentle faith-and-character prompt', () => {
+      const familyMembers = ['Maya', 'Dad'];
+      const theme = "Noah's Ark and the rainbow promise";
+      const category = 'bible';
+
+      const isBibleStory =
+        category === 'bible' ||
+        /\b(noah|ark|david|goliath|daniel|lion'?s den|jonah|whale|big fish|samaritan|bethlehem|jesus|moses|creation|eden|bible|scripture|rainbow promise)\b/i.test(
+          theme
+        );
+
+      expect(isBibleStory).toBe(true);
+
+      const parsedLength = 6;
+      const prompt = `Write a short, gentle, inspiring bedtime Bible story (${parsedLength} pages, 2-3 sentences per page) \
+based on: ${theme}. \
+Weave these family members: ${familyMembers.join(", ")} into the story with warmth, reverence, and joy as gentle helpers, companions, or witnesses who learn timeless virtues alongside the biblical figures. \
+Make it peaceful, comforting, and bedtime-appropriate (strictly no violence, frightening elements, or harsh conflict). \
+Important rules: do not use dashes, hyphenated words, or em dashes anywhere in the story text. \
+Write every sentence in plain language with standard punctuation only. \
+Include a heartwarming faith-and-character bedtime lesson or moral (1-2 sentences highlighting virtues like courage, kindness, faith, gratitude, or love), and 2 distinct, intriguing choices for what could happen in the next chapter. \
+Return ONLY a valid JSON object with this exact structure:
+{
+  "pages": ["page 1 text", ...],
+  "lesson": "Bedtime moral or takeaway",
+  "choices": ["Choice 1 for next chapter", "Choice 2 for next chapter"]
+}`;
+
+      expect(prompt).toContain("inspiring bedtime Bible story");
+      expect(prompt).toContain("Maya, Dad");
+      expect(prompt).toContain("Noah's Ark");
+      expect(prompt).toContain("gentle helpers, companions, or witnesses");
+      expect(prompt).toContain("no violence");
+      expect(prompt).toContain("faith-and-character bedtime lesson");
+    });
+  });
 });

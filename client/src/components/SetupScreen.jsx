@@ -1,13 +1,16 @@
 import React from "react";
 import { VOICES } from "../constants/voices";
 import VoiceSelector from "./VoiceSelector";
-import { ArrowLeft, CogIcon, History } from "lucide-react";
+import { ArrowLeft, CogIcon, History, BookOpen, Sparkles } from "lucide-react";
 
 export default function SetupScreen({
   names,
   setNames,
   themeIndex,
   setThemeIndex,
+  category = "adventures",
+  setCategory,
+  categories = [],
   error,
   onSubmit,
   themes,
@@ -59,22 +62,65 @@ export default function SetupScreen({
       {/* Theme Section */}
       <div className="mt-8">
         {activeThemeMode === "preset" ? (
-          <div className="mt-4 flex items-center gap-4 font-sans text-base">
-            <span className="text-starlight">Tonight&rsquo;s theme</span>
-            <span className="text-parchment">{themes[themeIndex]}</span>
-            <div className="flex gap-1">
-              {themes.map((_, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => setThemeIndex(i)}
-                  className={`h-2 w-2 rounded-full transition-colors ${i === themeIndex ? "bg-lamp" : "bg-starlight/30"
+          <div>
+            {/* Category Selector Tabs */}
+            {categories && categories.length > 1 && (
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-xs uppercase tracking-wider text-starlight/60 font-sans font-medium mr-1">
+                  Collection:
+                </span>
+                <div className="flex gap-2" role="tablist" aria-label="Story Categories">
+                  {categories.map((cat) => {
+                    const isSelected = (category || "adventures") === cat.id;
+                    const IconComponent = cat.id === "bible" ? BookOpen : Sparkles;
+                    return (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        role="tab"
+                        aria-selected={isSelected}
+                        data-testid={`category-tab-${cat.id}`}
+                        onClick={() => {
+                          if (setCategory) {
+                            setCategory(cat.id);
+                            setThemeIndex(0);
+                          }
+                        }}
+                        className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full font-sans text-xs font-semibold transition-all ${
+                          isSelected
+                            ? "bg-lamp/25 text-lamp border border-lamp/60 shadow-md shadow-lamp/10"
+                            : "bg-starlight/10 text-starlight/75 border border-transparent hover:bg-starlight/20 hover:text-parchment"
+                        }`}
+                      >
+                        <IconComponent size={14} />
+                        <span>{cat.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            <div className="mt-3 flex flex-wrap items-center gap-3 font-sans text-base">
+              <span className="text-starlight text-sm">Tonight&rsquo;s theme</span>
+              <span className="text-parchment font-serif text-lg md:text-xl font-medium tracking-wide">
+                {themes[themeIndex]}
+              </span>
+              <div className="flex gap-1.5">
+                {themes.map((_, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => setThemeIndex(i)}
+                    className={`h-2.5 w-2.5 rounded-full transition-colors ${
+                      i === themeIndex ? "bg-lamp scale-110" : "bg-starlight/30 hover:bg-starlight/50"
                     }`}
-                  aria-label={`Theme ${i + 1}`}
-                />
-              ))}
+                    aria-label={`Theme ${i + 1}`}
+                  />
+                ))}
+              </div>
+              <span className="text-starlight/60 text-xs">↑ / ↓ to change</span>
             </div>
-            <span className="text-starlight/60">↑ / ↓ to change</span>
           </div>
         ) : (
           <div className="mt-4">

@@ -241,9 +241,39 @@ This document outlines planned features to extend Family Story Night beyond the 
 
 11.6 WHEN remote media keys are pressed THEN the system SHALL support Play/Pause (`keyCode 179`), Fast Forward (`keyCode 228`), Rewind (`keyCode 227`), and Back (`keyCode 4`, `8`, `27`).
 
+## Feature 12: Illustration Performance, Concurrent Generation & Resilience
+
+### Requirements
+
+12.1 WHEN generating illustrations for story pages THEN the backend SHALL support Amazon Nova Canvas (`amazon.nova-canvas-v1:0`) in `us-east-1` with 7–9s latency and dynamic fallback to SD 3.5 Large / SDXL based on `BEDROCK_IMAGE_MODEL_ID`.
+
+12.2 WHEN Bedrock returns a `ValidationException` on sensitive or unsupported prompt keywords THEN the backend SHALL automatically sanitize and retry with the base theme prompt.
+
+12.3 WHEN an illustration request encounters a service outage or fails Bedrock generation THEN the backend SHALL return a deterministic themed SVG watercolor stardust image so pages are never left without imagery.
+
+12.4 WHEN fetching illustrations across story pages THEN the client SHALL process them using a concurrent worker pool (concurrency = 2) with session cancellation tokens to cancel stale requests if a user starts a new story or chapter.
+
+12.5 WHEN an illustration is actively being generated THEN the client SHALL render a living canvas shimmer placeholder featuring ambient particle glow and page status instead of a static spinner.
+
+## Feature 13: Bible Stories & Category Switcher
+
+### Requirements
+
+13.1 WHEN the user is on the setup screen THEN the system SHALL present category tabs allowing selection between "Bedtime Adventures" and "Bible Stories".
+
+13.2 WHEN the user switches to the "Bible Stories" category THEN the theme carousel SHALL display curated Biblical bedtime presets (*Noah's Ark, David & Goliath, Daniel in the lions' den, Jonah and the great fish, The Good Samaritan, The starry night in Bethlehem*).
+
+13.3 WHEN navigating with a Fire TV remote or keyboard on the setup screen THEN pressing `ArrowLeft` or `ArrowRight` (when not focused on a text input) SHALL switch between the adventure and bible story categories.
+
+13.4 WHEN generating a Bible story THEN the narrative engine (Claude 3.5 Sonnet) SHALL weave family members into the story as humble, gentle helpers and observers, focusing on character virtues (faith, courage, kindness, patience, gratitude) with reverent bedtime pacing and zero frightening content.
+
+13.5 WHEN generating illustrations for Bible stories THEN the image prompt engine SHALL enrich scene prompts with radiant golden light, warm ancient Mediterranean hues, starlit skies, and serene reverent watercolor aesthetics.
+
+13.6 WHEN a Bible story concludes THEN the takeaway bedtime moral and interactive chapter choices SHALL reflect biblical principles of hope, love, and compassion.
+
 ## Implementation Status & Timeline
 
-All 11 features are fully implemented, unit tested, and integrated:
+All 13 features are fully implemented, unit tested, and integrated:
 - **Phase 1**: Story History + Story Length Options (Completed)
 - **Phase 2**: Custom Themes + Multiple Voices (Completed)
 - **Phase 3**: Illustrations with Progressive Background Fetching (Completed)
@@ -251,3 +281,6 @@ All 11 features are fully implemented, unit tested, and integrated:
 - **Phase 5**: Bedtime Lessons + Interactive Next Chapter Choices (Completed)
 - **Phase 6**: Living Picture Book (Ken Burns Motion + Ambient Particles) (Completed)
 - **Phase 7**: Fire TV Web App Packaging & TV Navigation (Completed)
+- **Phase 8**: Illustration Performance, Concurrent Generation & Resilience (Completed)
+- **Phase 9**: Bible Stories & Category Switcher (Completed)
+

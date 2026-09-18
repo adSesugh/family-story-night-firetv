@@ -438,10 +438,50 @@ Alternating 22s GPU-accelerated keyframes:
 - Global Home key: BrowserHome/Home (36) returns to Setup from any screen.
 - Focus rings: High-contrast `:focus-visible:not(input, textarea)` prevents intrusive borders on form inputs while ensuring remote button clarity.
 
+## Feature 12: Illustration Performance, Concurrent Generation & Resilience - Design
+
+### Multi-Model Bedrock Engine
+- `amazon.nova-canvas-v1:0` integration:
+  - Payload: `{ taskType: "TEXT_IMAGE", textToImageParams: { text: prompt }, imageGenerationConfig: { numberOfImages: 1, quality: "standard", height: 768, width: 1280, cfgScale: 8.0 } }`
+  - Base64 extraction from `response.images[0]`.
+- SD 3.5 Large / SDXL dynamic adaptation based on `BEDROCK_IMAGE_MODEL_ID`.
+- Prompt safety guard: on `ValidationException`, automatically purges complex scene text and falls back to theme-level sanitized prompt.
+- Deterministic SVG stardust fallback: returns inline SVG data URI if AWS fails, preventing loading locks.
+
+### Client Worker Pool
+- Concurrency limit: 2 workers running concurrently in `fetchIllustrationsProgressive`.
+- Cancellation token: `illustrationSessionRef` stops background jobs if user leaves story or triggers a new chapter.
+- Living canvas placeholder: glowing golden stardust shimmer with page index indicator during generation.
+
+## Feature 13: Bible Stories & Category Switcher - Design
+
+### Category & Theme Architecture
+- `client/src/constants/themes.js`:
+  ```javascript
+  export const THEME_CATEGORIES = [
+    { id: "adventures", label: "Bedtime Adventures", icon: "Sparkles", themes: [...] },
+    { id: "bible", label: "Bible Stories", icon: "BookOpen", themes: [...] }
+  ];
+  ```
+- Curated Bible presets: *Noah's Ark, David & Goliath, Daniel in the lions' den, Jonah and the great fish, The Good Samaritan, The starry night in Bethlehem*.
+
+### D-pad Navigation Matrix on Setup
+- Setup screen listens for `ArrowLeft` and `ArrowRight` when text inputs are not active:
+  - Toggles active category (`"adventures"` ↔ `"bible"`).
+  - Resets theme index to 0 or clamps to the new list length.
+- `ArrowUp` and `ArrowDown` navigate themes within the active category.
+
+### Faith & Character Prompt Engine
+- In `server/index.js`, prompt tuning activates when `category === "bible"` or theme is biblical:
+  - Weaves children/family as gentle observers or helpers (e.g. gathering smooth river stones, folding blankets, tending animals).
+  - Emphasizes virtues: trust, peace, kindness, humility, and courage.
+  - Guarantees calm bedtime tone (no violence, frightening monsters, or frightening peril).
+  - Amazon Nova Canvas prompt tuned with soft radiant light beams, ancient olive trees, starlit canopies, and warm luminous watercolor tones.
+
 ## Testing Strategy
 
 Each feature is thoroughly tested across:
-1. **Unit Tests**: Component logic, localStorage, voice resolution, token scaling, device detection.
+1. **Unit Tests**: Component logic, localStorage, voice resolution, token scaling, device detection, category switching.
 2. **Integration Tests**: SetupScreen → Story Generation → Lesson & Choices → Chapter 2 generation.
 3. **Hardware / Remote Tests**: Full D-pad simulation (37, 38, 39, 40, 13, 36, 179, 227, 228).
 4. **Performance Tests**: Offline compressed storage, Swiper memory cleanup.
@@ -449,7 +489,8 @@ Each feature is thoroughly tested across:
 ## Success Criteria
 
 - ✓ All features maintain 100% backward compatibility
-- ✓ All 18 client test suites (104 tests) pass with zero errors
-- ✓ All server tests (23 tests) pass
+- ✓ All 20 client test suites (113 tests) pass with zero errors
+- ✓ All server tests (24 tests) pass
 - ✓ Production bundle builds cleanly and packages into submission zip
 - ✓ Full hands-free and D-pad remote support on Amazon Fire TV
+

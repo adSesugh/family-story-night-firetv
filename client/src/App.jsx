@@ -9,20 +9,16 @@ import { loadSettings } from "./utils/parentSettings";
 import { trackEvent } from "./utils/analytics";
 import { blobToDataUrl, compressBlobToDataUrl, createFallbackIllustrationUrl } from "./utils/imageUtils";
 
+import { THEME_CATEGORIES, DEFAULT_CATEGORY_ID, THEMES } from "./constants/themes";
+
 const API_BASE =
   (typeof process !== "undefined" && process.env && process.env.VITE_API_BASE) ||
   "http://localhost:4000";
 
-const THEMES = [
-  "a cozy adventure",
-  "a magical treasure hunt",
-  "a trip to outer space",
-  "a friendly dragon's forest",
-];
-
 export default function App() {
   const [screen, setScreen] = useState("setup"); // setup | loading | story | history | settings
   const [names, setNames] = useState("");
+  const [category, setCategory] = useState(DEFAULT_CATEGORY_ID);
   const [themeIndex, setThemeIndex] = useState(0);
   const [themeMode, setThemeMode] = useState("preset"); // preset | custom
   const [customTheme, setCustomTheme] = useState("");
@@ -47,6 +43,9 @@ export default function App() {
   const [chapter, setChapter] = useState(1);
   const [activeChoiceTitle, setActiveChoiceTitle] = useState("");
   const [conclusionFocusIndex, setConclusionFocusIndex] = useState(0);
+
+  const currentCategory = THEME_CATEGORIES.find((c) => c.id === category) || THEME_CATEGORIES[0];
+  const activeThemes = currentCategory.themes;
 
   const audioRef = useRef(null);
   const storyStartTimeRef = useRef(null);
@@ -222,7 +221,7 @@ export default function App() {
     setChapter(1);
     setActiveChoiceTitle("");
     try {
-      const activeTheme = themeMode === "custom" ? customTheme : THEMES[themeIndex];
+      const activeTheme = themeMode === "custom" ? customTheme : (activeThemes[themeIndex] || activeThemes[0]);
       const res = await fetch(`${API_BASE}/generate-story`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -232,6 +231,7 @@ export default function App() {
           isCustomTheme: themeMode === "custom",
           storyLength,
           chapter: 1,
+          category,
         }),
       });
       if (!res.ok) throw new Error("Story generation failed");
@@ -284,6 +284,7 @@ export default function App() {
       const savedStory = saveStory({
         familyMembers,
         theme: activeTheme,
+        category,
         pages: storyPages.map((text, idx) => (
           idx === 0 && storedIllustrations[0]
             ? { text, illustration: { url: storedIllustrations[0], alt: `Illustration for page 1` } }
@@ -304,6 +305,7 @@ export default function App() {
         theme: activeTheme,
         storyLength,
         voice,
+        category,
         generationTime: genDuration,
       });
 
@@ -322,7 +324,7 @@ export default function App() {
       setError("Couldn't reach the storyteller. Is the backend running?");
       setScreen("setup");
     }
-  }, [names, themeIndex, themeMode, customTheme, storyLength, voice]);
+  }, [names, themeIndex, themeMode, customTheme, storyLength, voice, category, activeThemes]);
 
   const turnTo = useCallback((next) => {
     setPageIndex(next);
@@ -367,7 +369,7 @@ export default function App() {
       setScreen("loading");
 
       try {
-        const activeTheme = themeMode === "custom" ? customTheme : THEMES[themeIndex];
+        const activeTheme = themeMode === "custom" ? customTheme : (activeThemes[themeIndex] || activeThemes[0]);
         const familyMembers = names
           .split(",")
           .map((n) => n.trim())
@@ -388,6 +390,7 @@ export default function App() {
             selectedChoice,
             chapter: nextChapter,
             previousSummary,
+            category,
           }),
         });
 
@@ -439,6 +442,7 @@ export default function App() {
         const savedStory = saveStory({
           familyMembers,
           theme: activeTheme,
+          category,
           pages: storyPages.map((text, idx) =>
             idx === 0 && storedIllustrations[0]
               ? { text, illustration: { url: storedIllustrations[0], alt: `Illustration for page 1` } }
@@ -457,6 +461,7 @@ export default function App() {
           theme: activeTheme,
           storyLength,
           voice,
+          category,
           chapter: nextChapter,
           selectedChoice,
           generationTime: (Date.now() - startTime) / 1000,
@@ -478,7 +483,7 @@ export default function App() {
         setScreen("setup");
       }
     },
-    [chapter, themeMode, customTheme, themeIndex, names, pages, storyLength, primeAudio, voice, fetchSubsequentIllustrations]
+    [chapter, themeMode, customTheme, themeIndex, names, pages, storyLength, primeAudio, voice, fetchSubsequentIllustrations, category, activeThemes]
   );
 
   const handleBackFromHistory = useCallback(() => {
@@ -678,11 +683,25 @@ export default function App() {
         }
         if (isDown) {
           e.preventDefault();
-          setThemeIndex((i) => (i + 1) % THEMES.length);
+          setThemeIndex((i) => (i + 1) % activeThemes.length);
         }
         if (isUp) {
           e.preventDefault();
-          setThemeIndex((i) => (i - 1 + THEMES.length) % THEMES.length);
+          setThemeIndex((i) => (i - 1 + activeThemes.length) % activeThemes.length);
+        }
+        if (isLeft) {
+          e.preventDefault();
+          const catIdx = THEME_CATEGORIES.findIndex((c) => c.id === category);
+          const prevCat = THEME_CATEGORIES[(catIdx - 1 + THEME_CATEGORIES.length) % THEME_CATEGORIES.length];
+          setCategory(prevCat.id);
+          setThemeIndex(0);
+        }
+        if (isRight) {
+          e.preventDefault();
+          const catIdx = THEME_CATEGORIES.findIndex((c) => c.id === category);
+          const nextCat = THEME_CATEGORIES[(catIdx + 1) % THEME_CATEGORIES.length];
+          setCategory(nextCat.id);
+          setThemeIndex(0);
         }
         if (isSelect) {
           e.preventDefault();
@@ -812,13 +831,16 @@ export default function App() {
           setNames={setNames}
           themeIndex={themeIndex}
           setThemeIndex={setThemeIndex}
+          category={category}
+          setCategory={setCategory}
+          categories={THEME_CATEGORIES}
           themeMode={themeMode}
           setThemeMode={setThemeMode}
           customTheme={customTheme}
           setCustomTheme={setCustomTheme}
           error={error}
           onSubmit={generateStory}
-          themes={THEMES}
+          themes={activeThemes}
           hasHistory={history.length > 0}
           onViewHistory={handleViewHistory}
           voice={voice}
@@ -843,7 +865,7 @@ export default function App() {
           setThemeMode={setThemeMode}
           customTheme={customTheme}
           setCustomTheme={setCustomTheme}
-          themes={THEMES}
+          themes={activeThemes}
           themeIndex={themeIndex}
           setThemeIndex={setThemeIndex}
         />

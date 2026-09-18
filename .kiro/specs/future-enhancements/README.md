@@ -6,7 +6,7 @@ This directory contains the planned feature roadmap for Family Story Night beyon
 
 ## Quick Summary
 
-**11 Implemented Enhancements**:
+**13 Implemented Enhancements**:
 
 1. **Story History** ✅ Completed
    - Save and replay previously generated stories
@@ -64,6 +64,20 @@ This directory contains the planned feature roadmap for Family Story Night beyon
     - Fire TV device detection (`device.js`)
     - Global Home key navigation (`keyCode 36`) and high-contrast focus rings (excluding text inputs)
 
+12. **Illustration Performance, Concurrent Generation & Resilience** ✅ Completed
+    - Amazon Nova Canvas (`amazon.nova-canvas-v1:0`) integration with fast standard rendering (7–9s)
+    - Concurrency-limited worker pool (2 workers) and session cancellation to avoid stale requests
+    - Bedrock ValidationException automatic retry with sanitized theme prompt
+    - SVG watercolor stardust fallback stream guaranteeing no page ever hangs without imagery
+    - Living canvas shimmer placeholder with starlight particles and progress indicator
+
+13. **Bible Stories & Category Switcher** ✅ Completed
+    - Category switcher tab system (`[ 🌟 Bedtime Adventures ]` and `[ 📖 Bible Stories ]`)
+    - 6 curated biblical presets (Noah's Ark, David & Goliath, Daniel & Lions, Jonah, Good Samaritan, Bethlehem)
+    - Fire TV remote D-pad category navigation (`ArrowLeft`/`ArrowRight`)
+    - Claude 3.5 Sonnet faith and virtues prompt tuning (gentle helpers, timeless moral values, comforting bedtime atmosphere)
+    - Radiant golden watercolor prompt styling with ancient Mediterranean warmth
+
 ## Implementation Timeline
 
 | Phase | Features | Status |
@@ -75,6 +89,8 @@ This directory contains the planned feature roadmap for Family Story Night beyon
 | 5 | Bedtime Lessons + Interactive Next Chapter Choices | ✅ Completed |
 | 6 | Living Picture Book (Ken Burns + Ambient Particles) | ✅ Completed |
 | 7 | Fire TV Packaging & TV Remote Experience | ✅ Completed |
+| 8 | Illustration Performance & Concurrent Generation | ✅ Completed |
+| 9 | Bible Stories & Category Switcher | ✅ Completed |
 
 ## Files in This Directory
 
@@ -93,10 +109,11 @@ This directory contains the planned feature roadmap for Family Story Night beyon
 ## Current App Status
 
 ✅ Full Production Ready:
-- Story generation (AWS Bedrock Claude 3.5 Sonnet)
+- Story generation (AWS Bedrock Claude 3.5 Sonnet) with multi-category support (Bedtime Adventures & Bible Stories)
 - Bedtime morals & interactive branching choices
 - Text-to-speech narration (AWS Polly neural voices)
 - Living picture book illustrations (Amazon Nova Canvas + Ken Burns + Ambient Particles)
+- High-performance concurrent illustration worker pool with resilience fallbacks
 - Complete Fire TV remote D-pad & gamepad controller support
 - Amazon Web App packaging readiness
 - Parent settings, history management, and privacy-first analytics
