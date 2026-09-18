@@ -199,10 +199,10 @@ export default function StoryScreen({
 
         {/* Conclusion, Bedtime Lesson & Interactive Next Chapter Choices Slide */}
         {hasConclusion && (
-          <SwiperSlide key="conclusion" className="flex items-center justify-center p-3 pt-14 pb-6 sm:p-6 md:px-10 md:py-10">
+          <SwiperSlide key="conclusion" className="flex items-center justify-center p-3 pt-14 pb-6 sm:p-6 md:px-10 md:py-10 min-h-0">
             <div
               data-testid="story-conclusion"
-              className="flex flex-col items-center justify-between w-full max-w-4xl h-full max-h-[88vh] md:max-h-[38rem] p-4 sm:p-6 md:p-8 rounded-xl bg-panel/75 border border-starlight/20 shadow-2xl shadow-black/50 backdrop-blur-md text-center overflow-y-auto"
+              className="flex flex-col items-center justify-between w-full max-w-4xl h-full max-h-[88vh] md:max-h-[38rem] min-h-0 p-4 sm:p-6 md:p-8 rounded-xl bg-panel/75 border border-starlight/20 shadow-2xl shadow-black/50 backdrop-blur-md text-center overflow-y-auto"
             >
               {/* Header */}
               <div className="flex flex-col items-center gap-1">
