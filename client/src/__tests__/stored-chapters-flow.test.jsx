@@ -235,4 +235,34 @@ describe("Stored Chapters Navigation Flow", () => {
       })
     );
   });
+
+  it("does not jump to page 2 when reopening story from history, staying firmly on page 1", async () => {
+    jest.spyOn(storyHistory, "loadHistory").mockReturnValue([sampleMultiChapterStory]);
+    jest.useFakeTimers();
+
+    render(<App />);
+
+    // Open History and select story
+    fireEvent.click(screen.getByRole("button", { name: /View History/i }));
+    fireEvent.click(screen.getByTestId("history-card-test-multi-ch-123"));
+
+    // Verify on page 1 (index 0)
+    expect(screen.getByTestId("page-text")).toHaveTextContent("Chapter 1: The mysterious glowing tree in the forest.");
+
+    // Simulate silent priming audio ending immediately
+    const audioElement = document.querySelector("audio");
+    if (audioElement) {
+      audioElement.src = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=";
+      fireEvent.ended(audioElement);
+    }
+
+    // Advance timers by 1500ms (more than the 1200ms turnTimer)
+    jest.advanceTimersByTime(1500);
+
+    // MUST still be on page 1!
+    expect(screen.getByTestId("page-text")).toHaveTextContent("Chapter 1: The mysterious glowing tree in the forest.");
+    expect(screen.queryByText(/Maya and Leo found a glowing key/)).not.toBeInTheDocument();
+
+    jest.useRealTimers();
+  });
 });

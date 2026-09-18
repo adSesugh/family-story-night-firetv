@@ -54,6 +54,8 @@ export default function App() {
   const audioRef = useRef(null);
   const storyStartTimeRef = useRef(null);
   const illustrationSessionRef = useRef(0);
+  const turnTimerRef = useRef(null);
+  const isPrimingAudioRef = useRef(false);
 
   // Load history on mount
   useEffect(() => {
@@ -236,17 +238,24 @@ export default function App() {
   const primeAudio = useCallback(() => {
     if (audioRef.current) {
       try {
+        isPrimingAudioRef.current = true;
         audioRef.current.src = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=";
         const playPromise = audioRef.current.play();
         if (playPromise !== undefined) {
           playPromise
             .then(() => {
-              if (audioRef.current) audioRef.current.pause();
+              if (audioRef.current && audioRef.current.src && audioRef.current.src.startsWith("data:")) {
+                audioRef.current.pause();
+                audioRef.current.removeAttribute("src");
+              }
+              isPrimingAudioRef.current = false;
             })
-            .catch(() => {});
+            .catch(() => {
+              isPrimingAudioRef.current = false;
+            });
         }
       } catch (e) {
-        // Ignore priming errors in environments without media support
+        isPrimingAudioRef.current = false;
       }
     }
   }, []);
@@ -421,6 +430,10 @@ export default function App() {
   }, [names, themeIndex, themeMode, customTheme, storyLength, voice, category, activeThemes]);
 
   const turnTo = useCallback((next) => {
+    if (turnTimerRef.current) {
+      clearTimeout(turnTimerRef.current);
+      turnTimerRef.current = null;
+    }
     setPageIndex(next);
     setTurnKey((k) => k + 1);
     if (next >= pages.length) {
@@ -430,11 +443,31 @@ export default function App() {
   }, [pages.length]);
 
   const handleViewHistory = useCallback(() => {
+    if (turnTimerRef.current) {
+      clearTimeout(turnTimerRef.current);
+      turnTimerRef.current = null;
+    }
+    if (audioRef.current) {
+      try {
+        audioRef.current.pause();
+        audioRef.current.removeAttribute("src");
+      } catch (e) {}
+    }
     setHistory(loadHistory());
     setScreen("history");
   }, []);
 
   const handleSelectStory = useCallback((story) => {
+    if (turnTimerRef.current) {
+      clearTimeout(turnTimerRef.current);
+      turnTimerRef.current = null;
+    }
+    if (audioRef.current) {
+      try {
+        audioRef.current.pause();
+        audioRef.current.removeAttribute("src");
+      } catch (e) {}
+    }
     primeAudio();
     setCurrentStoryId(story.id || null);
     setActiveStoryMetadata({
@@ -480,6 +513,16 @@ export default function App() {
 
   const handleContinueNextStoredChapter = useCallback(() => {
     if (activeChapterIndex >= activeStoryChapters.length - 1) return;
+    if (turnTimerRef.current) {
+      clearTimeout(turnTimerRef.current);
+      turnTimerRef.current = null;
+    }
+    if (audioRef.current) {
+      try {
+        audioRef.current.pause();
+        audioRef.current.removeAttribute("src");
+      } catch (e) {}
+    }
     primeAudio();
     const nextIdx = activeChapterIndex + 1;
     const nextChapterData = activeStoryChapters[nextIdx];
@@ -682,13 +725,34 @@ export default function App() {
   );
 
   const handleReturnHome = useCallback(() => {
+    if (turnTimerRef.current) {
+      clearTimeout(turnTimerRef.current);
+      turnTimerRef.current = null;
+    }
+    if (audioRef.current) {
+      try {
+        audioRef.current.pause();
+        audioRef.current.removeAttribute("src");
+      } catch (e) {}
+    }
     setCurrentStoryId(null);
     setActiveStoryMetadata(null);
     setChapter(1);
+    setPageIndex(0);
     setScreen("setup");
   }, []);
 
   const handleBackFromHistory = useCallback(() => {
+    if (turnTimerRef.current) {
+      clearTimeout(turnTimerRef.current);
+      turnTimerRef.current = null;
+    }
+    if (audioRef.current) {
+      try {
+        audioRef.current.pause();
+        audioRef.current.removeAttribute("src");
+      } catch (e) {}
+    }
     setHistory(loadHistory());
     setScreen("setup");
   }, []);
@@ -733,11 +797,18 @@ export default function App() {
 
   // Stop narration when leaving the story screen
   useEffect(() => {
-    if (screen !== "story" && audioRef.current && typeof audioRef.current.pause === "function") {
-      try {
-        audioRef.current.pause();
-      } catch (e) {
-        // Ignore in environments where pause is not implemented
+    if (screen !== "story") {
+      if (turnTimerRef.current) {
+        clearTimeout(turnTimerRef.current);
+        turnTimerRef.current = null;
+      }
+      if (audioRef.current && typeof audioRef.current.pause === "function") {
+        try {
+          audioRef.current.pause();
+          audioRef.current.removeAttribute("src");
+        } catch (e) {
+          // Ignore in environments where pause is not implemented
+        }
       }
     }
   }, [screen]);
@@ -769,6 +840,7 @@ export default function App() {
         if (typeof URL.createObjectURL !== "function") return;
         const url = URL.createObjectURL(blob);
         if (audioRef.current && !cancelled) {
+          isPrimingAudioRef.current = false;
           if (typeof audioRef.current.pause === "function") {
             try { audioRef.current.pause(); } catch (e) {}
           }
@@ -801,13 +873,22 @@ export default function App() {
     if (!audioRef.current) return;
 
     const audio = audioRef.current;
-    let turnTimer = null;
 
     const handleEnded = () => {
       if (screen !== "story") return;
 
+      // CRITICAL: Ignore silent priming audio (data URLs) or uninitialized audio
+      if (isPrimingAudioRef.current || !audio.src || audio.src.startsWith("data:")) {
+        return;
+      }
+
+      if (turnTimerRef.current) {
+        clearTimeout(turnTimerRef.current);
+        turnTimerRef.current = null;
+      }
+
       if (pageIndex < pages.length - 1) {
-        turnTimer = setTimeout(() => {
+        turnTimerRef.current = setTimeout(() => {
           turnTo(pageIndex + 1);
         }, 1200);
       } else if (pageIndex === pages.length - 1) {
@@ -819,7 +900,7 @@ export default function App() {
 
         // Automatically advance to conclusion slide if lesson or choices exist
         if (lesson || (choices && choices.length > 0)) {
-          turnTimer = setTimeout(() => {
+          turnTimerRef.current = setTimeout(() => {
             turnTo(pages.length);
           }, 1200);
         }
@@ -829,7 +910,10 @@ export default function App() {
     audio.addEventListener("ended", handleEnded);
     return () => {
       audio.removeEventListener("ended", handleEnded);
-      if (turnTimer) clearTimeout(turnTimer);
+      if (turnTimerRef.current) {
+        clearTimeout(turnTimerRef.current);
+        turnTimerRef.current = null;
+      }
     };
   }, [screen, pageIndex, pages.length, turnTo, lesson, choices]);
 
