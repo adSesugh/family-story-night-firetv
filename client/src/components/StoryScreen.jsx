@@ -1,8 +1,9 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Navigation } from "swiper/modules";
-import { Volume2, VolumeX, Sparkles, Compass, Home, Moon } from "lucide-react";
+import { Volume2, VolumeX, Sparkles, Compass, Home, Moon, Mic, MicOff } from "lucide-react";
 import AmbientParticles from "./AmbientParticles";
+import { useSpeechRecognition } from "../utils/useSpeechRecognition";
 import "swiper/css";
 import "swiper/css/navigation";
 
@@ -28,6 +29,11 @@ export default function StoryScreen({
 }) {
   const swiperRef = useRef(null);
   const hasConclusion = Boolean(nextStoredChapterNumber || lesson || (choices && choices.length > 0));
+
+  const [customTwist, setCustomTwist] = useState("");
+  const twistSpeech = useSpeechRecognition({
+    onResult: (text) => setCustomTwist(text),
+  });
 
   // Sync Swiper with pageIndex when it changes from parent
   useEffect(() => {
@@ -59,6 +65,13 @@ export default function StoryScreen({
 
   return (
     <div data-testid="story-screen" className="relative z-10 flex h-screen w-full items-center justify-center">
+      {/* Bedtime Dimmer Veil (Wind-Down Routine) */}
+      {windDown && (
+        <div
+          data-testid="bedtime-dimmer-veil"
+          className="pointer-events-none fixed inset-0 z-0 bg-night/30 backdrop-blur-[0.5px] transition-opacity duration-1000"
+        />
+      )}
       {/* Bedtime Wind-Down indicator */}
       {windDown && (
         <div
@@ -280,6 +293,47 @@ export default function StoryScreen({
                         );
                       })}
                     </div>
+
+                    {/* Tell the TV what to do next (Voice Twist Dictation) */}
+                    {twistSpeech.isSupported && (
+                      <div className="mt-3 flex flex-col items-center gap-2">
+                        <button
+                          type="button"
+                          data-testid="voice-twist-btn"
+                          onClick={twistSpeech.toggleListening}
+                          className={`flex items-center gap-2 px-4 py-2 rounded-full font-sans text-xs font-semibold tracking-wide transition-all cursor-pointer ${
+                            twistSpeech.isListening
+                              ? "bg-lamp text-night animate-pulse shadow-lg shadow-lamp/50 scale-105"
+                              : "bg-panel/90 text-lamp border border-lamp/40 hover:bg-lamp/20"
+                          }`}
+                        >
+                          {twistSpeech.isListening ? (
+                            <>
+                              <MicOff size={15} />
+                              <span>Listening... speak your twist</span>
+                            </>
+                          ) : (
+                            <>
+                              <Mic size={15} />
+                              <span>Tell the TV what to do next (Voice)</span>
+                            </>
+                          )}
+                        </button>
+                        {customTwist && (
+                          <div className="flex items-center gap-2 px-4 py-1.5 rounded-lg bg-panel/80 border border-lamp/30 animate-fade-in">
+                            <span className="font-serif italic text-sm text-parchment">&ldquo;{customTwist}&rdquo;</span>
+                            <button
+                              type="button"
+                              data-testid="weave-twist-btn"
+                              onClick={() => onSelectChoice && onSelectChoice(customTwist)}
+                              className="px-2.5 py-1 rounded bg-lamp text-night font-sans font-bold text-xs hover:bg-lamp/90 cursor-pointer shadow"
+                            >
+                              Weave Twist &rarr;
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )
               )}

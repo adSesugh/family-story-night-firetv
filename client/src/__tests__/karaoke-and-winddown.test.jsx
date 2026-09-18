@@ -96,9 +96,25 @@ describe("Karaōke Read-Along and Bedtime Wind-Down Mode", () => {
     expect(screen.queryByTestId("wind-down-badge")).not.toBeInTheDocument();
   });
 
+  it("renders bedtime-dimmer-veil when windDown is true", () => {
+    render(
+      <StoryScreen
+        pages={mockPages}
+        pageIndex={0}
+        turnKey={0}
+        onTurn={jest.fn()}
+        activeSpeechMark={null}
+        windDown={true}
+      />
+    );
+
+    expect(screen.getByTestId("bedtime-dimmer-veil")).toBeInTheDocument();
+  });
+
   it("AmbientParticles renders warm candlelight particles in windDown mode", () => {
     const { container } = render(<AmbientParticles count={6} windDown={true} />);
     const particles = container.querySelectorAll(".rounded-full");
     expect(particles.length).toBe(6);
   });
 });
+

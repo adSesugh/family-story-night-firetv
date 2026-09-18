@@ -8,6 +8,7 @@ import { StorageService } from "./utils/storage";
 import { loadSettings } from "./utils/parentSettings";
 import { trackEvent } from "./utils/analytics";
 import { blobToDataUrl, compressBlobToDataUrl, createFallbackIllustrationUrl } from "./utils/imageUtils";
+import { playBedtimeLullabyChime } from "./utils/audioChimes";
 
 import { THEME_CATEGORIES, DEFAULT_CATEGORY_ID, THEMES } from "./constants/themes";
 
@@ -994,6 +995,19 @@ export default function App() {
       }
     };
   }, [screen, pageIndex, pages.length, turnTo, lesson, choices]);
+
+  const hasPlayedLullabyChimeRef = useRef(false);
+
+  useEffect(() => {
+    if (screen === "story" && pages && pageIndex >= pages.length) {
+      if (!hasPlayedLullabyChimeRef.current) {
+        hasPlayedLullabyChimeRef.current = true;
+        playBedtimeLullabyChime();
+      }
+    } else {
+      hasPlayedLullabyChimeRef.current = false;
+    }
+  }, [screen, pageIndex, pages]);
 
   const hasNextStoredChapter = activeChapterIndex < activeStoryChapters.length - 1;
   const nextStoredChapterNumber = hasNextStoredChapter

@@ -1,7 +1,8 @@
 import React from "react";
 import { VOICES } from "../constants/voices";
 import VoiceSelector from "./VoiceSelector";
-import { ArrowLeft, CogIcon, History, BookOpen, Sparkles } from "lucide-react";
+import { ArrowLeft, CogIcon, History, BookOpen, Sparkles, Mic, MicOff } from "lucide-react";
+import { useSpeechRecognition } from "../utils/useSpeechRecognition";
 
 export default function SetupScreen({
   names,
@@ -33,6 +34,14 @@ export default function SetupScreen({
   const allowHistory = parentSettings?.settings?.allowHistory !== false;
   const activeThemeMode = allowCustomThemes ? themeMode : "preset";
 
+  const namesSpeech = useSpeechRecognition({
+    onResult: (text) => setNames(text),
+  });
+
+  const themeSpeech = useSpeechRecognition({
+    onResult: (text) => setCustomTheme && setCustomTheme(text.slice(0, maxCustomThemeLength)),
+  });
+
   return (
     <div className="relative z-10 w-full max-w-2xl px-12">
       {onOpenSettings && (
@@ -51,17 +60,40 @@ export default function SetupScreen({
         {category === "bible" ? "Who\u2019s listening tonight?" : "Who\u2019s in tonight\u2019s story?"}
       </h1>
 
-      <input
-        className="mt-10 w-full rounded-sm border-b-2 border-starlight/40 bg-transparent px-1 py-3 font-serif text-3xl text-parchment placeholder:text-starlight/50 focus:border-[#e8a33d] focus:outline-none"
-        value={names}
-        onChange={(e) => setNames(e.target.value)}
-        placeholder={
-          category === "bible"
-            ? "(Optional) Maya, Dad... or leave blank"
-            : "Maya, Dad, Biscuit the dog"
-        }
-        autoFocus
-      />
+      <div className="relative mt-10">
+        <input
+          className="w-full rounded-sm border-b-2 border-starlight/40 bg-transparent pr-12 px-1 py-3 font-serif text-3xl text-parchment placeholder:text-starlight/50 focus:border-[#e8a33d] focus:outline-none"
+          value={names}
+          onChange={(e) => setNames(e.target.value)}
+          placeholder={
+            category === "bible"
+              ? "(Optional) Maya, Dad... or leave blank"
+              : "Maya, Dad, Biscuit the dog"
+          }
+          autoFocus
+        />
+        {namesSpeech.isSupported && (
+          <button
+            type="button"
+            onClick={namesSpeech.toggleListening}
+            aria-label={namesSpeech.isListening ? "Stop listening" : "Speak names into remote"}
+            title={namesSpeech.isListening ? "Listening... click to stop" : "Speak names with voice"}
+            className={`absolute right-2 top-1/2 -translate-y-1/2 flex items-center justify-center h-9 w-9 rounded-full transition-all cursor-pointer ${
+              namesSpeech.isListening
+                ? "bg-lamp text-night animate-pulse shadow-lg shadow-lamp/50 scale-110"
+                : "bg-starlight/15 text-starlight hover:bg-starlight/25 hover:text-parchment"
+            }`}
+          >
+            {namesSpeech.isListening ? <MicOff size={18} /> : <Mic size={18} />}
+          </button>
+        )}
+      </div>
+      {namesSpeech.isListening && (
+        <div className="mt-2 flex items-center gap-2 text-xs font-sans text-lamp animate-fade-in">
+          <span className="h-2 w-2 rounded-full bg-lamp animate-ping" />
+          <span>Listening... speak family names into your remote</span>
+        </div>
+      )}
       {category === "bible" && (
         <p className="mt-2 font-sans text-xs text-starlight/60">
           Names are optional for Bible stories &mdash; leave blank for the classic story, or enter names to weave family in.
@@ -131,16 +163,39 @@ export default function SetupScreen({
           </div>
         ) : (
           <div className="mt-4">
-            <textarea
-              value={customTheme}
-              onChange={(e) =>
-                setCustomTheme && setCustomTheme(e.target.value.slice(0, maxCustomThemeLength))
-              }
-              placeholder="Describe your custom story theme..."
-              maxLength={maxCustomThemeLength}
-              className="w-full rounded-sm border-b-2 border-starlight/40 bg-transparent px-1 py-3 font-serif text-base text-parchment placeholder:text-starlight/50 focus:border-[#e8a33d] focus:outline-none"
-              rows="2"
-            />
+            <div className="relative">
+              <textarea
+                value={customTheme}
+                onChange={(e) =>
+                  setCustomTheme && setCustomTheme(e.target.value.slice(0, maxCustomThemeLength))
+                }
+                placeholder="Describe your custom story theme..."
+                maxLength={maxCustomThemeLength}
+                className="w-full rounded-sm border-b-2 border-starlight/40 bg-transparent pr-12 px-1 py-3 font-serif text-base text-parchment placeholder:text-starlight/50 focus:border-[#e8a33d] focus:outline-none"
+                rows="2"
+              />
+              {themeSpeech.isSupported && (
+                <button
+                  type="button"
+                  onClick={themeSpeech.toggleListening}
+                  aria-label={themeSpeech.isListening ? "Stop listening" : "Speak custom theme into remote"}
+                  title={themeSpeech.isListening ? "Listening... click to stop" : "Speak custom theme with voice"}
+                  className={`absolute right-2 top-3 flex items-center justify-center h-8 w-8 rounded-full transition-all cursor-pointer ${
+                    themeSpeech.isListening
+                      ? "bg-lamp text-night animate-pulse shadow-lg shadow-lamp/50 scale-110"
+                      : "bg-starlight/15 text-starlight hover:bg-starlight/25 hover:text-parchment"
+                  }`}
+                >
+                  {themeSpeech.isListening ? <MicOff size={16} /> : <Mic size={16} />}
+                </button>
+              )}
+            </div>
+            {themeSpeech.isListening && (
+              <div className="mt-1 flex items-center gap-2 text-xs font-sans text-lamp animate-fade-in">
+                <span className="h-2 w-2 rounded-full bg-lamp animate-ping" />
+                <span>Listening... describe your story theme into your remote</span>
+              </div>
+            )}
             <div className="mt-2 flex justify-between">
               <div />
               <span className="font-sans text-sm text-starlight/60">
