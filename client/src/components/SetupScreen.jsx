@@ -67,7 +67,7 @@ export default function SetupScreen({
           onChange={(e) => setNames(e.target.value)}
           placeholder={
             category === "bible"
-              ? "(Optional) Maya, Dad... or leave blank"
+              ? "(Optional) Maya, Dad..."
               : "Maya, Dad, Biscuit the dog"
           }
           autoFocus
@@ -78,11 +78,10 @@ export default function SetupScreen({
             onClick={namesSpeech.toggleListening}
             aria-label={namesSpeech.isListening ? "Stop listening" : "Speak names into remote"}
             title={namesSpeech.isListening ? "Listening... click to stop" : "Speak names with voice"}
-            className={`absolute right-2 top-1/2 -translate-y-1/2 flex items-center justify-center h-9 w-9 rounded-full transition-all cursor-pointer ${
-              namesSpeech.isListening
+            className={`absolute right-2 top-1/2 -translate-y-1/2 flex items-center justify-center h-9 w-9 rounded-full transition-all cursor-pointer ${namesSpeech.isListening
                 ? "bg-lamp text-night animate-pulse shadow-lg shadow-lamp/50 scale-110"
                 : "bg-starlight/15 text-starlight hover:bg-starlight/25 hover:text-parchment"
-            }`}
+              }`}
           >
             {namesSpeech.isListening ? <MicOff size={18} /> : <Mic size={18} />}
           </button>
@@ -103,8 +102,8 @@ export default function SetupScreen({
           {namesSpeech.error === "not-allowed"
             ? "Microphone access blocked. Please allow microphone permission in browser settings."
             : namesSpeech.error === "no-speech"
-            ? "No voice heard. Please try speaking closer to your microphone."
-            : `Microphone notice: ${namesSpeech.error}`}
+              ? "No voice heard. Please try speaking closer to your microphone."
+              : `Microphone notice: ${namesSpeech.error}`}
         </p>
       )}
       {category === "bible" && (
@@ -141,8 +140,8 @@ export default function SetupScreen({
                           }
                         }}
                         className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full font-sans text-xs font-semibold transition-all ${isSelected
-                            ? "bg-lamp/25 text-lamp border border-lamp/60 shadow-md shadow-lamp/10"
-                            : "bg-starlight/10 text-starlight/75 border border-transparent hover:bg-starlight/20 hover:text-parchment"
+                          ? "bg-lamp/25 text-lamp border border-lamp/60 shadow-md shadow-lamp/10"
+                          : "bg-starlight/10 text-starlight/75 border border-transparent hover:bg-starlight/20 hover:text-parchment"
                           }`}
                       >
                         <IconComponent size={14} />
@@ -193,11 +192,10 @@ export default function SetupScreen({
                   onClick={themeSpeech.toggleListening}
                   aria-label={themeSpeech.isListening ? "Stop listening" : "Speak custom theme into remote"}
                   title={themeSpeech.isListening ? "Listening... click to stop" : "Speak custom theme with voice"}
-                  className={`absolute right-2 top-3 flex items-center justify-center h-8 w-8 rounded-full transition-all cursor-pointer ${
-                    themeSpeech.isListening
+                  className={`absolute right-2 top-3 flex items-center justify-center h-8 w-8 rounded-full transition-all cursor-pointer ${themeSpeech.isListening
                       ? "bg-lamp text-night animate-pulse shadow-lg shadow-lamp/50 scale-110"
                       : "bg-starlight/15 text-starlight hover:bg-starlight/25 hover:text-parchment"
-                  }`}
+                    }`}
                 >
                   {themeSpeech.isListening ? <MicOff size={16} /> : <Mic size={16} />}
                 </button>
@@ -218,8 +216,8 @@ export default function SetupScreen({
                 {themeSpeech.error === "not-allowed"
                   ? "Microphone access blocked. Please allow microphone permission in browser settings."
                   : themeSpeech.error === "no-speech"
-                  ? "No voice heard. Please try speaking closer to your microphone."
-                  : `Microphone notice: ${themeSpeech.error}`}
+                    ? "No voice heard. Please try speaking closer to your microphone."
+                    : `Microphone notice: ${themeSpeech.error}`}
               </p>
             )}
             <div className="mt-2 flex justify-between">
