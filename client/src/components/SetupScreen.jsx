@@ -91,8 +91,21 @@ export default function SetupScreen({
       {namesSpeech.isListening && (
         <div className="mt-2 flex items-center gap-2 text-xs font-sans text-lamp animate-fade-in">
           <span className="h-2 w-2 rounded-full bg-lamp animate-ping" />
-          <span>Listening... speak family names into your remote</span>
+          <span>
+            {namesSpeech.transcript
+              ? `Hearing: "${namesSpeech.transcript}"`
+              : "Listening... speak names into your remote"}
+          </span>
         </div>
+      )}
+      {namesSpeech.error && (
+        <p className="mt-2 text-xs font-sans text-amber-300">
+          {namesSpeech.error === "not-allowed"
+            ? "Microphone access blocked. Please allow microphone permission in browser settings."
+            : namesSpeech.error === "no-speech"
+            ? "No voice heard. Please try speaking closer to your microphone."
+            : `Microphone notice: ${namesSpeech.error}`}
+        </p>
       )}
       {category === "bible" && (
         <p className="mt-2 font-sans text-xs text-starlight/60">
@@ -193,8 +206,21 @@ export default function SetupScreen({
             {themeSpeech.isListening && (
               <div className="mt-1 flex items-center gap-2 text-xs font-sans text-lamp animate-fade-in">
                 <span className="h-2 w-2 rounded-full bg-lamp animate-ping" />
-                <span>Listening... describe your story theme into your remote</span>
+                <span>
+                  {themeSpeech.transcript
+                    ? `Hearing: "${themeSpeech.transcript}"`
+                    : "Listening... describe your story theme into your remote"}
+                </span>
               </div>
+            )}
+            {themeSpeech.error && (
+              <p className="mt-1 text-xs font-sans text-amber-300">
+                {themeSpeech.error === "not-allowed"
+                  ? "Microphone access blocked. Please allow microphone permission in browser settings."
+                  : themeSpeech.error === "no-speech"
+                  ? "No voice heard. Please try speaking closer to your microphone."
+                  : `Microphone notice: ${themeSpeech.error}`}
+              </p>
             )}
             <div className="mt-2 flex justify-between">
               <div />

@@ -10,6 +10,12 @@ export function useSpeechRecognition({ onResult, onError } = {}) {
   const [error, setError] = useState(null);
   const recognitionRef = useRef(null);
 
+  const onResultRef = useRef(onResult);
+  onResultRef.current = onResult;
+
+  const onErrorRef = useRef(onError);
+  onErrorRef.current = onError;
+
   const SpeechRecognition =
     typeof window !== "undefined"
       ? window.SpeechRecognition || window.webkitSpeechRecognition
@@ -17,14 +23,45 @@ export function useSpeechRecognition({ onResult, onError } = {}) {
 
   const isSupported = Boolean(SpeechRecognition);
 
+  // Clean up on unmount
   useEffect(() => {
-    if (!SpeechRecognition) return;
+    return () => {
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.abort();
+        } catch (e) {}
+      }
+    };
+  }, []);
+
+  const stopListening = useCallback(() => {
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch (err) {}
+    }
+    setIsListening(false);
+  }, []);
+
+  const startListening = useCallback(() => {
+    if (!SpeechRecognition) {
+      setError("unsupported");
+      return;
+    }
+
+    // Stop any existing session
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.abort();
+      } catch (e) {}
+    }
 
     try {
       const recognition = new SpeechRecognition();
       recognition.continuous = false;
       recognition.interimResults = true;
       recognition.lang = "en-US";
+      recognition.maxAlternatives = 1;
 
       recognition.onstart = () => {
         setIsListening(true);
@@ -36,16 +73,20 @@ export function useSpeechRecognition({ onResult, onError } = {}) {
         for (let i = 0; i < event.results.length; i++) {
           currentTranscript += event.results[i][0].transcript;
         }
-        setTranscript(currentTranscript);
-        if (onResult && currentTranscript) {
-          onResult(currentTranscript);
+        const trimmed = currentTranscript.trim();
+        setTranscript(trimmed);
+        if (onResultRef.current && trimmed) {
+          onResultRef.current(trimmed);
         }
       };
 
       recognition.onerror = (event) => {
+        console.warn("Speech recognition error:", event.error);
         setIsListening(false);
         setError(event.error);
-        if (onError) onError(event.error);
+        if (onErrorRef.current) {
+          onErrorRef.current(event.error);
+        }
       };
 
       recognition.onend = () => {
@@ -53,37 +94,15 @@ export function useSpeechRecognition({ onResult, onError } = {}) {
       };
 
       recognitionRef.current = recognition;
-    } catch (err) {
-      console.warn("SpeechRecognition initialization failed:", err);
-    }
-
-    return () => {
-      if (recognitionRef.current) {
-        try {
-          recognitionRef.current.abort();
-        } catch (e) {}
-      }
-    };
-  }, [SpeechRecognition, onResult, onError]);
-
-  const startListening = useCallback(() => {
-    if (!recognitionRef.current) return;
-    try {
       setTranscript("");
       setError(null);
-      recognitionRef.current.start();
+      recognition.start();
     } catch (err) {
       console.warn("Could not start speech recognition:", err);
+      setIsListening(false);
+      setError("start_failed");
     }
-  }, []);
-
-  const stopListening = useCallback(() => {
-    if (!recognitionRef.current) return;
-    try {
-      recognitionRef.current.stop();
-    } catch (err) {}
-    setIsListening(false);
-  }, []);
+  }, [SpeechRecognition]);
 
   const toggleListening = useCallback(() => {
     if (isListening) {
