@@ -20,6 +20,7 @@ const IMAGE_REGION = process.env.BEDROCK_IMAGE_REGION || (isNovaCanvas ? "us-eas
 const bedrock = new BedrockRuntimeClient({ region: REGION });
 const bedrockImage = new BedrockRuntimeClient({ region: IMAGE_REGION });
 const polly = new PollyClient({ region: REGION });
+const POLLY_ENGINE = process.env.POLLY_ENGINE || "standard";
 
 /**
  * Creates a beautiful SVG watercolor bedtime scene used as an emergency fallback
@@ -434,7 +435,7 @@ app.post("/narrate", async (req, res) => {
       Text: text,
       OutputFormat: "mp3",
       VoiceId: selectedVoice,
-      Engine: "neural",
+      Engine: POLLY_ENGINE,
     });
 
     const response = await polly.send(command);
