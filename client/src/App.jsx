@@ -7,7 +7,7 @@ import { saveStory, updateStory, loadHistory } from "./utils/storyHistory";
 import { StorageService } from "./utils/storage";
 import { loadSettings } from "./utils/parentSettings";
 import { trackEvent } from "./utils/analytics";
-import { blobToDataUrl, compressBlobToDataUrl } from "./utils/imageUtils";
+import { blobToDataUrl, compressBlobToDataUrl, createFallbackIllustrationUrl } from "./utils/imageUtils";
 
 const API_BASE =
   (typeof process !== "undefined" && process.env && process.env.VITE_API_BASE) ||
@@ -50,6 +50,7 @@ export default function App() {
 
   const audioRef = useRef(null);
   const storyStartTimeRef = useRef(null);
+  const illustrationSessionRef = useRef(0);
 
   // Load history on mount
   useEffect(() => {
@@ -60,6 +61,118 @@ export default function App() {
     setVoice(newVoice);
     StorageService.setItem("familyStoryNight_voice", newVoice);
   }, []);
+
+  // Fast concurrent illustration fetching orchestrator with retries and guaranteed fallback
+  const fetchSubsequentIllustrations = useCallback(
+    async ({
+      storyPages,
+      activeTheme,
+      seedBase,
+      initialIllustrations,
+      initialStored,
+      savedStoryId,
+      sessionId,
+    }) => {
+      const currentDisplayUrls = [...initialIllustrations];
+      const currentStoredUrls = [...initialStored];
+
+      const pendingIndices = [];
+      for (let i = 1; i < storyPages.length; i++) {
+        pendingIndices.push(i);
+      }
+      if (pendingIndices.length === 0) return;
+
+      const fetchPage = async (idx) => {
+        if (illustrationSessionRef.current !== sessionId) return;
+
+        let displayUrl = null;
+        let storedUrl = null;
+
+        for (let attempt = 0; attempt < 2; attempt++) {
+          if (illustrationSessionRef.current !== sessionId) return;
+          try {
+            const rawPage = storyPages[idx];
+            const pageText = typeof rawPage === "object" ? rawPage.text : rawPage;
+            const res = await fetch(`${API_BASE}/illustrate`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                text: pageText,
+                theme: activeTheme,
+                seed: seedBase + idx * 1000,
+              }),
+            });
+
+            if (res.ok) {
+              const blob = await res.blob();
+              displayUrl =
+                (typeof URL.createObjectURL === "function" ? URL.createObjectURL(blob) : null) ||
+                (await blobToDataUrl(blob));
+              storedUrl = await compressBlobToDataUrl(blob);
+              break;
+            }
+          } catch (err) {
+            console.warn(`Illustration attempt ${attempt + 1} failed for page ${idx + 1}:`, err);
+            if (attempt === 0) {
+              await new Promise((r) => setTimeout(r, 600));
+            }
+          }
+        }
+
+        // Guaranteed fallback if fetch failed so the page is never left empty
+        if (!displayUrl) {
+          const fallback = createFallbackIllustrationUrl(activeTheme, idx + 1);
+          displayUrl = fallback;
+          storedUrl = fallback;
+        }
+
+        if (illustrationSessionRef.current !== sessionId) return;
+
+        currentDisplayUrls[idx] = displayUrl;
+        currentStoredUrls[idx] = storedUrl;
+
+        // Immediately update UI state as each page's illustration arrives
+        setIllustrations((prev) => {
+          const next = [...prev];
+          next[idx] = displayUrl;
+          return next;
+        });
+
+        // Persist to localStorage immediately
+        if (savedStoryId) {
+          updateStory(savedStoryId, {
+            illustrations: currentStoredUrls,
+            pages: storyPages.map((text, i) =>
+              currentStoredUrls[i]
+                ? {
+                    text: typeof text === "object" ? text.text : text,
+                    illustration: { url: currentStoredUrls[i], alt: `Illustration for page ${i + 1}` },
+                  }
+                : text
+            ),
+          });
+          setHistory(loadHistory());
+        }
+      };
+
+      // Concurrent worker pool: 2 requests in parallel for rapid generation without blocking
+      const CONCURRENCY = 2;
+      let nextQueueIndex = 0;
+
+      const worker = async () => {
+        while (nextQueueIndex < pendingIndices.length) {
+          if (illustrationSessionRef.current !== sessionId) return;
+          const idx = pendingIndices[nextQueueIndex++];
+          await fetchPage(idx);
+        }
+      };
+
+      const workerCount = Math.min(CONCURRENCY, pendingIndices.length);
+      const workers = Array.from({ length: workerCount }, () => worker());
+      await Promise.all(workers);
+    },
+    []
+  );
 
   // Prime audio element during user gesture so browser permits autoplay after async operations
   const primeAudio = useCallback(() => {
@@ -83,6 +196,7 @@ export default function App() {
   const generateStory = useCallback(async () => {
     setError(null);
     const startTime = Date.now();
+    const currentSessionId = ++illustrationSessionRef.current;
     
     const familyMembers = names
       .split(",")
@@ -146,6 +260,12 @@ export default function App() {
         console.warn("First illustration fetch failed (graceful degradation):", illErr);
       }
 
+      if (!firstIllustrationDisplay && storyPages.length > 0) {
+        const fallback = createFallbackIllustrationUrl(activeTheme, 1);
+        firstIllustrationDisplay = fallback;
+        firstIllustrationStored = fallback;
+      }
+
       const initialIllustrations = firstIllustrationDisplay ? [firstIllustrationDisplay] : [];
       const storedIllustrations = firstIllustrationStored ? [firstIllustrationStored] : [];
 
@@ -187,54 +307,16 @@ export default function App() {
         generationTime: genDuration,
       });
 
-      // Fetch subsequent illustrations (page 1+) in background, updating UI & storage progressively
-      (async () => {
-        const currentDisplayUrls = [...initialIllustrations];
-        const currentStoredUrls = [...storedIllustrations];
-
-        for (let idx = 1; idx < storyPages.length; idx++) {
-          try {
-            // Respect API rate limits
-            await new Promise((resolve) => setTimeout(resolve, 2000));
-
-            const res = await fetch(`${API_BASE}/illustrate`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ text: storyPages[idx], theme: activeTheme, seed: idx * 1000 }),
-            });
-            if (res.ok) {
-              const blob = await res.blob();
-              const displayUrl = (typeof URL.createObjectURL === "function" ? URL.createObjectURL(blob) : null) || await blobToDataUrl(blob);
-              const storedUrl = await compressBlobToDataUrl(blob);
-
-              currentDisplayUrls[idx] = displayUrl;
-              currentStoredUrls[idx] = storedUrl;
-
-              // Immediately update UI state as each page's illustration arrives
-              setIllustrations((prev) => {
-                const next = [...prev];
-                next[idx] = displayUrl;
-                return next;
-              });
-
-              // Persist to localStorage immediately
-              if (savedStory?.id) {
-                updateStory(savedStory.id, {
-                  illustrations: currentStoredUrls,
-                  pages: storyPages.map((text, i) => (
-                    currentStoredUrls[i]
-                      ? { text: typeof text === "object" ? text.text : text, illustration: { url: currentStoredUrls[i], alt: `Illustration for page ${i + 1}` } }
-                      : text
-                  )),
-                });
-                setHistory(loadHistory());
-              }
-            }
-          } catch (err) {
-            console.error(`Failed to fetch illustration ${idx}:`, err);
-          }
-        }
-      })();
+      // Fetch subsequent illustrations (page 1+) concurrently with retries & fallbacks
+      fetchSubsequentIllustrations({
+        storyPages,
+        activeTheme,
+        seedBase: 0,
+        initialIllustrations,
+        initialStored: storedIllustrations,
+        savedStoryId: savedStory?.id,
+        sessionId: currentSessionId,
+      });
     } catch (err) {
       console.error(err);
       setError("Couldn't reach the storyteller. Is the backend running?");
@@ -278,6 +360,7 @@ export default function App() {
       setError(null);
       const startTime = Date.now();
       const nextChapter = (chapter || 1) + 1;
+      const currentSessionId = ++illustrationSessionRef.current;
       setActiveChoiceTitle(selectedChoice);
 
       primeAudio();
@@ -333,6 +416,12 @@ export default function App() {
           console.warn("First illustration fetch failed (graceful degradation):", illErr);
         }
 
+        if (!firstIllustrationDisplay && storyPages.length > 0) {
+          const fallback = createFallbackIllustrationUrl(activeTheme, 1);
+          firstIllustrationDisplay = fallback;
+          firstIllustrationStored = fallback;
+        }
+
         const initialIllustrations = firstIllustrationDisplay ? [firstIllustrationDisplay] : [];
         const storedIllustrations = firstIllustrationStored ? [firstIllustrationStored] : [];
 
@@ -373,66 +462,23 @@ export default function App() {
           generationTime: (Date.now() - startTime) / 1000,
         });
 
-        // Fetch subsequent illustrations in background
-        (async () => {
-          const currentDisplayUrls = [...initialIllustrations];
-          const currentStoredUrls = [...storedIllustrations];
-
-          for (let idx = 1; idx < storyPages.length; idx++) {
-            try {
-              await new Promise((resolve) => setTimeout(resolve, 2000));
-              const illRes = await fetch(`${API_BASE}/illustrate`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  text: storyPages[idx],
-                  theme: activeTheme,
-                  seed: nextChapter * 500 + idx * 1000,
-                }),
-              });
-              if (illRes.ok) {
-                const blob = await illRes.blob();
-                const displayUrl =
-                  (typeof URL.createObjectURL === "function" ? URL.createObjectURL(blob) : null) ||
-                  (await blobToDataUrl(blob));
-                const storedUrl = await compressBlobToDataUrl(blob);
-
-                currentDisplayUrls[idx] = displayUrl;
-                currentStoredUrls[idx] = storedUrl;
-
-                setIllustrations((prev) => {
-                  const next = [...prev];
-                  next[idx] = displayUrl;
-                  return next;
-                });
-
-                if (savedStory?.id) {
-                  updateStory(savedStory.id, {
-                    illustrations: currentStoredUrls,
-                    pages: storyPages.map((text, i) =>
-                      currentStoredUrls[i]
-                        ? {
-                            text: typeof text === "object" ? text.text : text,
-                            illustration: { url: currentStoredUrls[i], alt: `Illustration for page ${i + 1}` },
-                          }
-                        : text
-                    ),
-                  });
-                  setHistory(loadHistory());
-                }
-              }
-            } catch (err) {
-              console.error(`Failed to fetch illustration ${idx}:`, err);
-            }
-          }
-        })();
+        // Fetch subsequent illustrations (page 1+) concurrently with retries & fallbacks
+        fetchSubsequentIllustrations({
+          storyPages,
+          activeTheme,
+          seedBase: nextChapter * 500,
+          initialIllustrations,
+          initialStored: storedIllustrations,
+          savedStoryId: savedStory?.id,
+          sessionId: currentSessionId,
+        });
       } catch (err) {
         console.error(err);
         setError("Couldn't weave the next chapter. Returning to story setup.");
         setScreen("setup");
       }
     },
-    [chapter, themeMode, customTheme, themeIndex, names, pages, storyLength, primeAudio, voice]
+    [chapter, themeMode, customTheme, themeIndex, names, pages, storyLength, primeAudio, voice, fetchSubsequentIllustrations]
   );
 
   const handleBackFromHistory = useCallback(() => {

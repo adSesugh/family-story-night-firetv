@@ -104,10 +104,22 @@ export default function StoryScreen({
                       <AmbientParticles count={14} />
                     </>
                   ) : (
-                    <div className="flex h-full w-full items-center justify-center">
-                      <span className="font-serif text-lg italic text-starlight/40">
-                        Illustration loading&hellip;
-                      </span>
+                    <div className="relative flex h-full w-full flex-col items-center justify-center bg-gradient-to-b from-dusk/60 via-night/80 to-dusk/90 overflow-hidden">
+                      <div className="absolute inset-0 bg-radial-at-c from-lamp/10 via-transparent to-transparent animate-pulse" />
+                      <AmbientParticles count={10} />
+                      <div className="relative z-10 flex flex-col items-center gap-3 px-6 text-center">
+                        <div className="flex items-center justify-center w-12 h-12 rounded-full bg-lamp/15 border border-lamp/30 shadow-lg shadow-lamp/10 text-lamp animate-bounce duration-1000">
+                          <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+                          </svg>
+                        </div>
+                        <span className="font-serif text-lg md:text-xl italic text-starlight/80 tracking-wide">
+                          Bringing scene to life&hellip;
+                        </span>
+                        <span className="text-xs uppercase font-sans tracking-widest text-lamp/70 font-semibold">
+                          Painting Page {idx + 1}
+                        </span>
+                      </div>
                     </div>
                   )}
                   {/* Soft inner edge so the image reads as part of the page, not a pasted photo */}

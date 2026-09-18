@@ -390,8 +390,31 @@ This plan incrementally extends Family Story Night across 7 features — Story H
 
 ---
 
+### Feature 12: Illustration Performance, Concurrent Generation & Resilience
+
+- [x] 26. Accelerate illustration generation and guarantee page coverage
+  - [x] 26.1 Multi-model Bedrock payload formatting in `server/index.js`
+    - Support Amazon Nova Canvas (`amazon.nova-canvas-v1:0`) in `us-east-1` (7–9s latency) with `TEXT_IMAGE` payload
+    - Support Stability SD 3.5 Large / SDXL dynamically based on `BEDROCK_IMAGE_MODEL_ID`
+    - Prompt safety fallback: automatic retry with sanitized theme prompt on Bedrock `ValidationException`
+    - Server-side SVG watercolor fallback stream on service outage so `/illustrate` never leaves clients without an image
+  - [x] 26.2 Concurrent worker pool in `client/src/App.jsx`
+    - Replace slow sequential loop and 2-second sleep with concurrent worker pool (concurrency = 2)
+    - Session tracking with `illustrationSessionRef` to cancel stale in-flight generation on new story/chapter
+    - Client-side automatic retries (up to 2 attempts) with backoff on network errors
+  - [x] 26.3 Guaranteed illustration fallback in `client/src/utils/imageUtils.js`
+    - Add `createFallbackIllustrationUrl()` generating themed bedtime watercolor stardust SVG Data URLs
+    - Ensures no page is ever left on an infinite loading spinner
+  - [x] 26.4 Living canvas shimmer placeholder in `client/src/components/StoryScreen.jsx`
+    - Replace bare text with ambient pulsing canvas shimmer, golden particles, and "Bringing scene to life... Painting Page N"
+  - [x]* 26.5 Unit tests for illustration resilience
+    - Added `client/src/__tests__/illustrations-resilience.test.jsx` covering SVG generation and living canvas placeholder
+
+---
+
 ## Notes
 
-- All 11 features are fully wired, backward compatible, and verified.
-- Full test suite: 18 client test suites (104 tests) and 2 server test suites (23 tests) passing with 0 errors.
+- All 12 features are fully wired, backward compatible, and verified.
+- Full test suite: 19 client test suites (108 tests) and 2 server test suites (23 tests) passing with 0 errors.
 - Build compiles production bundle with zero warnings/errors.
+
