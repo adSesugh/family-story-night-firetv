@@ -231,136 +231,139 @@ export default function StoryScreen({
                 </div>
               )}
 
-              {/* Next Stored Chapter Action (Fast Path) */}
-              {nextStoredChapterNumber ? (
-                <div className="w-full max-w-xl my-2 sm:my-4">
-                  <button
-                    id="next-stored-chapter-btn"
-                    data-testid="next-stored-chapter-btn"
-                    onClick={onContinueNextStoredChapter}
-                    onMouseEnter={() => onFocusIndexChange && onFocusIndexChange(0)}
-                    className={`group relative flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 w-full p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl transition-all duration-200 shadow-xl cursor-pointer ${pageIndex >= pages.length && focusIndex === 0
-                        ? "border-2 border-lamp bg-panel ring-4 ring-lamp/80 shadow-lamp/30 -translate-y-1 scale-[1.02]"
-                        : "border border-lamp/40 bg-panel/90 hover:border-lamp hover:bg-panel"
-                      }`}
-                  >
-                    <div className="flex flex-col text-left">
-                      <span className="font-sans text-[10px] sm:text-xs font-bold uppercase tracking-wider text-lamp mb-0.5">
-                        Saved Chapter Available
-                      </span>
-                      <span className="font-serif text-lg sm:text-xl md:text-2xl font-bold text-parchment group-hover:text-white">
-                        Continue to Chapter {nextStoredChapterNumber}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1.5 font-sans text-xs sm:text-sm md:text-base font-semibold text-lamp group-hover:translate-x-1.5 transition-transform">
-                      <span>Read Chapter {nextStoredChapterNumber}</span>
-                      <span className="text-lg sm:text-xl">&rarr;</span>
-                    </div>
-                  </button>
-                </div>
-              ) : (
-                /* Next Adventure Frontier Choices (AI Generation) */
-                choices && choices.length > 0 && (
-                  <div className="w-full max-w-3xl my-2">
-                    <div className="flex items-center justify-center gap-1.5 sm:gap-2 mb-2 sm:mb-3 text-starlight/80 font-sans text-xs md:text-sm uppercase tracking-wider font-semibold">
-                      <Compass className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-lamp" />
-                      <span>What should happen in the next adventure?</span>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3.5">
-                      {choices.map((choice, cIdx) => {
-                        const isFocused = pageIndex >= pages.length && focusIndex === cIdx;
-                        return (
-                          <button
-                            key={cIdx}
-                            id={`choice-btn-${cIdx}`}
-                            data-testid={`choice-btn-${cIdx}`}
-                            onClick={() => onSelectChoice && onSelectChoice(choice)}
-                            onMouseEnter={() => onFocusIndexChange && onFocusIndexChange(cIdx)}
-                            className={`group relative flex flex-col items-start text-left p-3 sm:p-4 md:p-5 rounded-lg sm:rounded-xl transition-all duration-200 shadow-lg cursor-pointer ${isFocused
-                              ? "border-2 border-lamp bg-panel ring-4 ring-lamp/80 shadow-lamp/30 -translate-y-1 scale-[1.01]"
-                              : "border border-starlight/25 bg-panel/90 hover:border-lamp hover:bg-panel"
-                              }`}
-                          >
-                            <div className="flex items-center justify-between w-full mb-1">
-                              <span className="font-sans text-[10px] sm:text-xs font-bold uppercase tracking-wider text-lamp">
-                                Choice {cIdx + 1}
-                              </span>
-                              <span className="font-sans text-[10px] sm:text-xs text-starlight/60 group-hover:text-lamp transition-colors">
-                                Continue &rarr;
-                              </span>
-                            </div>
-                            <p className="font-serif text-sm sm:text-base md:text-lg text-parchment group-hover:text-white leading-snug">
-                              {choice}
-                            </p>
-                          </button>
-                        );
-                      })}
-                    </div>
-
-                    {/* Tell the TV what to do next (Voice Twist Dictation) */}
-                    {twistSpeech.isSupported && (
-                      <div className="mt-3 flex flex-col items-center gap-2">
-                        <button
-                          type="button"
-                          data-testid="voice-twist-btn"
-                          onClick={twistSpeech.toggleListening}
-                          className={`flex items-center gap-2 px-4 py-2 rounded-full font-sans text-xs font-semibold tracking-wide transition-all cursor-pointer ${twistSpeech.isListening
-                              ? "bg-lamp text-night animate-pulse shadow-lg shadow-lamp/50 scale-105"
-                              : "bg-panel/90 text-lamp border border-lamp/40 hover:bg-lamp/20"
-                            }`}
-                        >
-                          {twistSpeech.isListening ? (
-                            <>
-                              <MicOff size={15} />
-                              <span>Listening... speak your twist</span>
-                            </>
-                          ) : (
-                            <>
-                              <Mic size={15} />
-                              <span>Tell the TV what to do next (Voice)</span>
-                            </>
-                          )}
-                        </button>
-                        {customTwist && (
-                          <div className="flex items-center gap-2 px-4 py-1.5 rounded-lg bg-panel/80 border border-lamp/30 animate-fade-in">
-                            <span className="font-serif italic text-sm text-parchment">&ldquo;{customTwist}&rdquo;</span>
-                            <button
-                              type="button"
-                              data-testid="weave-twist-btn"
-                              onClick={() => onSelectChoice && onSelectChoice(customTwist)}
-                              className="px-2.5 py-1 rounded bg-lamp text-night font-sans font-bold text-xs hover:bg-lamp/90 cursor-pointer shadow"
-                            >
-                              Weave Twist &rarr;
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )
-              )}
-
-              {/* Return to Home option */}
-              <div className="mt-2 sm:mt-3 mb-1.5 sm:mb-0 pt-2 border-t border-starlight/10 w-full flex justify-center shrink-0">
-                {(() => {
-                  const targetHomeIndex = nextStoredChapterNumber ? 1 : (choices ? choices.length : 0);
-                  const isHomeFocused = pageIndex >= pages.length && focusIndex === targetHomeIndex;
-                  return (
+              {/* Actions Section: Choices / Next Chapter + Voice Twist + Return Home */}
+              <div className="w-full max-w-3xl flex flex-col items-center">
+                {nextStoredChapterNumber ? (
+                  /* Next Stored Chapter Action (Fast Path) */
+                  <div className="w-full max-w-xl my-2 sm:my-4">
                     <button
-                      id="return-home-btn"
-                      data-testid="return-home-btn"
-                      onClick={onReturnHome}
-                      onMouseEnter={() => onFocusIndexChange && onFocusIndexChange(targetHomeIndex)}
-                      className={`flex items-center gap-2 rounded-full px-5 py-2 text-xs md:text-sm font-sans transition-all cursor-pointer ${isHomeFocused
-                        ? "border border-lamp bg-starlight/20 text-parchment ring-2 ring-lamp/80 scale-[1.03]"
-                        : "border border-transparent text-starlight/70 hover:text-parchment hover:bg-starlight/10 hover:border-starlight/20"
+                      id="next-stored-chapter-btn"
+                      data-testid="next-stored-chapter-btn"
+                      onClick={onContinueNextStoredChapter}
+                      onMouseEnter={() => onFocusIndexChange && onFocusIndexChange(0)}
+                      className={`group relative flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 w-full p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl transition-all duration-200 shadow-xl cursor-pointer ${pageIndex >= pages.length && focusIndex === 0
+                          ? "border-2 border-lamp bg-panel ring-4 ring-lamp/80 shadow-lamp/30 -translate-y-1 scale-[1.02]"
+                          : "border border-lamp/40 bg-panel/90 hover:border-lamp hover:bg-panel"
                         }`}
                     >
-                      <Home className="w-4 h-4" />
-                      <span>Return to Home &amp; Start a New Story</span>
+                      <div className="flex flex-col text-left">
+                        <span className="font-sans text-[10px] sm:text-xs font-bold uppercase tracking-wider text-lamp mb-0.5">
+                          Saved Chapter Available
+                        </span>
+                        <span className="font-serif text-lg sm:text-xl md:text-2xl font-bold text-parchment group-hover:text-white">
+                          Continue to Chapter {nextStoredChapterNumber}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5 font-sans text-xs sm:text-sm md:text-base font-semibold text-lamp group-hover:translate-x-1.5 transition-transform">
+                        <span>Read Chapter {nextStoredChapterNumber}</span>
+                        <span className="text-lg sm:text-xl">&rarr;</span>
+                      </div>
                     </button>
-                  );
-                })()}
+                  </div>
+                ) : (
+                  /* Next Adventure Frontier Choices (AI Generation) */
+                  choices && choices.length > 0 && (
+                    <div className="w-full my-1 sm:my-2">
+                      <div className="flex items-center justify-center gap-1.5 sm:gap-2 mb-2 sm:mb-3 text-starlight/80 font-sans text-xs md:text-sm uppercase tracking-wider font-semibold">
+                        <Compass className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-lamp" />
+                        <span>What should happen in the next adventure?</span>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3.5">
+                        {choices.map((choice, cIdx) => {
+                          const isFocused = pageIndex >= pages.length && focusIndex === cIdx;
+                          return (
+                            <button
+                              key={cIdx}
+                              id={`choice-btn-${cIdx}`}
+                              data-testid={`choice-btn-${cIdx}`}
+                              onClick={() => onSelectChoice && onSelectChoice(choice)}
+                              onMouseEnter={() => onFocusIndexChange && onFocusIndexChange(cIdx)}
+                              className={`group relative flex flex-col items-start text-left p-3 sm:p-4 md:p-5 rounded-lg sm:rounded-xl transition-all duration-200 shadow-lg cursor-pointer ${isFocused
+                                ? "border-2 border-lamp bg-panel ring-4 ring-lamp/80 shadow-lamp/30 -translate-y-1 scale-[1.01]"
+                                : "border border-starlight/25 bg-panel/90 hover:border-lamp hover:bg-panel"
+                                }`}
+                            >
+                              <div className="flex items-center justify-between w-full mb-1">
+                                <span className="font-sans text-[10px] sm:text-xs font-bold uppercase tracking-wider text-lamp">
+                                  Choice {cIdx + 1}
+                                </span>
+                                <span className="font-sans text-[10px] sm:text-xs text-starlight/60 group-hover:text-lamp transition-colors">
+                                  Continue &rarr;
+                                </span>
+                              </div>
+                              <p className="font-serif text-sm sm:text-base md:text-lg text-parchment group-hover:text-white leading-snug">
+                                {choice}
+                              </p>
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* Tell the TV what to do next (Voice Twist Dictation) */}
+                      {twistSpeech.isSupported && (
+                        <div className="mt-2.5 sm:mt-3 flex flex-col items-center gap-2">
+                          <button
+                            type="button"
+                            data-testid="voice-twist-btn"
+                            onClick={twistSpeech.toggleListening}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-full font-sans text-xs font-semibold tracking-wide transition-all cursor-pointer ${twistSpeech.isListening
+                                ? "bg-lamp text-night animate-pulse shadow-lg shadow-lamp/50 scale-105"
+                                : "bg-panel/90 text-lamp border border-lamp/40 hover:bg-lamp/20"
+                              }`}
+                          >
+                            {twistSpeech.isListening ? (
+                              <>
+                                <MicOff size={15} />
+                                <span>Listening... speak your twist</span>
+                              </>
+                            ) : (
+                              <>
+                                <Mic size={15} />
+                                <span>Tell the TV what to do next (Voice)</span>
+                              </>
+                            )}
+                          </button>
+                          {customTwist && (
+                            <div className="flex items-center gap-2 px-4 py-1.5 rounded-lg bg-panel/80 border border-lamp/30 animate-fade-in">
+                              <span className="font-serif italic text-sm text-parchment">&ldquo;{customTwist}&rdquo;</span>
+                              <button
+                                type="button"
+                                data-testid="weave-twist-btn"
+                                onClick={() => onSelectChoice && onSelectChoice(customTwist)}
+                                className="px-2.5 py-1 rounded bg-lamp text-night font-sans font-bold text-xs hover:bg-lamp/90 cursor-pointer shadow"
+                              >
+                                Weave Twist &rarr;
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )
+                )}
+
+                {/* Return to Home option */}
+                <div className="mt-3 pt-2.5 border-t border-starlight/10 w-full flex justify-center shrink-0">
+                  {(() => {
+                    const targetHomeIndex = nextStoredChapterNumber ? 1 : (choices ? choices.length : 0);
+                    const isHomeFocused = pageIndex >= pages.length && focusIndex === targetHomeIndex;
+                    return (
+                      <button
+                        id="return-home-btn"
+                        data-testid="return-home-btn"
+                        onClick={onReturnHome}
+                        onMouseEnter={() => onFocusIndexChange && onFocusIndexChange(targetHomeIndex)}
+                        className={`flex items-center gap-2 rounded-full px-5 py-2 text-xs md:text-sm font-sans transition-all cursor-pointer ${isHomeFocused
+                          ? "border border-lamp bg-starlight/20 text-parchment ring-2 ring-lamp/80 scale-[1.03]"
+                          : "border border-transparent text-starlight/70 hover:text-parchment hover:bg-starlight/10 hover:border-starlight/20"
+                          }`}
+                      >
+                        <Home className="w-4 h-4" />
+                        <span>Return to Home &amp; Start a New Story</span>
+                      </button>
+                    );
+                  })()}
+                </div>
               </div>
             </div>
           </SwiperSlide>
