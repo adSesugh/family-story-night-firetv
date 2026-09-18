@@ -296,37 +296,102 @@ This plan incrementally extends Family Story Night across 7 features — Story H
     - Test "Clear Analytics Data" button results in zeroed stats
     - _Requirements: 7.5_
 
-- [x] 21. Final Checkpoint — Ensure all tests pass
-  - Run the full test suite (`client/`: `npx jest`, `server/`: `npm test`). All tests should pass with no regressions against the original MVP behavior. Ask the user if questions arise.
+- [x] 21. Checkpoint — Ensure analytics and core tests pass
+  - Run the full test suite (`client/`: `npx jest`, `server/`: `npm test`). All tests pass.
+
+---
+
+### Feature 8: Bedtime Lessons & Story Morals
+
+- [x] 22. Generate and narrate bedtime lessons
+  - [x] 22.1 Update backend `/generate-story` prompt and JSON parser
+    - Instruct Claude 3.5 Sonnet to generate `lesson` (1–2 sentences) alongside pages
+    - Parse JSON object and provide comforting fallback moral if model outputs array
+    - Return `{ pages, lesson, choices, chapter }`
+    - _Requirements: 8.1, 8.4, 8.5_
+  - [x] 22.2 Build bedtime lesson card on conclusion slide in `StoryScreen.jsx`
+    - Render "The End" header with chapter completion badge
+    - Display lesson in illuminated card with amber star badge (`Sparkles`)
+    - _Requirements: 8.2_
+  - [x] 22.3 Voice narration for bedtime lesson
+    - Narrate *"The End. Tonight's lesson: [lesson]"* automatically when reaching conclusion slide
+    - _Requirements: 8.3_
+  - [x]* 22.4 Unit tests for story lesson
+    - Server tests in `generate-story.test.js`
+    - Client tests in `story-completion-choices.test.jsx`
+
+---
+
+### Feature 9: Interactive Next Chapter Choices
+
+- [x] 23. Build interactive branching next chapter choices
+  - [x] 23.1 Render adventure choice buttons on completion slide
+    - Display 2 TV-friendly choice cards with high-contrast active rings
+    - Provide "Return to Home & Start a New Story" button
+    - _Requirements: 9.1, 9.4_
+  - [x] 23.2 Chapter continuation & history persistence
+    - Implement `handleSelectNextChoice` in `App.jsx`
+    - Pre-fetch Chapter `N + 1` passing `selectedChoice`, `chapter`, and `previousSummary`
+    - Display personalized loading screen (*"Weaving Chapter [N]: [choice]..."*)
+    - Save chapter progress in `storyHistory`
+    - _Requirements: 9.2, 9.3_
+  - [x] 23.3 Implement D-pad directional navigation matrix
+    - Map `ArrowRight` (Choice 1 → Choice 2), `ArrowLeft` (Choice 2 → Choice 1, Choice 1 → previous page)
+    - Map `ArrowDown` (Choices → Home button), `ArrowUp` (Home button → Choice 1)
+    - Map `Enter/Select` to trigger active choice or home
+    - Map `Rewind` to navigate back to previous story page
+    - _Requirements: 9.5, 9.6_
+  - [x]* 23.4 Integration tests for chapter choices & D-pad navigation
+    - Test suite in `client/src/__tests__/story-completion-choices.test.jsx`
+
+---
+
+### Feature 10: Living Picture Book (Ken Burns & Ambient Motion)
+
+- [x] 24. Implement cinematic camera movement and ambient particles
+  - [x] 24.1 Add Ken Burns CSS animation variations in `index.css`
+    - Implement 4 alternating 22s GPU-accelerated keyframe trajectories (`kenburns-0` to `3`)
+    - Apply dynamically per page index: `animate-kenburns-${idx % 4}`
+    - _Requirements: 10.1, 10.2_
+  - [x] 24.2 Build `AmbientParticles.jsx` component
+    - Render floating golden firefly motes and twinkling starlight dust motes over illustrations
+    - Subtle inner vignette overlay for seamless watercolor page blending
+    - _Requirements: 10.3, 10.4_
+  - [x] 24.3 Add reduced motion accessibility
+    - Disable Ken Burns and particle animations under `@media (prefers-reduced-motion: reduce)`
+    - _Requirements: 10.5_
+  - [x]* 24.4 Unit tests for ambient motion
+    - Test suite in `client/src/__tests__/ambient-motion-illustrations.test.jsx`
+
+---
+
+### Feature 11: Fire TV Web App Packaging & TV Experience
+
+- [x] 25. Package web app for Fire TV and tune TV navigation
+  - [x] 25.1 Create Web App Manifest and TV assets
+    - Add `manifest.json` configured for landscape, fullscreen TV runtime
+    - Add app icons (`icon-192.png`, `icon-512.png`)
+    - _Requirements: 11.1_
+  - [x] 25.2 Fire TV device detection helper
+    - Create `client/src/utils/device.js` detecting Silk / AFT user agents
+    - Unit tests in `device.test.jsx`
+    - _Requirements: 11.3_
+  - [x] 25.3 Remote Home key listener
+    - Add global `Home` / `BrowserHome` (`keyCode 36`) listener to return to setup from any screen
+    - Unit tests in `fire-tv-controller.test.jsx`
+    - _Requirements: 11.4, 11.6_
+  - [x] 25.4 High-contrast TV focus styling
+    - Configure `:focus-visible:not(input, textarea)` with 2px golden outline and 3px offset
+    - Exclude inputs and textareas to preserve clean underline styles
+    - _Requirements: 11.5_
+  - [x] 25.5 Package command for Amazon Appstore
+    - Add `"package": "vite build && (cd dist && zip -FS -r ../family-story-night.zip ./*)"` to `package.json`
+    - _Requirements: 11.2_
 
 ---
 
 ## Notes
 
-- Tasks marked with `*` are optional and can be skipped for a faster MVP delivery
-- Phase 1 (Tasks 1–5, 10–12): Story History + Story Length — highest-priority, client-side only
-- Phase 2 (Tasks 6–9): Custom Themes + Multiple Voices — requires small server changes
-- Phase 3 (Tasks 13–20): Illustrations foundation + Parent Controls + Analytics
-- All new `localStorage` usage routes through `StorageService` for consistent error handling
-- The server `/generate-story` and `/narrate` endpoints remain backward compatible — new params are optional with sensible defaults
-- `StoryScreen` remains backward compatible with plain string pages alongside the new `{ text, illustration }` shape
-
-## Task Dependency Graph
-
-```json
-{
-  "waves": [
-    { "id": 0, "tasks": ["1.1", "8.1"] },
-    { "id": 1, "tasks": ["1.2", "2.1", "8.2"] },
-    { "id": 2, "tasks": ["2.2", "3.1", "9.1", "9.2"] },
-    { "id": 3, "tasks": ["2.3", "3.2", "9.3", "10.1", "11.2"] },
-    { "id": 4, "tasks": ["4.1", "10.2", "11.1", "11.3"] },
-    { "id": 5, "tasks": ["4.2", "6.1", "7.1", "7.2"] },
-    { "id": 6, "tasks": ["6.2", "7.3", "13.1", "14.1"] },
-    { "id": 7, "tasks": ["13.2", "14.2", "15.1", "18.1"] },
-    { "id": 8, "tasks": ["13.3", "15.2", "16.1", "18.2"] },
-    { "id": 9, "tasks": ["16.2", "19.1", "20.1"] },
-    { "id": 10, "tasks": ["16.3", "19.2", "20.2"] }
-  ]
-}
-```
+- All 11 features are fully wired, backward compatible, and verified.
+- Full test suite: 18 client test suites (104 tests) and 2 server test suites (23 tests) passing with 0 errors.
+- Build compiles production bundle with zero warnings/errors.

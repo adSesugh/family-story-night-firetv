@@ -347,37 +347,109 @@ Favorite Voice: Joanna (8x)
 ### With Enhancements
 
 - Consider adding database if cloud analytics needed
-- Cache popular themes/stories for performance
-- User sessions (if cloud analytics enabled)
-- API versioning for new parameters
-
-### Example: Extended /generate-story
+### Extended /generate-story API
 
 ```javascript
 POST /generate-story
 {
-  familyMembers: [],
-  theme: "",
-  storyLength: 6,           // NEW
-  isCustomTheme: false,      // NEW
-  voiceId: "Joanna",         // NEW (passed to Polly later)
-  analyticsId: "uuid"        // NEW (for opt-in cloud tracking)
+  familyMembers: ["Maya", "Dad"],
+  theme: "a cozy mountain cabin",
+  storyLength: 6,
+  isCustomTheme: false,
+  selectedChoice: "Explore the secret attic", // Chapter continuation
+  chapter: 2,                                // Current chapter counter
+  previousSummary: "Maya and Dad found a key" // Prior storyline context
+}
+
+// Response
+{
+  pages: ["Page 1 text...", ...],
+  lesson: "Curiosity lights up even the quietest rooms.",
+  choices: [
+    "Open the wooden chest under the window",
+    "Peer through the brass telescope at the stars"
+  ],
+  chapter: 2
 }
 ```
 
+## Feature 8: Bedtime Lessons & Story Morals - Design
+
+### Data Structure & Prompt Engineering
+Bedrock prompt instructs Claude 3.5 Sonnet to output a JSON object containing `pages`, `lesson`, and `choices`.
+
+```javascript
+// Story Object Extension
+{
+  id: "uuid",
+  chapter: 1,
+  lesson: "True courage means helping others even when you are small.",
+  choices: [...],
+  pages: [...]
+}
+```
+
+### Narration Flow
+When `pageIndex >= pages.length` (conclusion slide):
+Audio effect triggers `/narrate` with text:
+`"The End. Tonight's lesson: [lesson]"` using the user's selected neural voice.
+
+## Feature 9: Interactive Next Chapter Choices - Design
+
+### State Machine & Continuity Flow
+- `conclusionFocusIndex`: `0` (Choice 1), `1` (Choice 2), `2` (Return Home).
+- Selecting a choice:
+  1. Sets screen to `"loading"`.
+  2. Increments `chapter` to `N + 1`.
+  3. Pre-fetches Chapter `N + 1` from `/generate-story` with `selectedChoice` and `previousSummary`.
+  4. Immediately fetches initial illustration, saves to history, and starts Chapter `N + 1`.
+
+### D-pad Directional Matrix
+- `ArrowRight`: Focuses next choice (0 → 1).
+- `ArrowLeft`: Focuses previous choice (1 → 0). Pressing Left from Choice 0 navigates back to the last story page.
+- `ArrowDown`: Moves down to Return Home button.
+- `ArrowUp`: Moves up from Return Home to Choice 1.
+- `Enter / Select`: Activates focused item.
+
+## Feature 10: Living Picture Book (Ken Burns & Ambient Motion) - Design
+
+### CSS Camera Variations
+Alternating 22s GPU-accelerated keyframes:
+- `animate-kenburns-0`: Scale 1.0 → 1.12 with subtle left drift.
+- `animate-kenburns-1`: Scale 1.1 → 1.18 diagonal pan top-left to bottom-right.
+- `animate-kenburns-2`: Scale 1.16 → 1.04 zoom-out reveal.
+- `animate-kenburns-3`: Scale 1.06 → 1.16 reverse diagonal pan.
+
+### Ambient Particles Overlay
+`<AmbientParticles count={14} />`:
+- 14 deterministic motes: warm amber fireflies with CSS box-shadow glows and starlight motes.
+- Drift vertically and horizontally via `@keyframes float-mote`.
+- Disables automatically when `prefers-reduced-motion: reduce`.
+
+## Feature 11: Fire TV Web App Packaging & TV Experience - Design
+
+### Manifest & Packaging
+- `client/public/manifest.json`: Defines `standalone`/`fullscreen`, `orientation: "landscape"`, and theme colors `#151030` and `#e8a33d`.
+- App icons: `icon-192.png`, `icon-512.png`.
+- Packaging command: `npm run package` runs `vite build && (cd dist && zip -FS -r ../family-story-night.zip ./*)`.
+
+### TV Remote Navigation
+- Remote media keys: Play/Pause (179), Rewind (227), Fast Forward (228), Back (4, 8, 27).
+- Global Home key: BrowserHome/Home (36) returns to Setup from any screen.
+- Focus rings: High-contrast `:focus-visible:not(input, textarea)` prevents intrusive borders on form inputs while ensuring remote button clarity.
+
 ## Testing Strategy
 
-Each feature should include:
-
-1. **Unit Tests**: Component logic, localStorage, validation
-2. **Integration Tests**: Full flow from SetupScreen → Story generation → History
-3. **E2E Tests**: User journeys (generate story → save to history → view history)
-4. **Performance Tests**: localStorage limits, rendering with large history
+Each feature is thoroughly tested across:
+1. **Unit Tests**: Component logic, localStorage, voice resolution, token scaling, device detection.
+2. **Integration Tests**: SetupScreen → Story Generation → Lesson & Choices → Chapter 2 generation.
+3. **Hardware / Remote Tests**: Full D-pad simulation (37, 38, 39, 40, 13, 36, 179, 227, 228).
+4. **Performance Tests**: Offline compressed storage, Swiper memory cleanup.
 
 ## Success Criteria
 
-- ✓ All new features are backward compatible
-- ✓ App works with or without new features enabled
-- ✓ localStorage never crashes app (graceful fallback)
-- ✓ No increase in initial load time
-- ✓ Parent controls can be bypassed only with knowledge of PIN
+- ✓ All features maintain 100% backward compatibility
+- ✓ All 18 client test suites (104 tests) pass with zero errors
+- ✓ All server tests (23 tests) pass
+- ✓ Production bundle builds cleanly and packages into submission zip
+- ✓ Full hands-free and D-pad remote support on Amazon Fire TV

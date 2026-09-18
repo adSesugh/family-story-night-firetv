@@ -181,41 +181,73 @@ This document outlines planned features to extend Family Story Night beyond the 
 - Parent opt-in required for cloud analytics
 - No personally identifiable information beyond family member names
 
-## Feature Priority & Sequencing
+## Feature 8: Bedtime Lessons & Story Morals
 
-1. **High Priority** (Implement First)
-   - Story History (enhances UX, builds engagement)
-   - Story Length Options (customization without backend complexity)
+### Requirements
 
-2. **Medium Priority** (Implement Next)
-   - Custom Themes (popular feature request)
-   - Multiple Voices (accessibility and personalization)
+8.1 WHEN a story is generated THEN the system SHALL generate a 1–2 sentence bedtime moral or lesson learned from the story.
 
-3. **Lower Priority** (Nice to Have)
-   - Illustrations (resource-intensive, may require external APIs)
-   - Parent Controls (niche use case, added complexity)
-   - Analytics (useful for insights, not critical for core experience)
+8.2 WHEN the user reaches the conclusion slide ("The End") THEN the system SHALL display the bedtime lesson in a highlighted takeaway card with star badge styling.
 
-## Implementation Timeline
+8.3 WHEN voice narration is active and the conclusion slide is displayed THEN the system SHALL automatically narrate: *"The End. Tonight's lesson: [lesson text]"*.
 
-- **Phase 1 (Month 1)**: Story History + Story Length Options
-- **Phase 2 (Month 2)**: Custom Themes + Multiple Voices
-- **Phase 3 (Month 3)**: Illustrations (if resources allow)
-- **Phase 4 (Month 4+)**: Parent Controls + Analytics
+8.4 WHEN a story is saved to history THEN the system SHALL store the lesson alongside pages and metadata.
 
-## Technical Considerations
+8.5 WHEN a previous story is reloaded from history THEN the system SHALL restore and display the original lesson.
 
-- **State Management**: May need Redux or Zustand as app grows
-- **API Versioning**: Support new parameters without breaking existing clients
-- **Backend Scalability**: Story generation at scale; consider caching common themes
-- **Database**: If cloud analytics implemented, need user/session tracking
+## Feature 9: Interactive Next Chapter Choices
 
-## Success Metrics
+### Requirements
 
-- Story History: Users view history 2+ times after first generation
-- Custom Themes: 30% of users create at least one custom theme
-- Multiple Voices: 50% of users explore voice options
-- Story Length: 40% of users select non-default lengths
-- Illustrations: 80%+ user satisfaction if implemented
-- Parent Controls: 20% adoption among parent users
-- Analytics: Identifies most engaging themes and story lengths
+9.1 WHEN a story reaches the conclusion slide THEN the system SHALL present 2 distinct, child-friendly adventure choices for what should happen next.
+
+9.2 WHEN a user selects a choice THEN the system SHALL generate the next chapter (incrementing chapter count) carrying forward family members, active theme, and storyline context from the selected choice.
+
+9.3 WHEN generating the next chapter THEN the system SHALL display a personalized loading screen showing *"Weaving Chapter [N]: [choice text]..."*.
+
+9.4 WHEN the user is on the conclusion slide THEN the system SHALL provide a "Return to Home & Start a New Story" option to reset back to setup.
+
+9.5 WHEN the user uses a Fire TV remote or keyboard THEN the system SHALL support D-pad directional navigation (`ArrowLeft`, `ArrowRight`, `ArrowDown`, `ArrowUp`) between choice buttons and the Return Home button, with `Enter`/Select triggering the active action.
+
+9.6 WHEN the user presses `ArrowLeft` from the first choice or presses `MediaRewind` THEN the system SHALL navigate back to the previous story page.
+
+## Feature 10: Living Picture Book (Ken Burns & Ambient Motion)
+
+### Requirements
+
+10.1 WHEN an illustration is displayed on a story page THEN the system SHALL apply a subtle, slow cinematic Ken Burns pan/zoom camera animation (18–22s duration) matching voice narration pacing.
+
+10.2 WHEN moving across story pages THEN the system SHALL alternate across 4 distinct camera trajectories (`kenburns-0` to `kenburns-3`: zoom-in, diagonal drift, zoom-out, reverse diagonal).
+
+10.3 WHEN an illustration is rendered THEN the system SHALL display a subtle ambient particle overlay (`AmbientParticles`) featuring floating golden firefly motes and twinkling starlight dust motes.
+
+10.4 WHEN an illustration is loading or encounters an error THEN the system SHALL gracefully degrade to an illustration placeholder without crashing or blocking narration.
+
+10.5 WHEN the user or device has `prefers-reduced-motion: reduce` enabled THEN the system SHALL disable Ken Burns camera movement and particle float animations.
+
+## Feature 11: Fire TV Web App Packaging & TV Experience
+
+### Requirements
+
+11.1 WHEN deployed on Fire TV or viewed in fullscreen THEN the system SHALL provide a Web App Manifest (`manifest.json`) specifying landscape orientation, fullscreen display, and theme colors.
+
+11.2 WHEN packaged for the Amazon Appstore THEN the project SHALL provide an automated build script (`npm run package`) that produces a deployment-ready zip bundle (`family-story-night.zip`).
+
+11.3 WHEN running in the browser THEN the system SHALL detect Fire TV user agents (`device.js`) based on Amazon Silk / AFT device identifiers.
+
+11.4 WHEN the user presses the `Home` or `BrowserHome` key (`keyCode 36`) on the remote THEN the system SHALL immediately navigate back to the setup screen from any state.
+
+11.5 WHEN interactive controls are navigated with the remote THEN the system SHALL display a high-contrast focus ring (`:focus-visible`), while excluding text input and textarea fields to preserve their underline styles.
+
+11.6 WHEN remote media keys are pressed THEN the system SHALL support Play/Pause (`keyCode 179`), Fast Forward (`keyCode 228`), Rewind (`keyCode 227`), and Back (`keyCode 4`, `8`, `27`).
+
+## Implementation Status & Timeline
+
+All 11 features are fully implemented, unit tested, and integrated:
+- **Phase 1**: Story History + Story Length Options (Completed)
+- **Phase 2**: Custom Themes + Multiple Voices (Completed)
+- **Phase 3**: Illustrations with Progressive Background Fetching (Completed)
+- **Phase 4**: Parent Controls + Privacy-First Analytics (Completed)
+- **Phase 5**: Bedtime Lessons + Interactive Next Chapter Choices (Completed)
+- **Phase 6**: Living Picture Book (Ken Burns Motion + Ambient Particles) (Completed)
+- **Phase 7**: Fire TV Web App Packaging & TV Navigation (Completed)

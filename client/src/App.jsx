@@ -42,6 +42,11 @@ export default function App() {
     return settings?.settings?.defaultVoice || "Joanna";
   });
   const [storyLength, setStoryLength] = useState(6);
+  const [lesson, setLesson] = useState("");
+  const [choices, setChoices] = useState([]);
+  const [chapter, setChapter] = useState(1);
+  const [activeChoiceTitle, setActiveChoiceTitle] = useState("");
+  const [conclusionFocusIndex, setConclusionFocusIndex] = useState(0);
 
   const audioRef = useRef(null);
   const storyStartTimeRef = useRef(null);
@@ -100,6 +105,8 @@ export default function App() {
     primeAudio();
 
     setScreen("loading");
+    setChapter(1);
+    setActiveChoiceTitle("");
     try {
       const activeTheme = themeMode === "custom" ? customTheme : THEMES[themeIndex];
       const res = await fetch(`${API_BASE}/generate-story`, {
@@ -110,11 +117,15 @@ export default function App() {
           theme: activeTheme,
           isCustomTheme: themeMode === "custom",
           storyLength,
+          chapter: 1,
         }),
       });
       if (!res.ok) throw new Error("Story generation failed");
       const data = await res.json();
       const storyPages = data.pages || [];
+      const storyLesson = data.lesson || "";
+      const storyChoices = data.choices || [];
+      const storyChapter = data.chapter || 1;
       const genDuration = (Date.now() - startTime) / 1000;
 
       // 1. Fetch first illustration immediately so it displays as soon as the story screen opens
@@ -139,6 +150,9 @@ export default function App() {
       const storedIllustrations = firstIllustrationStored ? [firstIllustrationStored] : [];
 
       setPages(storyPages);
+      setLesson(storyLesson);
+      setChoices(storyChoices);
+      setChapter(storyChapter);
       setPageIndex(0);
       setTurnKey((k) => k + 1);
       setIllustrations(initialIllustrations);
@@ -157,6 +171,9 @@ export default function App() {
         )),
         illustrations: storedIllustrations,
         firstPage: typeof firstPage === "string" ? firstPage : firstPage.text,
+        lesson: storyLesson,
+        choices: storyChoices,
+        chapter: storyChapter,
       });
       // Reload history
       setHistory(loadHistory());
@@ -228,6 +245,9 @@ export default function App() {
   const turnTo = useCallback((next) => {
     setPageIndex(next);
     setTurnKey((k) => k + 1);
+    if (next >= pages.length) {
+      setConclusionFocusIndex(0);
+    }
     trackEvent("page_viewed", { pageIndex: next, totalPages: pages.length });
   }, [pages.length]);
 
@@ -238,6 +258,9 @@ export default function App() {
   const handleSelectStory = useCallback((story) => {
     primeAudio();
     setPages(story.pages);
+    setLesson(story.lesson || "");
+    setChoices(story.choices || []);
+    setChapter(story.chapter || 1);
     const restoredIllustrations =
       story.illustrations ||
       (Array.isArray(story.pages)
@@ -249,6 +272,168 @@ export default function App() {
     storyStartTimeRef.current = Date.now();
     setScreen("story");
   }, [primeAudio]);
+
+  const handleSelectNextChoice = useCallback(
+    async (selectedChoice) => {
+      setError(null);
+      const startTime = Date.now();
+      const nextChapter = (chapter || 1) + 1;
+      setActiveChoiceTitle(selectedChoice);
+
+      primeAudio();
+      setScreen("loading");
+
+      try {
+        const activeTheme = themeMode === "custom" ? customTheme : THEMES[themeIndex];
+        const familyMembers = names
+          .split(",")
+          .map((n) => n.trim())
+          .filter(Boolean);
+
+        const lastPage = pages[pages.length - 1];
+        const lastPageText = typeof lastPage === "object" ? lastPage?.text : lastPage;
+        const previousSummary = lastPageText ? lastPageText.slice(0, 150) : "";
+
+        const res = await fetch(`${API_BASE}/generate-story`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            familyMembers,
+            theme: activeTheme,
+            isCustomTheme: themeMode === "custom",
+            storyLength,
+            selectedChoice,
+            chapter: nextChapter,
+            previousSummary,
+          }),
+        });
+
+        if (!res.ok) throw new Error("Next chapter generation failed");
+        const data = await res.json();
+        const storyPages = data.pages || [];
+        const storyLesson = data.lesson || "";
+        const storyChoices = data.choices || [];
+
+        let firstIllustrationDisplay = null;
+        let firstIllustrationStored = null;
+        try {
+          const illRes = await fetch(`${API_BASE}/illustrate`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ text: storyPages[0], theme: activeTheme, seed: nextChapter * 500 }),
+          });
+          if (illRes.ok) {
+            const blob = await illRes.blob();
+            firstIllustrationDisplay =
+              (typeof URL.createObjectURL === "function" ? URL.createObjectURL(blob) : null) ||
+              (await blobToDataUrl(blob));
+            firstIllustrationStored = await compressBlobToDataUrl(blob);
+          }
+        } catch (illErr) {
+          console.warn("First illustration fetch failed (graceful degradation):", illErr);
+        }
+
+        const initialIllustrations = firstIllustrationDisplay ? [firstIllustrationDisplay] : [];
+        const storedIllustrations = firstIllustrationStored ? [firstIllustrationStored] : [];
+
+        setPages(storyPages);
+        setLesson(storyLesson);
+        setChoices(storyChoices);
+        setChapter(nextChapter);
+        setPageIndex(0);
+        setTurnKey((k) => k + 1);
+        setIllustrations(initialIllustrations);
+        storyStartTimeRef.current = Date.now();
+        setScreen("story");
+
+        const firstPage = storyPages[0];
+        const savedStory = saveStory({
+          familyMembers,
+          theme: activeTheme,
+          pages: storyPages.map((text, idx) =>
+            idx === 0 && storedIllustrations[0]
+              ? { text, illustration: { url: storedIllustrations[0], alt: `Illustration for page 1` } }
+              : text
+          ),
+          illustrations: storedIllustrations,
+          firstPage: typeof firstPage === "string" ? firstPage : firstPage?.text,
+          lesson: storyLesson,
+          choices: storyChoices,
+          chapter: nextChapter,
+        });
+        setHistory(loadHistory());
+
+        trackEvent("story_generated", {
+          familyMembers,
+          theme: activeTheme,
+          storyLength,
+          voice,
+          chapter: nextChapter,
+          selectedChoice,
+          generationTime: (Date.now() - startTime) / 1000,
+        });
+
+        // Fetch subsequent illustrations in background
+        (async () => {
+          const currentDisplayUrls = [...initialIllustrations];
+          const currentStoredUrls = [...storedIllustrations];
+
+          for (let idx = 1; idx < storyPages.length; idx++) {
+            try {
+              await new Promise((resolve) => setTimeout(resolve, 2000));
+              const illRes = await fetch(`${API_BASE}/illustrate`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  text: storyPages[idx],
+                  theme: activeTheme,
+                  seed: nextChapter * 500 + idx * 1000,
+                }),
+              });
+              if (illRes.ok) {
+                const blob = await illRes.blob();
+                const displayUrl =
+                  (typeof URL.createObjectURL === "function" ? URL.createObjectURL(blob) : null) ||
+                  (await blobToDataUrl(blob));
+                const storedUrl = await compressBlobToDataUrl(blob);
+
+                currentDisplayUrls[idx] = displayUrl;
+                currentStoredUrls[idx] = storedUrl;
+
+                setIllustrations((prev) => {
+                  const next = [...prev];
+                  next[idx] = displayUrl;
+                  return next;
+                });
+
+                if (savedStory?.id) {
+                  updateStory(savedStory.id, {
+                    illustrations: currentStoredUrls,
+                    pages: storyPages.map((text, i) =>
+                      currentStoredUrls[i]
+                        ? {
+                            text: typeof text === "object" ? text.text : text,
+                            illustration: { url: currentStoredUrls[i], alt: `Illustration for page ${i + 1}` },
+                          }
+                        : text
+                    ),
+                  });
+                  setHistory(loadHistory());
+                }
+              }
+            } catch (err) {
+              console.error(`Failed to fetch illustration ${idx}:`, err);
+            }
+          }
+        })();
+      } catch (err) {
+        console.error(err);
+        setError("Couldn't weave the next chapter. Returning to story setup.");
+        setScreen("setup");
+      }
+    },
+    [chapter, themeMode, customTheme, themeIndex, names, pages, storyLength, primeAudio, voice]
+  );
 
   const handleBackFromHistory = useCallback(() => {
     setScreen("setup");
@@ -303,21 +488,27 @@ export default function App() {
     }
   }, [screen]);
 
-  // Narrate current page whenever screen="story", page changes, or voice changes
+  // Narrate current page (or lesson on conclusion slide) whenever screen="story", page changes, or voice changes
   useEffect(() => {
-    if (screen !== "story" || !pages || !pages[pageIndex]) return;
+    if (screen !== "story" || !pages) return;
+    let textToNarrate = "";
+
+    if (pageIndex < pages.length && pages[pageIndex]) {
+      const currentPage = pages[pageIndex];
+      textToNarrate = typeof currentPage === "object" ? currentPage.text : currentPage;
+    } else if (pageIndex >= pages.length && lesson) {
+      textToNarrate = `The End. Tonight's lesson: ${lesson}`;
+    }
+
+    if (!textToNarrate) return;
     let cancelled = false;
 
     (async () => {
       try {
-        const currentPage = pages[pageIndex];
-        const text = typeof currentPage === "object" ? currentPage.text : currentPage;
-        if (!text) return;
-
         const res = await fetch(`${API_BASE}/narrate`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text, voiceId: voice }),
+          body: JSON.stringify({ text: textToNarrate, voiceId: voice }),
         });
         if (!res.ok || cancelled) return;
         const blob = await res.blob();
@@ -350,7 +541,7 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [screen, pageIndex, pages, voice]);
+  }, [screen, pageIndex, pages, voice, lesson]);
 
   useEffect(() => {
     if (!audioRef.current) return;
@@ -361,18 +552,24 @@ export default function App() {
     const handleEnded = () => {
       if (screen !== "story") return;
 
-      if (pageIndex >= pages.length - 1) {
+      if (pageIndex < pages.length - 1) {
+        turnTimer = setTimeout(() => {
+          turnTo(pageIndex + 1);
+        }, 1200);
+      } else if (pageIndex === pages.length - 1) {
         // Track story completed analytics event (Req 7.3)
         trackEvent("story_completed", {
           totalPages: pages.length,
           timeSpent: storyStartTimeRef.current ? Math.round((Date.now() - storyStartTimeRef.current) / 1000) : 0,
         });
-        return;
-      }
 
-      turnTimer = setTimeout(() => {
-        turnTo(pageIndex + 1);
-      }, 1200);
+        // Automatically advance to conclusion slide if lesson or choices exist
+        if (lesson || (choices && choices.length > 0)) {
+          turnTimer = setTimeout(() => {
+            turnTo(pages.length);
+          }, 1200);
+        }
+      }
     };
 
     audio.addEventListener("ended", handleEnded);
@@ -380,7 +577,7 @@ export default function App() {
       audio.removeEventListener("ended", handleEnded);
       if (turnTimer) clearTimeout(turnTimer);
     };
-  }, [screen, pageIndex, pages.length, turnTo]);
+  }, [screen, pageIndex, pages.length, turnTo, lesson, choices]);
 
   // Fire TV remote & Gamepad controller event mapping
   // Supports: D-pad navigation (37, 38, 39, 40), Select/A/X/Y (13), Play/Pause (179), Rewind (227), Fast Forward (228), Back/Gamepad B (4, 8, 27)
@@ -451,9 +648,79 @@ export default function App() {
           handleToggleNarration();
           return;
         }
+
+        const onConclusion = pageIndex >= pages.length;
+        if (onConclusion) {
+          const numChoices = choices ? choices.length : 0;
+          const homeIndex = numChoices;
+
+          if (isBack) {
+            e.preventDefault();
+            setScreen("setup");
+            return;
+          }
+
+          if (isRewind) {
+            e.preventDefault();
+            if (pages.length > 0) turnTo(pages.length - 1);
+            return;
+          }
+
+          if (isRight) {
+            e.preventDefault();
+            setConclusionFocusIndex((prev) => {
+              if (prev === 0 && numChoices > 1) return 1;
+              return prev;
+            });
+            return;
+          }
+
+          if (isLeft) {
+            e.preventDefault();
+            if (conclusionFocusIndex === 1) {
+              setConclusionFocusIndex(0);
+            } else if (conclusionFocusIndex === 0) {
+              if (pages.length > 0) turnTo(pages.length - 1);
+            } else if (conclusionFocusIndex === homeIndex) {
+              setConclusionFocusIndex(0);
+            }
+            return;
+          }
+
+          if (isDown) {
+            e.preventDefault();
+            setConclusionFocusIndex((prev) => {
+              if (prev < homeIndex) return homeIndex;
+              return 0;
+            });
+            return;
+          }
+
+          if (isUp) {
+            e.preventDefault();
+            setConclusionFocusIndex((prev) => {
+              if (prev === homeIndex) return 0;
+              return prev;
+            });
+            return;
+          }
+
+          if (isSelect) {
+            e.preventDefault();
+            if (conclusionFocusIndex < numChoices && choices[conclusionFocusIndex]) {
+              handleSelectNextChoice(choices[conclusionFocusIndex]);
+            } else {
+              setScreen("setup");
+            }
+            return;
+          }
+          return;
+        }
+
+        const maxPage = lesson || (choices && choices.length > 0) ? pages.length : pages.length - 1;
         if (isRight || isFastForward || isSelect) {
           e.preventDefault();
-          if (pageIndex < pages.length - 1) turnTo(pageIndex + 1);
+          if (pageIndex < maxPage) turnTo(pageIndex + 1);
         } else if (isLeft || isRewind) {
           e.preventDefault();
           if (pageIndex > 0) turnTo(pageIndex - 1);
@@ -470,7 +737,18 @@ export default function App() {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [screen, pageIndex, pages.length, generateStory, turnTo, handleToggleNarration]);
+  }, [
+    screen,
+    pageIndex,
+    pages.length,
+    generateStory,
+    turnTo,
+    handleToggleNarration,
+    lesson,
+    choices,
+    conclusionFocusIndex,
+    handleSelectNextChoice,
+  ]);
 
   return (
     <div className="relative flex h-screen w-screen items-center justify-center overflow-hidden bg-dusk text-parchment">
@@ -505,7 +783,7 @@ export default function App() {
           onOpenSettings={handleOpenSettings}
         />
       )}
-      {screen === "loading" && <LoadingScreen />}
+      {screen === "loading" && <LoadingScreen chapter={chapter} choice={activeChoiceTitle} />}
       {screen === "history" && (
         <HistoryScreen onSelect={handleSelectStory} onBack={handleBackFromHistory} />
       )}
@@ -533,22 +811,27 @@ export default function App() {
           onTurn={turnTo}
           isNarrating={isNarrating}
           onToggleNarration={handleToggleNarration}
+          lesson={lesson}
+          choices={choices}
+          chapter={chapter}
+          onSelectChoice={handleSelectNextChoice}
+          onReturnHome={() => setScreen("setup")}
+          focusIndex={conclusionFocusIndex}
+          onFocusIndexChange={setConclusionFocusIndex}
         />
       )}
     </div>
   );
 }
 
-
-
-function LoadingScreen() {
+function LoadingScreen({ chapter = 1, choice = "" }) {
   return (
-    <div className="relative z-10 text-center">
-      <p className="font-serif text-4xl italic text-parchment/90">
-        Turning up the lamp&hellip;
+    <div className="relative z-10 text-center px-6">
+      <p className="font-serif text-3xl md:text-4xl italic text-parchment/90">
+        {chapter > 1 ? `Weaving Chapter ${chapter}\u2026` : "Turning up the lamp\u2026"}
       </p>
-      <p className="mt-4 font-sans text-lg text-starlight/70">
-        Painting your illustrations&hellip;
+      <p className="mt-4 font-sans text-base md:text-lg text-starlight/70 max-w-xl mx-auto">
+        {choice ? `"${choice}"` : "Painting your illustrations\u2026"}
       </p>
     </div>
   );

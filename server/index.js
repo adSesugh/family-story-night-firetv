@@ -68,12 +68,20 @@ async function generateIllustration(pageText, theme, seed, retries = 3) {
 
 const ALLOWED_VOICES = ["Joanna", "Matthew", "Emma", "Ivy"];
 const ALLOWED_STORY_LENGTHS = [4, 6, 8];
-const MAX_TOKENS_BY_LENGTH = { 4: 600, 6: 800, 8: 1050 };
+const MAX_TOKENS_BY_LENGTH = { 4: 750, 6: 950, 8: 1200 };
 
 /**
  * POST /generate-story
- * body: { familyMembers: string[], theme?: string, isCustomTheme?: boolean, storyLength?: number }
- * returns: { pages: Array<string> }
+ * body: {
+ *   familyMembers: string[],
+ *   theme?: string,
+ *   isCustomTheme?: boolean,
+ *   storyLength?: number,
+ *   selectedChoice?: string,
+ *   chapter?: number,
+ *   previousSummary?: string
+ * }
+ * returns: { pages: Array<string>, lesson: string, choices: Array<string>, chapter: number }
  */
 app.post("/generate-story", async (req, res) => {
   try {
@@ -82,6 +90,9 @@ app.post("/generate-story", async (req, res) => {
       theme = "a cozy adventure",
       isCustomTheme = false,
       storyLength = 6,
+      selectedChoice,
+      chapter = 1,
+      previousSummary,
     } = req.body;
 
     if (familyMembers.length === 0) {
@@ -97,16 +108,30 @@ app.post("/generate-story", async (req, res) => {
       return res.status(400).json({ error: "storyLength must be 4, 6, or 8" });
     }
 
-    console.log(`[generate-story] isCustomTheme: ${isCustomTheme}, length: ${parsedLength}, theme: "${theme}"`);
+    console.log(
+      `[generate-story] isCustomTheme: ${isCustomTheme}, length: ${parsedLength}, theme: "${theme}", chapter: ${chapter}` +
+        (selectedChoice ? `, choice: "${selectedChoice}"` : "")
+    );
 
-    const maxTokens = MAX_TOKENS_BY_LENGTH[parsedLength] || 800;
+    const maxTokens = MAX_TOKENS_BY_LENGTH[parsedLength] || 950;
+
+    let contextClause = "";
+    if (selectedChoice) {
+      contextClause = ` This is Chapter ${chapter} of their journey. In the previous chapter${previousSummary ? ` (${previousSummary})` : ""}, they decided: "${selectedChoice}". Continue the story seamlessly from this choice while staying comforting and bedtime-friendly.`;
+    }
 
     const prompt = `Write a short, warm bedtime story (${parsedLength} pages, 2-3 sentences per page) \
-starring these family members: ${familyMembers.join(", ")}. Theme: ${theme}. \
+starring these family members: ${familyMembers.join(", ")}. Theme: ${theme}.${contextClause} \
 Make it gentle, imaginative, and suitable for all ages. \
 Important rules: do not use dashes, hyphenated words, or em dashes anywhere in the story text. \
 Write every sentence in plain language with standard punctuation only. \
-Return ONLY a JSON array of ${parsedLength} strings, one per page, with no extra text or markdown.`;
+Include a heartwarming bedtime lesson or moral learned from the story (1-2 sentences), and 2 distinct, intriguing choices for what could happen in the next chapter. \
+Return ONLY a valid JSON object with this exact structure:
+{
+  "pages": ["page 1 text", ...],
+  "lesson": "Bedtime moral or takeaway",
+  "choices": ["Choice 1 for next chapter", "Choice 2 for next chapter"]
+}`;
 
     const command = new InvokeModelCommand({
       modelId: MODEL_ID,
@@ -121,17 +146,41 @@ Return ONLY a JSON array of ${parsedLength} strings, one per page, with no extra
 
     const response = await bedrock.send(command);
     const responseBody = JSON.parse(new TextDecoder().decode(response.body));
-    const text = responseBody.content?.[0]?.text?.trim() || "[]";
+    const text = responseBody.content?.[0]?.text?.trim() || "{}";
 
-    let pages;
+    let pages = [];
+    let lesson = "Every journey is special when shared with the ones we love.";
+    let choices = [
+      "Follow the soft glowing light deeper into the enchanted path",
+      "Build a warm, cozy campsite under the starry sky",
+    ];
+
     try {
-      pages = JSON.parse(text.replace(/```json|```/g, "").trim());
+      const parsed = JSON.parse(text.replace(/```json|```/g, "").trim());
+      if (Array.isArray(parsed)) {
+        pages = parsed;
+      } else if (parsed && typeof parsed === "object") {
+        if (Array.isArray(parsed.pages)) {
+          pages = parsed.pages;
+        }
+        if (typeof parsed.lesson === "string" && parsed.lesson.trim()) {
+          lesson = parsed.lesson.trim();
+        }
+        if (Array.isArray(parsed.choices) && parsed.choices.length > 0) {
+          choices = parsed.choices.map((c) => String(c).trim()).filter(Boolean);
+        }
+      }
     } catch {
       // Fallback: split into rough chunks if the model didn't return clean JSON
       pages = text.split("\n").filter(Boolean).slice(0, parsedLength);
     }
 
-    res.json({ pages });
+    res.json({
+      pages,
+      lesson,
+      choices,
+      chapter: Number(chapter) || 1,
+    });
   } catch (err) {
     console.error("generate-story error:", err);
     res.status(500).json({ error: "Failed to generate story" });

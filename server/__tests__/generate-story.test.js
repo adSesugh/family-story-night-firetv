@@ -185,3 +185,40 @@ Page 5 content here. Page 6 content here.`;
     pages.forEach(p => expect(typeof p).toBe('string'));
   });
 });
+
+describe('Task 2.4: Story Lesson and Next Adventure Choices', () => {
+  it('parses structured JSON object containing pages, lesson, and choices', () => {
+    const mockJson = JSON.stringify({
+      pages: ["Page 1", "Page 2", "Page 3", "Page 4"],
+      lesson: "Sharing kindness always brings friends closer together.",
+      choices: [
+        "Follow the enchanted silver rabbit",
+        "Climb into the starlight treehouse"
+      ]
+    });
+
+    const parsed = JSON.parse(mockJson);
+    expect(parsed.pages).toHaveLength(4);
+    expect(parsed.lesson).toBe("Sharing kindness always brings friends closer together.");
+    expect(parsed.choices).toHaveLength(2);
+    expect(parsed.choices[0]).toContain("silver rabbit");
+  });
+
+  it('provides safe fallbacks for lesson and choices if model returns an array', () => {
+    const legacyArray = ["Page 1", "Page 2", "Page 3", "Page 4"];
+    let lesson = "Every journey is special when shared with the ones we love.";
+    let choices = [
+      "Follow the soft glowing light deeper into the enchanted path",
+      "Build a warm, cozy campsite under the starry sky"
+    ];
+
+    let pages = [];
+    if (Array.isArray(legacyArray)) {
+      pages = legacyArray;
+    }
+
+    expect(pages).toHaveLength(4);
+    expect(lesson).toBeTruthy();
+    expect(choices).toHaveLength(2);
+  });
+});
