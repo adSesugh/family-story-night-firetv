@@ -195,7 +195,8 @@ async function generateIllustration(pageText, theme, seed, retries = 3, scenePro
 const ALLOWED_VOICES = ["Joanna", "Matthew", "Emma", "Ivy"];
 const ALLOWED_STORY_LENGTHS = [4, 6, 8];
 // Ensure ample headroom so that pages, scene prompts, lesson, and choices never truncate mid-JSON
-const MAX_TOKENS_BY_LENGTH = { 4: 2048, 6: 3072, 8: 4096 };
+// const MAX_TOKENS_BY_LENGTH = { 4: 2048, 6: 3072, 8: 4096 };
+const MAX_TOKENS_BY_LENGTH = { 4: 750, 6: 950, 8: 1200 };
 
 /**
  * POST /generate-story
@@ -245,7 +246,7 @@ app.post("/generate-story", async (req, res) => {
 
     console.log(
       `[generate-story] category: ${category}, isBible: ${isBibleStory}, isCustomTheme: ${isCustomTheme}, length: ${parsedLength}, theme: "${theme}", chapter: ${chapter}` +
-        (selectedChoice ? `, choice: "${selectedChoice}"` : "")
+      (selectedChoice ? `, choice: "${selectedChoice}"` : "")
     );
 
     const maxTokens = MAX_TOKENS_BY_LENGTH[parsedLength] || 2500;
