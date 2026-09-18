@@ -374,7 +374,7 @@ export default function StoryScreen({
       />
 
       {/* Page indicator */}
-      <div className="pointer-events-none absolute bottom-8 left-1/2 z-20 -translate-x-1/2 font-sans text-sm text-starlight/70">
+      <div className="pointer-events-none absolute bottom-10 sm:bottom-8 left-1/2 z-20 -translate-x-1/2 font-sans text-xs sm:text-sm text-starlight/70">
         {pageIndex >= pages.length
           ? `Chapter ${chapter} • The End`
           : `Page ${pageIndex + 1} of ${pages.length}`}
