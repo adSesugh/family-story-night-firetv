@@ -194,7 +194,8 @@ async function generateIllustration(pageText, theme, seed, retries = 3, scenePro
 
 const ALLOWED_VOICES = ["Joanna", "Matthew", "Emma", "Ivy"];
 const ALLOWED_STORY_LENGTHS = [4, 6, 8];
-const MAX_TOKENS_BY_LENGTH = { 4: 750, 6: 950, 8: 1200 };
+// Ensure ample headroom so that pages, scene prompts, lesson, and choices never truncate mid-JSON
+const MAX_TOKENS_BY_LENGTH = { 4: 2048, 6: 3072, 8: 4096 };
 
 /**
  * POST /generate-story
@@ -208,7 +209,7 @@ const MAX_TOKENS_BY_LENGTH = { 4: 750, 6: 950, 8: 1200 };
  *   previousSummary?: string,
  *   category?: string
  * }
- * returns: { pages: Array<string>, lesson: string, choices: Array<string>, chapter: number }
+ * returns: { pages: Array<string | {text: string, scene: string}>, lesson: string, choices: Array<string>, chapter: number }
  */
 app.post("/generate-story", async (req, res) => {
   try {
@@ -247,7 +248,7 @@ app.post("/generate-story", async (req, res) => {
         (selectedChoice ? `, choice: "${selectedChoice}"` : "")
     );
 
-    const maxTokens = MAX_TOKENS_BY_LENGTH[parsedLength] || 950;
+    const maxTokens = MAX_TOKENS_BY_LENGTH[parsedLength] || 2500;
 
     let contextClause = "";
     if (selectedChoice) {
@@ -269,13 +270,13 @@ Important rules: do not use dashes, hyphenated words, or em dashes anywhere in t
 Write every sentence in plain language with standard punctuation only. \
 For each page, provide: \
 1. "text": The gentle story text for children (2-3 sentences). \
-2. "scene": A vivid, specific visual scene description for the illustrator showing what is happening on THIS EXACT page (describe the characters, concrete actions, props, environment, and warm lighting visible in this moment). \
+2. "scene": A concise 1-2 sentence visual description for the illustrator (characters, specific action, props, environment, and warm bedtime lighting on this exact page; no words or text in image). \
 Include a heartwarming faith-and-character bedtime lesson or moral (1-2 sentences highlighting virtues like courage, kindness, faith, gratitude, or love), and 2 distinct, intriguing choices for what could happen in the next chapter. \
 Return ONLY a valid JSON object with this exact structure:
 {
   "pages": [
-    { "text": "page 1 story text", "scene": "vivid visual description of page 1 scene" },
-    { "text": "page 2 story text", "scene": "vivid visual description of page 2 scene" }
+    { "text": "page 1 story text", "scene": "concise visual description of page 1 scene" },
+    { "text": "page 2 story text", "scene": "concise visual description of page 2 scene" }
   ],
   "lesson": "Tonight's lesson or moral",
   "choices": ["Option 1", "Option 2"]
@@ -288,13 +289,13 @@ Important rules: do not use dashes, hyphenated words, or em dashes anywhere in t
 Write every sentence in plain language with standard punctuation only. \
 For each page, provide: \
 1. "text": The gentle story text for children (2-3 sentences). \
-2. "scene": A vivid, specific visual scene description for the illustrator showing what is happening on THIS EXACT page (describe the characters, concrete actions, props, environment, and warm lighting visible in this moment). \
+2. "scene": A concise 1-2 sentence visual description for the illustrator (characters, specific action, props, environment, and warm bedtime lighting on this exact page; no words or text in image). \
 Include a heartwarming bedtime lesson or moral learned from the story (1-2 sentences), and 2 distinct, intriguing choices for what could happen in the next chapter. \
 Return ONLY a valid JSON object with this exact structure:
 {
   "pages": [
-    { "text": "page 1 story text", "scene": "vivid visual description of page 1 scene" },
-    { "text": "page 2 story text", "scene": "vivid visual description of page 2 scene" }
+    { "text": "page 1 story text", "scene": "concise visual description of page 1 scene" },
+    { "text": "page 2 story text", "scene": "concise visual description of page 2 scene" }
   ],
   "lesson": "Bedtime moral or takeaway",
   "choices": ["Choice 1 for next chapter", "Choice 2 for next chapter"]
@@ -324,7 +325,17 @@ Return ONLY a valid JSON object with this exact structure:
     ];
 
     try {
-      const parsed = JSON.parse(text.replace(/```json|```/g, "").trim());
+      // 1. Strip markdown code fences
+      let jsonStr = text.replace(/```(?:json)?([\s\S]*?)```/g, "$1").trim();
+
+      // 2. Extract JSON substring between first { and last }
+      const firstBrace = jsonStr.indexOf("{");
+      const lastBrace = jsonStr.lastIndexOf("}");
+      if (firstBrace !== -1 && lastBrace > firstBrace) {
+        jsonStr = jsonStr.substring(firstBrace, lastBrace + 1);
+      }
+
+      const parsed = JSON.parse(jsonStr);
       if (Array.isArray(parsed)) {
         pages = parsed;
       } else if (parsed && typeof parsed === "object") {
@@ -338,9 +349,30 @@ Return ONLY a valid JSON object with this exact structure:
           choices = parsed.choices.map((c) => String(c).trim()).filter(Boolean);
         }
       }
-    } catch {
-      // Fallback: split into rough chunks if the model didn't return clean JSON
-      pages = text.split("\n").filter(Boolean).slice(0, parsedLength);
+    } catch (parseErr) {
+      console.warn("[generate-story] JSON parse failed, extracting resiliently...", parseErr.message);
+      // Resilient fallback: extract "text" fields via regex
+      const textMatches = [];
+      const textRegex = /"text"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"/g;
+      let match;
+      while ((match = textRegex.exec(text)) !== null) {
+        try {
+          textMatches.push(JSON.parse(`"${match[1]}"`));
+        } catch {
+          textMatches.push(match[1]);
+        }
+      }
+
+      if (textMatches.length >= 2) {
+        pages = textMatches.slice(0, parsedLength);
+      } else {
+        // Filter out raw JSON syntax tokens like ```json, {, }, "pages": etc.
+        pages = text
+          .split("\n")
+          .map((l) => l.replace(/^[{\[\]},`"'\s]+|[{\[\]},`"'\s]+$/g, "").trim())
+          .filter((l) => l.length > 25 && !/^(pages|lesson|choices|scene|text):/i.test(l))
+          .slice(0, parsedLength);
+      }
     }
 
     res.json({

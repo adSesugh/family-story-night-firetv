@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { BookOpen, ArrowLeft, Trash2, Sparkles, Play, Calendar } from "lucide-react";
 import { loadHistory, deleteStory, clearHistory, isBiblicalStory } from "../utils/storyHistory";
+import ConfirmModal from "./ConfirmModal";
+import Toast from "./Toast";
 
 const PAGE_BATCH_SIZE = 8;
 
@@ -8,6 +10,8 @@ export default function HistoryScreen({ onSelect, onBack }) {
   const [history, setHistory] = useState([]);
   const [filter, setFilter] = useState("all"); // "all" | "adventures" | "bible"
   const [visibleCount, setVisibleCount] = useState(PAGE_BATCH_SIZE);
+  const [confirmModal, setConfirmModal] = useState(null); // { isOpen: boolean, type: "single" | "all", id?: string, title?: string, message?: string, confirmText?: string }
+  const [toastMessage, setToastMessage] = useState(null);
   const scrollContainerRef = useRef(null);
   const sentinelRef = useRef(null);
 
@@ -15,18 +19,42 @@ export default function HistoryScreen({ onSelect, onBack }) {
     setHistory(loadHistory());
   }, []);
 
-  const handleDelete = (id) => {
-    if (window.confirm("Delete this story?")) {
-      deleteStory(id);
-      setHistory(loadHistory());
-    }
+  const requestDeleteStory = (id, storyTitle) => {
+    setConfirmModal({
+      isOpen: true,
+      type: "single",
+      id,
+      title: "Delete Bedtime Story?",
+      message: storyTitle
+        ? `Are you sure you want to remove "${storyTitle}"? This bedtime memory will be removed from your bookshelf.`
+        : "Are you sure you want to remove this story from your bookshelf?",
+      confirmText: "Delete Story",
+    });
   };
 
-  const handleClearAll = () => {
-    if (window.confirm("Delete all stories? This cannot be undone.")) {
+  const requestClearAll = () => {
+    setConfirmModal({
+      isOpen: true,
+      type: "all",
+      title: "Clear Entire Bookshelf?",
+      message: "Are you sure you want to delete all saved stories? This will permanently remove all your saved bedtime adventures.",
+      confirmText: "Clear All",
+    });
+  };
+
+  const handleConfirmAction = () => {
+    if (!confirmModal) return;
+
+    if (confirmModal.type === "single" && confirmModal.id) {
+      deleteStory(confirmModal.id);
+      setHistory(loadHistory());
+      setToastMessage("Bedtime story removed from your bookshelf");
+    } else if (confirmModal.type === "all") {
       clearHistory();
       setHistory([]);
+      setToastMessage("All saved bedtime stories cleared");
     }
+    setConfirmModal(null);
   };
 
   const formatDate = (isoString) => {
@@ -191,7 +219,7 @@ export default function HistoryScreen({ onSelect, onBack }) {
           {history.length > 0 && (
             <button
               type="button"
-              onClick={handleClearAll}
+              onClick={requestClearAll}
               className="flex items-center gap-1.5 rounded-lg border border-red-800/40 bg-red-950/30 px-3.5 py-2 font-sans text-xs font-semibold text-red-300 transition-colors hover:bg-red-900/50 hover:border-red-600"
               aria-label="Clear All History"
             >
@@ -330,7 +358,7 @@ export default function HistoryScreen({ onSelect, onBack }) {
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleDelete(story.id);
+                          requestDeleteStory(story.id, story.theme);
                         }}
                         className="flex h-7 w-7 items-center justify-center rounded-full bg-dusk/80 text-starlight/70 backdrop-blur-md transition-all hover:bg-red-900/80 hover:text-red-200 border border-starlight/20 hover:border-red-500"
                         title="Delete story"
@@ -409,6 +437,29 @@ export default function HistoryScreen({ onSelect, onBack }) {
             </div>
           )}
         </div>
+      )}
+
+      {/* Bedtime Story Confirmation Dialog */}
+      {confirmModal && (
+        <ConfirmModal
+          isOpen={confirmModal.isOpen}
+          title={confirmModal.title}
+          message={confirmModal.message}
+          confirmText={confirmModal.confirmText}
+          cancelText="Keep Story"
+          confirmVariant="danger"
+          onConfirm={handleConfirmAction}
+          onCancel={() => setConfirmModal(null)}
+        />
+      )}
+
+      {/* Bedtime Toast Notification */}
+      {toastMessage && (
+        <Toast
+          message={toastMessage}
+          type="success"
+          onClose={() => setToastMessage(null)}
+        />
       )}
     </div>
   );

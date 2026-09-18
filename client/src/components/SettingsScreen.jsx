@@ -22,6 +22,8 @@ import {
 import { summarize, clearEvents } from "../utils/analytics";
 import { VOICES } from "../constants/voices";
 import VoiceSelector from "./VoiceSelector";
+import ConfirmModal from "./ConfirmModal";
+import Toast from "./Toast";
 
 const MAX_CUSTOM_THEME_LENGTH = 100;
 
@@ -49,6 +51,8 @@ export default function SettingsScreen({
 
   // Analytics summary
   const [stats, setStats] = useState(() => summarize());
+  const [confirmClearAnalytics, setConfirmClearAnalytics] = useState(false);
+  const [toastMessage, setToastMessage] = useState(null);
 
   const hasPin = Boolean(settingsData.pinHash);
   const allowCustomThemes = settingsData.settings?.allowCustomThemes !== false;
@@ -111,10 +115,14 @@ export default function SettingsScreen({
   };
 
   const handleClearAnalytics = () => {
-    if (window.confirm("Clear all recorded story analytics?")) {
-      clearEvents();
-      setStats(summarize());
-    }
+    setConfirmClearAnalytics(true);
+  };
+
+  const executeClearAnalytics = () => {
+    clearEvents();
+    setStats(summarize());
+    setConfirmClearAnalytics(false);
+    setToastMessage("Story analytics data cleared");
   };
 
   return (
@@ -505,6 +513,29 @@ export default function SettingsScreen({
           )}
         </div>
       </div>
+
+      {/* Confirmation Modal */}
+      {confirmClearAnalytics && (
+        <ConfirmModal
+          isOpen={confirmClearAnalytics}
+          title="Clear Analytics Data?"
+          message="Are you sure you want to clear all recorded bedtime story analytics? This will reset all story counts, active reading times, and favorite themes."
+          confirmText="Clear Analytics"
+          cancelText="Keep Data"
+          confirmVariant="danger"
+          onConfirm={executeClearAnalytics}
+          onCancel={() => setConfirmClearAnalytics(false)}
+        />
+      )}
+
+      {/* Toast Notification */}
+      {toastMessage && (
+        <Toast
+          message={toastMessage}
+          type="success"
+          onClose={() => setToastMessage(null)}
+        />
+      )}
     </div>
   );
 }

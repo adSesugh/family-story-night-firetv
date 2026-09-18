@@ -147,7 +147,7 @@ describe("HistoryScreen Full-Screen Grid & Infinite Scroll", () => {
     expect(onSelect).toHaveBeenCalledWith(sampleStories[0]);
   });
 
-  it("clicking delete button on a card deletes that specific story", () => {
+  it("clicking delete button on a card opens confirmation modal and deletes that specific story", () => {
     storyHistory.loadHistory.mockReturnValue([sampleStories[0], sampleStories[1]]);
 
     render(<HistoryScreen onSelect={jest.fn()} onBack={jest.fn()} />);
@@ -155,11 +155,16 @@ describe("HistoryScreen Full-Screen Grid & Infinite Scroll", () => {
     const deleteBtns = screen.getAllByTitle("Delete story");
     fireEvent.click(deleteBtns[0]);
 
-    expect(window.confirm).toHaveBeenCalledWith("Delete this story?");
+    // Better confirmation modal is displayed instead of window.confirm
+    expect(screen.getByText("Delete Bedtime Story?")).toBeInTheDocument();
+    const confirmBtn = screen.getByRole("button", { name: "Delete Story" });
+    fireEvent.click(confirmBtn);
+
     expect(storyHistory.deleteStory).toHaveBeenCalledWith("story-1");
+    expect(screen.getByText("Bedtime story removed from your bookshelf")).toBeInTheDocument();
   });
 
-  it("clicking Clear All calls clearHistory", () => {
+  it("clicking Clear All opens confirmation modal and calls clearHistory", () => {
     storyHistory.loadHistory.mockReturnValue([sampleStories[0]]);
 
     render(<HistoryScreen onSelect={jest.fn()} onBack={jest.fn()} />);
@@ -167,7 +172,12 @@ describe("HistoryScreen Full-Screen Grid & Infinite Scroll", () => {
     const clearBtn = screen.getByRole("button", { name: /Clear All/i });
     fireEvent.click(clearBtn);
 
-    expect(window.confirm).toHaveBeenCalledWith("Delete all stories? This cannot be undone.");
+    // Better confirmation modal is displayed instead of window.confirm
+    expect(screen.getByText("Clear Entire Bookshelf?")).toBeInTheDocument();
+    const confirmBtn = screen.getByRole("button", { name: "Clear All" });
+    fireEvent.click(confirmBtn);
+
     expect(storyHistory.clearHistory).toHaveBeenCalledTimes(1);
+    expect(screen.getByText("All saved bedtime stories cleared")).toBeInTheDocument();
   });
 });

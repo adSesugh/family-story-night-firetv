@@ -114,12 +114,15 @@ describe("SettingsScreen component (Task 15.2 & 20.2)", () => {
     expect(screen.getByText(/Story Analytics/)).toBeInTheDocument();
     expect(screen.getByText("magical forest")).toBeInTheDocument();
 
-    // Mock window.confirm
-    window.confirm = jest.fn(() => true);
     const clearBtn = screen.getByRole("button", { name: "Clear Analytics Data" });
     fireEvent.click(clearBtn);
 
-    expect(window.confirm).toHaveBeenCalled();
+    // ConfirmModal replaces window.confirm
+    expect(screen.getByText("Clear Analytics Data?")).toBeInTheDocument();
+    const modalConfirmBtn = screen.getByRole("button", { name: "Clear Analytics" });
+    fireEvent.click(modalConfirmBtn);
+
+    expect(screen.getByText("Story analytics data cleared")).toBeInTheDocument();
     expect(screen.getAllByText("None").length).toBeGreaterThanOrEqual(1);
   });
 });
