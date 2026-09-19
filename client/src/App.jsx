@@ -31,6 +31,7 @@ export default function App() {
   const [illustrations, setIllustrations] = useState([]);
   const [pendingAudioPlay, setPendingAudioPlay] = useState(null);
   const [turnKey, setTurnKey] = useState(0); // bump to replay the page-turn animation
+  const [networkRetryKey, setNetworkRetryKey] = useState(0); // bump to retry failed network calls
   const [history, setHistory] = useState([]);
 
   // Enhancements: Parent settings, voice, story length, analytics
@@ -892,6 +893,13 @@ export default function App() {
     }
   }, [screen]);
 
+  // Global network restoration listener to retry failed narration automatically
+  useEffect(() => {
+    const handleOnline = () => setNetworkRetryKey((k) => k + 1);
+    window.addEventListener("online", handleOnline);
+    return () => window.removeEventListener("online", handleOnline);
+  }, []);
+
   // Narrate current page (or lesson on conclusion slide) whenever screen="story", page changes, or voice changes
   useEffect(() => {
     if (screen !== "story" || !pages) return;
@@ -988,7 +996,7 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [screen, pageIndex, pages, voice, lesson]);
+  }, [screen, pageIndex, pages, voice, lesson, networkRetryKey]);
 
   // Coordinate playback so audio only plays when the illustration for the current page is ready
   useEffect(() => {
