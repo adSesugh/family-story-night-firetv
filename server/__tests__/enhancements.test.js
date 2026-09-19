@@ -26,8 +26,14 @@ Return ONLY a JSON array of ${parsedLength} strings, one per page, with no extra
   return { status: 200, prompt, maxTokens, parsedLength };
 }
 
-function resolveVoiceId(voiceId) {
-  return ALLOWED_VOICES.includes(voiceId) ? voiceId : "Joanna";
+function resolveVoiceId(voiceId, baseVoice) {
+  if (baseVoice && ALLOWED_VOICES.includes(baseVoice)) return baseVoice;
+  if (ALLOWED_VOICES.includes(voiceId)) return voiceId;
+  if (voiceId && (voiceId.startsWith("custom") || !ALLOWED_VOICES.includes(voiceId))) {
+    const baseMatch = ALLOWED_VOICES.find((v) => voiceId.toLowerCase().includes(v.toLowerCase()));
+    return baseMatch || "Joanna";
+  }
+  return "Joanna";
 }
 
 describe("Feature 2: Custom Themes (Server Task 7.3)", () => {
@@ -65,6 +71,16 @@ describe("Feature 3: Multiple Voices (Server Task 9.3)", () => {
 
   it("selects Ivy when voiceId: 'Ivy' is requested", () => {
     expect(resolveVoiceId("Ivy")).toBe("Ivy");
+  });
+
+  it("resolves custom voice with baseVoice specified", () => {
+    expect(resolveVoiceId("custom_12345", "Matthew")).toBe("Matthew");
+    expect(resolveVoiceId("custom_12345", "Emma")).toBe("Emma");
+  });
+
+  it("resolves custom voice with embedded tone in voiceId", () => {
+    expect(resolveVoiceId("custom_matthew_17267000")).toBe("Matthew");
+    expect(resolveVoiceId("custom_ivy_99999")).toBe("Ivy");
   });
 
   it("falls back to Joanna when an invalid voice id is requested", () => {

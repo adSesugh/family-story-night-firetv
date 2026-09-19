@@ -4,6 +4,10 @@ import { VOICES } from "../constants/voices";
 import { loadCustomVoices, deleteCustomVoice } from "../utils/customVoices";
 import FamilyVoiceStudioModal from "./FamilyVoiceStudioModal";
 
+const API_BASE =
+  (typeof process !== "undefined" && process.env && process.env.VITE_API_BASE) ||
+  "http://localhost:4000";
+
 const VOICE_ICONS = {
   Joanna: Moon,
   Matthew: Compass,
@@ -54,16 +58,84 @@ export default function VoiceSelector({
 
   const allVoices = [...customVoices, ...voices];
 
+  const fallbackPreview = (voiceObj) => {
+    const targetTone = voiceObj.baseVoice || voiceObj.id || "Joanna";
+
+    // Try SpeechSynthesis if supported
+    if (typeof window !== "undefined" && "speechSynthesis" in window && typeof SpeechSynthesisUtterance !== "undefined") {
+      try {
+        const snippet = voiceObj.previewSnippet || "The stars are shining softly tonight. Close your eyes and dream of magic.";
+        const utterance = new SpeechSynthesisUtterance(snippet);
+        utterance.rate = 0.92;
+        utterance.pitch = targetTone === "Matthew" ? 0.8 : targetTone === "Ivy" ? 1.25 : 1.0;
+
+        const systemVoices = window.speechSynthesis.getVoices?.() || [];
+        const matched = systemVoices.find(
+          (v) =>
+            v.name.toLowerCase().includes(targetTone.toLowerCase()) ||
+            (targetTone === "Matthew" && v.name.toLowerCase().includes("male"))
+        );
+        if (matched) utterance.voice = matched;
+
+        utterance.onend = () => setPlayingVoiceId(null);
+        utterance.onerror = () => setPlayingVoiceId(null);
+
+        window.speechSynthesis.speak(utterance);
+        return;
+      } catch (e) {
+        console.warn("SpeechSynthesis error:", e);
+      }
+    }
+
+    // Server Polly fallback for devices without Web Speech API (e.g. Fire TV WebViews)
+    if (typeof fetch === "function") {
+      fetch(`${API_BASE}/narrate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: voiceObj.previewSnippet || "The stars are shining softly tonight. Close your eyes and dream of magic.",
+          voiceId: targetTone,
+          baseVoice: targetTone,
+        }),
+      })
+        .then((r) => (r.ok ? (r.headers.get("content-type")?.includes("application/json") ? r.json() : r.blob()) : null))
+        .then((result) => {
+          if (!result) {
+            setPlayingVoiceId(null);
+            return;
+          }
+          let audioUrl = "";
+          if (typeof result === "object" && result.audio) {
+            audioUrl = result.audio;
+          } else if (result instanceof Blob && typeof URL.createObjectURL === "function") {
+            audioUrl = URL.createObjectURL(result);
+          }
+          if (audioUrl) {
+            const audio = new Audio(audioUrl);
+            customAudioPlayerRef.current = audio;
+            audio.onended = () => setPlayingVoiceId(null);
+            audio.onerror = () => setPlayingVoiceId(null);
+            audio.play().catch(() => setPlayingVoiceId(null));
+          } else {
+            setPlayingVoiceId(null);
+          }
+        })
+        .catch(() => setPlayingVoiceId(null));
+    } else {
+      setPlayingVoiceId(null);
+    }
+  };
+
   const handlePreview = (e, voiceObj) => {
     e.stopPropagation();
 
     // Stop speech synthesis if running
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
-      window.speechSynthesis.cancel();
+      try { window.speechSynthesis.cancel(); } catch (e) {}
     }
     // Stop custom audio if running
     if (customAudioPlayerRef.current) {
-      customAudioPlayerRef.current.pause();
+      try { customAudioPlayerRef.current.pause(); } catch (e) {}
       customAudioPlayerRef.current = null;
     }
 
@@ -76,36 +148,26 @@ export default function VoiceSelector({
 
     // If custom voice has a recorded audio sample, play that!
     if (voiceObj.isCustom && voiceObj.audioDataUrl) {
-      const audio = new Audio(voiceObj.audioDataUrl);
-      customAudioPlayerRef.current = audio;
-      audio.onended = () => setPlayingVoiceId(null);
-      audio.onerror = () => setPlayingVoiceId(null);
-      audio.play().catch(() => setPlayingVoiceId(null));
-      return;
+      try {
+        const audio = new Audio(voiceObj.audioDataUrl);
+        customAudioPlayerRef.current = audio;
+        audio.onended = () => setPlayingVoiceId(null);
+        audio.onerror = () => {
+          fallbackPreview(voiceObj);
+        };
+        const playPromise = audio.play();
+        if (playPromise && typeof playPromise.catch === "function") {
+          playPromise.catch(() => {
+            fallbackPreview(voiceObj);
+          });
+        }
+        return;
+      } catch (err) {
+        console.warn("Custom audio playback failed, falling back:", err);
+      }
     }
 
-    // Fallback to SpeechSynthesis
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) {
-      setPlayingVoiceId(null);
-      return;
-    }
-
-    const utterance = new SpeechSynthesisUtterance(voiceObj.previewSnippet);
-    utterance.rate = 0.92;
-    utterance.pitch = voiceObj.id === "Matthew" ? 0.8 : voiceObj.id === "Ivy" ? 1.25 : 1.0;
-
-    const systemVoices = window.speechSynthesis.getVoices?.() || [];
-    const matched = systemVoices.find(
-      (v) =>
-        v.name.toLowerCase().includes(voiceObj.id.toLowerCase()) ||
-        (voiceObj.id === "Matthew" && v.name.toLowerCase().includes("male"))
-    );
-    if (matched) utterance.voice = matched;
-
-    utterance.onend = () => setPlayingVoiceId(null);
-    utterance.onerror = () => setPlayingVoiceId(null);
-
-    window.speechSynthesis.speak(utterance);
+    fallbackPreview(voiceObj);
   };
 
   const handleSelect = (voiceId) => {

@@ -27,6 +27,7 @@ export default function FamilyVoiceStudioModal({ isOpen, onClose, onVoiceCreated
 
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
+  const audioBlobRef = useRef(null);
   const timerIntervalRef = useRef(null);
   const audioPlayerRef = useRef(null);
 
@@ -58,6 +59,7 @@ export default function FamilyVoiceStudioModal({ isOpen, onClose, onVoiceCreated
     setErrorMessage(null);
     setAudioUrl(null);
     setAudioBlobBase64("");
+    audioBlobRef.current = null;
     audioChunksRef.current = [];
 
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -67,7 +69,19 @@ export default function FamilyVoiceStudioModal({ isOpen, onClose, onVoiceCreated
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
+      
+      let mimeType = "";
+      if (typeof MediaRecorder !== "undefined" && typeof MediaRecorder.isTypeSupported === "function") {
+        if (MediaRecorder.isTypeSupported("audio/webm;codecs=opus")) {
+          mimeType = "audio/webm;codecs=opus";
+        } else if (MediaRecorder.isTypeSupported("audio/webm")) {
+          mimeType = "audio/webm";
+        } else if (MediaRecorder.isTypeSupported("audio/mp4")) {
+          mimeType = "audio/mp4";
+        }
+      }
+
+      const mediaRecorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
 
       mediaRecorder.ondataavailable = (event) => {
@@ -77,16 +91,20 @@ export default function FamilyVoiceStudioModal({ isOpen, onClose, onVoiceCreated
       };
 
       mediaRecorder.onstop = () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+        const effectiveType = mediaRecorder.mimeType || mimeType || "audio/webm";
+        const audioBlob = new Blob(audioChunksRef.current, { type: effectiveType });
+        audioBlobRef.current = audioBlob;
         const localUrl = URL.createObjectURL(audioBlob);
         setAudioUrl(localUrl);
 
         // Convert to base64 for persistent storage
-        const reader = new FileReader();
-        reader.readAsDataURL(audioBlob);
-        reader.onloadend = () => {
-          setAudioBlobBase64(reader.result);
-        };
+        if (typeof FileReader !== "undefined") {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            setAudioBlobBase64(reader.result);
+          };
+          reader.readAsDataURL(audioBlob);
+        }
 
         // Stop all tracks to release mic
         stream.getTracks().forEach((track) => track.stop());
@@ -126,26 +144,56 @@ export default function FamilyVoiceStudioModal({ isOpen, onClose, onVoiceCreated
   const togglePlayback = () => {
     if (!audioUrl) return;
     if (isPlaying && audioPlayerRef.current) {
-      audioPlayerRef.current.pause();
+      try { audioPlayerRef.current.pause(); } catch (e) {}
       audioPlayerRef.current.currentTime = 0;
       setIsPlaying(false);
     } else if (audioPlayerRef.current) {
-      audioPlayerRef.current.play();
-      setIsPlaying(true);
+      try {
+        const playPromise = audioPlayerRef.current.play();
+        if (playPromise && typeof playPromise.then === "function") {
+          playPromise
+            .then(() => setIsPlaying(true))
+            .catch((err) => {
+              console.warn("Audio preview playback rejected:", err);
+              setIsPlaying(false);
+            });
+        } else {
+          setIsPlaying(true);
+        }
+      } catch (err) {
+        console.warn("Playback error:", err);
+        setIsPlaying(false);
+      }
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    let finalAudio = audioBlobBase64;
+    if (!finalAudio && audioBlobRef.current && typeof FileReader !== "undefined") {
+      try {
+        finalAudio = await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result || "");
+          reader.onerror = () => resolve("");
+          reader.readAsDataURL(audioBlobRef.current);
+        });
+      } catch (e) {
+        console.warn("Failed to encode recorded audio blob:", e);
+      }
+    }
+
     const saved = saveCustomVoice({
       name: voiceName || `${role}'s Voice`,
       role,
       baseVoice,
-      audioDataUrl: audioBlobBase64,
+      audioDataUrl: finalAudio || "",
     });
 
     if (saved) {
       if (onVoiceCreated) onVoiceCreated(saved);
       onClose();
+    } else {
+      setErrorMessage("Could not save custom voice. Please try again.");
     }
   };
 

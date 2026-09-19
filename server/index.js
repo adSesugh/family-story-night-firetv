@@ -506,18 +506,20 @@ async function streamToBuffer(stream) {
  */
 app.post("/narrate", async (req, res) => {
   try {
-    const { text, voiceId, speechMarks } = req.body;
+    const { text, voiceId, baseVoice, speechMarks } = req.body;
     if (!text) return res.status(400).json({ error: "text is required" });
 
-    // Support custom family voice clones
+    // Support custom family voice clones & tone matching
     let selectedVoice = "Joanna";
-    if (voiceId && (voiceId.startsWith("custom") || !ALLOWED_VOICES.includes(voiceId))) {
-      // Map to matching tone baseline if embedded, or Joanna by default
+    if (baseVoice && ALLOWED_VOICES.includes(baseVoice)) {
+      selectedVoice = baseVoice;
+    } else if (ALLOWED_VOICES.includes(voiceId)) {
+      selectedVoice = voiceId;
+    } else if (voiceId && (voiceId.startsWith("custom") || !ALLOWED_VOICES.includes(voiceId))) {
+      // Map to matching tone baseline if embedded (e.g. custom_matthew_...), or Joanna by default
       const baseMatch = ALLOWED_VOICES.find((v) => voiceId.toLowerCase().includes(v.toLowerCase()));
       selectedVoice = baseMatch || "Joanna";
       console.log(`[narrate] Custom family voice requested (${voiceId}). Synthesizing with baseline: ${selectedVoice}`);
-    } else if (ALLOWED_VOICES.includes(voiceId)) {
-      selectedVoice = voiceId;
     }
 
     const audioCommand = new SynthesizeSpeechCommand({

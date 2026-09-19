@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Navigation } from "swiper/modules";
-import { Volume2, VolumeX, Sparkles, Compass, Home, Moon, Mic, MicOff } from "lucide-react";
+import { Volume2, VolumeX, Sparkles, Compass, Home, Moon, Mic, MicOff, Heart } from "lucide-react";
 import AmbientParticles from "./AmbientParticles";
 import { useSpeechRecognition } from "../utils/useSpeechRecognition";
+import { loadCustomVoices } from "../utils/customVoices";
 import "swiper/css";
 import "swiper/css/navigation";
 
@@ -52,11 +53,63 @@ export default function StoryScreen({
   onFocusIndexChange,
   activeSpeechMark = null,
   windDown = false,
+  voice = "Joanna",
 }) {
   const swiperRef = useRef(null);
   const hasConclusion = Boolean(nextStoredChapterNumber || lesson || (choices && choices.length > 0));
   const isBookMode = useBookMode();
   const totalSlides = pages.length + (hasConclusion ? 1 : 0);
+
+  const [isPlayingLovedOne, setIsPlayingLovedOne] = useState(false);
+  const lovedOneAudioRef = useRef(null);
+
+  const customVoiceProfile = voice && voice.startsWith("custom")
+    ? loadCustomVoices().find((cv) => cv.id === voice)
+    : null;
+  const narratorLabel = customVoiceProfile
+    ? (customVoiceProfile.displayName || customVoiceProfile.name)
+    : voice;
+  const narratorAvatar = customVoiceProfile?.avatar || "";
+
+  const toggleLovedOneMessage = () => {
+    if (!customVoiceProfile?.audioDataUrl) return;
+    if (isPlayingLovedOne && lovedOneAudioRef.current) {
+      try { lovedOneAudioRef.current.pause(); } catch (e) {}
+      lovedOneAudioRef.current.currentTime = 0;
+      setIsPlayingLovedOne(false);
+      return;
+    }
+
+    if (isNarrating && onToggleNarration) {
+      onToggleNarration(); // pause page narration while playing personal message
+    }
+
+    if (!lovedOneAudioRef.current) {
+      lovedOneAudioRef.current = new Audio(customVoiceProfile.audioDataUrl);
+      lovedOneAudioRef.current.onended = () => setIsPlayingLovedOne(false);
+      lovedOneAudioRef.current.onerror = () => setIsPlayingLovedOne(false);
+    }
+    lovedOneAudioRef.current.currentTime = 0;
+    try {
+      const p = lovedOneAudioRef.current.play();
+      if (p && typeof p.then === "function") {
+        p.then(() => setIsPlayingLovedOne(true)).catch(() => setIsPlayingLovedOne(false));
+      } else {
+        setIsPlayingLovedOne(true);
+      }
+    } catch (e) {
+      setIsPlayingLovedOne(false);
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (lovedOneAudioRef.current) {
+        try { lovedOneAudioRef.current.pause(); } catch (e) {}
+        lovedOneAudioRef.current = null;
+      }
+    };
+  }, []);
 
   const [customTwist, setCustomTwist] = useState("");
   const twistSpeech = useSpeechRecognition({
@@ -123,27 +176,49 @@ export default function StoryScreen({
         </div>
       )}
 
-      {/* Narration audio status / manual toggle */}
-      {onToggleNarration && (
-        <button
-          onClick={onToggleNarration}
-          aria-label={isNarrating ? "Pause narration" : "Play narration"}
-          title={isNarrating ? "Click to pause narration" : "Click to play narration"}
-          className="absolute top-3 right-3 sm:top-6 sm:right-8 z-30 flex items-center gap-1.5 sm:gap-2 rounded-full border border-starlight/20 bg-panel/70 px-2.5 sm:px-4 py-1 sm:py-2 font-sans text-xs sm:text-sm text-starlight hover:bg-panel/90 hover:text-parchment backdrop-blur-sm transition-all shadow-md focus:outline-none focus:ring-2 focus:ring-lamp/50 cursor-pointer"
-        >
-          {isNarrating ? (
-            <>
-              <Volume2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-lamp animate-pulse" />
-              <span className="hidden sm:inline">Reading aloud</span>
-            </>
-          ) : (
-            <>
-              <VolumeX className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-starlight/60" />
-              <span>Listen</span>
-            </>
-          )}
-        </button>
-      )}
+      {/* Audio controls: Loved one's voice greeting + Narration toggle */}
+      <div className="absolute top-3 right-3 sm:top-6 sm:right-8 z-30 flex items-center gap-2">
+        {customVoiceProfile?.audioDataUrl && (
+          <button
+            type="button"
+            onClick={toggleLovedOneMessage}
+            aria-label={isPlayingLovedOne ? "Stop personal voice message" : `Play ${narratorLabel}'s voice message`}
+            title={`Listen to ${narratorLabel}'s bedtime voice recording`}
+            className={`flex items-center gap-1.5 sm:gap-2 rounded-full border px-2.5 sm:px-3.5 py-1 sm:py-2 font-sans text-xs sm:text-sm backdrop-blur-sm transition-all shadow-md focus:outline-none focus:ring-2 focus:ring-rose-400/50 cursor-pointer ${
+              isPlayingLovedOne
+                ? "border-rose-400 bg-rose-950/80 text-rose-200 font-semibold ring-2 ring-rose-400/40"
+                : "border-rose-500/30 bg-panel/80 text-rose-300 hover:border-rose-400/60 hover:text-rose-100"
+            }`}
+          >
+            <Heart className={`h-3.5 w-3.5 ${isPlayingLovedOne ? "fill-rose-400 text-rose-400 animate-pulse" : "text-rose-400"}`} />
+            <span className="hidden sm:inline">
+              {isPlayingLovedOne ? `Playing ${narratorLabel}...` : `${narratorLabel}'s Voice`}
+            </span>
+          </button>
+        )}
+
+        {onToggleNarration && (
+          <button
+            onClick={onToggleNarration}
+            aria-label={isNarrating ? "Pause narration" : "Play narration"}
+            title={isNarrating ? `Click to pause ${narratorLabel} narration` : `Click to play ${narratorLabel} narration`}
+            className="flex items-center gap-1.5 sm:gap-2 rounded-full border border-starlight/20 bg-panel/70 px-2.5 sm:px-4 py-1 sm:py-2 font-sans text-xs sm:text-sm text-starlight hover:bg-panel/90 hover:text-parchment backdrop-blur-sm transition-all shadow-md focus:outline-none focus:ring-2 focus:ring-lamp/50 cursor-pointer"
+          >
+            {isNarrating ? (
+              <>
+                <Volume2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-lamp animate-pulse" />
+                <span className="hidden sm:inline">Reading aloud</span>
+                {narratorAvatar && <span className="text-xs">{narratorAvatar}</span>}
+              </>
+            ) : (
+              <>
+                <VolumeX className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-starlight/60" />
+                <span>Listen</span>
+              </>
+            )}
+          </button>
+        )}
+      </div>
 
       <Swiper
         ref={swiperRef}

@@ -5,7 +5,8 @@ import HistoryScreen from "./components/HistoryScreen";
 import SettingsScreen from "./components/SettingsScreen";
 import { saveStory, updateStory, loadHistory } from "./utils/storyHistory";
 import { StorageService } from "./utils/storage";
-import { loadSettings } from "./utils/parentSettings";
+import { loadSettings, saveSettings } from "./utils/parentSettings";
+import { loadCustomVoices } from "./utils/customVoices";
 import { trackEvent } from "./utils/analytics";
 import { blobToDataUrl, compressBlobToDataUrl, createFallbackIllustrationUrl } from "./utils/imageUtils";
 import { playBedtimeLullabyChime } from "./utils/audioChimes";
@@ -89,6 +90,21 @@ export default function App() {
   const handleVoiceChange = useCallback((newVoice) => {
     setVoice(newVoice);
     StorageService.setItem("familyStoryNight_voice", newVoice);
+    try {
+      const current = loadSettings();
+      if (current) {
+        saveSettings({
+          ...current,
+          settings: {
+            ...current.settings,
+            defaultVoice: newVoice,
+          },
+        });
+        setParentSettings(loadSettings());
+      }
+    } catch (e) {
+      console.warn("Could not sync voice to parent settings:", e);
+    }
   }, []);
 
   // Fast concurrent illustration fetching orchestrator with retries and guaranteed fallback
@@ -896,10 +912,24 @@ export default function App() {
 
     (async () => {
       try {
+        let effectiveBaseVoice = undefined;
+        if (voice && voice.startsWith("custom")) {
+          const customProfiles = loadCustomVoices();
+          const matchedCustom = customProfiles.find((v) => v.id === voice);
+          if (matchedCustom?.baseVoice) {
+            effectiveBaseVoice = matchedCustom.baseVoice;
+          }
+        }
+
         const res = await fetch(`${API_BASE}/narrate`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text: textToNarrate, voiceId: voice, speechMarks: true }),
+          body: JSON.stringify({
+            text: textToNarrate,
+            voiceId: voice,
+            baseVoice: effectiveBaseVoice,
+            speechMarks: true,
+          }),
         });
         if (!res.ok || cancelled) return;
 
@@ -1342,6 +1372,7 @@ export default function App() {
       )}
       {screen === "story" && (
         <StoryScreen
+          voice={voice}
           pages={pages}
           illustrations={illustrations}
           pageIndex={pageIndex}

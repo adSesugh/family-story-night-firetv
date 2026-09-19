@@ -1,9 +1,22 @@
 import React from "react";
 import { render, screen, fireEvent, act } from "@testing-library/react";
 import "@testing-library/jest-dom";
-import { loadCustomVoices, saveCustomVoice, deleteCustomVoice } from "../utils/customVoices";
+// Mock swiper to avoid ESM syntax issues in Jest
+jest.mock("swiper/react", () => ({
+  Swiper: ({ children }) => <div data-testid="swiper-mock">{children}</div>,
+  SwiperSlide: ({ children }) => <div data-testid="swiper-slide-mock">{children}</div>,
+}));
+jest.mock("swiper/modules", () => ({
+  Keyboard: {},
+  Navigation: {},
+}));
+jest.mock("swiper/css", () => ({}));
+jest.mock("swiper/css/navigation", () => ({}));
+
+import { loadCustomVoices, saveCustomVoice, deleteCustomVoice, getCustomVoice } from "../utils/customVoices";
 import VoiceSelector from "../components/VoiceSelector";
 import FamilyVoiceStudioModal from "../components/FamilyVoiceStudioModal";
+import StoryScreen from "../components/StoryScreen";
 
 describe("Personalized Voice Clones (Family Voice Studio)", () => {
   beforeEach(() => {
@@ -145,6 +158,34 @@ describe("Personalized Voice Clones (Family Voice Studio)", () => {
 
       expect(screen.getByRole("dialog")).toBeInTheDocument();
       expect(screen.getByText(/Family Voice Studio/i)).toBeInTheDocument();
+    });
+  });
+
+  describe("StoryScreen with Custom Voices", () => {
+    it("renders custom voice greeting button and narrator badge in StoryScreen", () => {
+      const saved = saveCustomVoice({
+        name: "Mom's Bedtime Voice",
+        role: "Mom",
+        baseVoice: "Joanna",
+        audioDataUrl: "data:audio/webm;base64,mockAudioData",
+      });
+
+      render(
+        <StoryScreen
+          pages={[{ text: "Once upon a time in a faraway forest." }]}
+          illustrations={[]}
+          pageIndex={0}
+          isNarrating={true}
+          onToggleNarration={jest.fn()}
+          voice={saved.id}
+        />
+      );
+
+      // Should display custom voice action button for personal voice greeting
+      expect(screen.getByText(/Mom's Bedtime Voice's Voice/i)).toBeInTheDocument();
+      // Should display reading aloud status with custom voice avatar
+      expect(screen.getByText(/Reading aloud/i)).toBeInTheDocument();
+      expect(screen.getByText("👩")).toBeInTheDocument();
     });
   });
 });

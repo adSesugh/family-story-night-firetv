@@ -32,31 +32,51 @@ export function saveCustomVoice({ name, role = "Family", baseVoice = "Joanna", a
   if (typeof window === "undefined" || !window.localStorage) {
     return null;
   }
-  try {
-    const existing = loadCustomVoices();
-    const id = `custom_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-    const newProfile = {
-      id,
-      name: name.trim() || `${role}'s Voice`,
-      displayName: name.trim() || `${role}'s Voice`,
-      tagline: `Recorded Voice • ${role}`,
-      description: `Personalized voice clone for bedtime stories read by ${name || role}.`,
-      avatar: role.toLowerCase().includes("dad") ? "👨" : role.toLowerCase().includes("mom") ? "👩" : role.toLowerCase().includes("grand") ? "👵" : "🎙️",
-      pitch: baseVoice === "Matthew" ? "Deep baritone" : baseVoice === "Ivy" ? "Bright & youthful" : "Warm storyteller",
-      previewSnippet: "The stars are shining softly tonight. Close your eyes and dream of magic.",
-      baseVoice,
-      audioDataUrl,
-      isCustom: true,
-      createdAt: new Date().toISOString(),
-    };
+  const cleanBaseVoice = baseVoice || "Joanna";
+  const existing = loadCustomVoices();
+  const id = `custom_${cleanBaseVoice.toLowerCase()}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+  const newProfile = {
+    id,
+    name: name.trim() || `${role}'s Voice`,
+    displayName: name.trim() || `${role}'s Voice`,
+    tagline: `Recorded Voice • ${role}`,
+    description: `Personalized voice clone for bedtime stories read by ${name || role}.`,
+    avatar: role.toLowerCase().includes("dad") ? "👨" : role.toLowerCase().includes("mom") ? "👩" : role.toLowerCase().includes("grand") ? "👵" : "🎙️",
+    pitch: cleanBaseVoice === "Matthew" ? "Deep baritone" : cleanBaseVoice === "Ivy" ? "Bright & youthful" : "Warm storyteller",
+    previewSnippet: "The stars are shining softly tonight. Close your eyes and dream of magic.",
+    baseVoice: cleanBaseVoice,
+    audioDataUrl,
+    isCustom: true,
+    createdAt: new Date().toISOString(),
+  };
 
+  try {
     const updated = [newProfile, ...existing];
     window.localStorage.setItem(CUSTOM_VOICES_STORAGE_KEY, JSON.stringify(updated));
     return newProfile;
   } catch (err) {
-    console.error("Failed to save custom voice:", err);
-    return null;
+    console.warn("Primary save failed, trying fallback without sample if quota exceeded:", err);
+    try {
+      const fallbackProfile = { ...newProfile, audioDataUrl: "" };
+      const updatedFallback = [fallbackProfile, ...existing];
+      window.localStorage.setItem(CUSTOM_VOICES_STORAGE_KEY, JSON.stringify(updatedFallback));
+      return fallbackProfile;
+    } catch (fallbackErr) {
+      console.error("Failed to save custom voice even with fallback:", fallbackErr);
+      return null;
+    }
   }
+}
+
+/**
+ * Find a custom voice by ID.
+ * @param {string} voiceId
+ * @returns {Object | null}
+ */
+export function getCustomVoice(voiceId) {
+  if (!voiceId || !voiceId.startsWith("custom")) return null;
+  const list = loadCustomVoices();
+  return list.find((v) => v.id === voiceId) || null;
 }
 
 /**
