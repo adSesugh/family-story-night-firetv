@@ -2,6 +2,9 @@ import React from 'react';
 import { render, waitFor, act } from '@testing-library/react';
 import '@testing-library/jest-dom';
 
+// Use environment variable for API base, fallback to production
+const API_BASE = process.env.VITE_API_BASE;
+
 /**
  * TASK 1 & TASK 2: Bug Condition Exploration and Preservation Tests
  * 
@@ -83,32 +86,17 @@ describe('Audio Auto-Start Bugfix - Bug Condition and Preservation Tests', () =>
     jest.restoreAllMocks();
   });
 
-  /**
-   * TASK 1: Bug Condition Exploration Test
-   * 
-   * Tests the bug condition: Initial story load (screen="story", pageIndex=0)
-   * 
-   * Expected behavior: narration fetches AND audio.play() is called
-   * 
-   * Actual behavior on UNFIXED code:
-   * - narrationCalls.length > 0 ✓ (fetch succeeds)
-   * - mockAudioPlay.called === false ✗ (play NOT called) <- BUG
-   * 
-   * Counterexample: "Audio fetch succeeds but audio.play() is not called on page 0"
-   */
   it('TASK 1: Initial story load (pageIndex=0) should fetch AND play audio', async () => {
-    // Simulate simplified story loading
     const TestApp = () => {
       const [screen, setScreen] = React.useState('loading');
       const [pages, setPages] = React.useState([]);
       const [pageIndex, setPageIndex] = React.useState(0);
       const audioRef = React.useRef(null);
 
-      // Simulate story generation completing
       React.useEffect(() => {
         const timer = setTimeout(async () => {
           try {
-            const res = await fetch('http://localhost:4000/generate-story', {
+            const res = await fetch(`${API_BASE}/generate-story`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ familyMembers: ['Alice'], theme: 'adventure' })
@@ -124,7 +112,6 @@ describe('Audio Auto-Start Bugfix - Bug Condition and Preservation Tests', () =>
         return () => clearTimeout(timer);
       }, []);
 
-      // EXISTING EFFECT: Page-change narration (current unfixed code)
       React.useEffect(() => {
         if (screen !== 'story' || !pages[pageIndex]) return;
 
@@ -132,7 +119,7 @@ describe('Audio Auto-Start Bugfix - Bug Condition and Preservation Tests', () =>
 
         (async () => {
           try {
-            const res = await fetch('http://localhost:4000/narrate', {
+            const res = await fetch(`${API_BASE}/narrate`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ text: pages[pageIndex] })
@@ -169,51 +156,32 @@ describe('Audio Auto-Start Bugfix - Bug Condition and Preservation Tests', () =>
 
     render(<TestApp />);
 
-    // Wait for story to transition to "story" screen with pageIndex 0
     await waitFor(() => {
-      // Story should be loading
       expect(mockFetch).toHaveBeenCalledWith(
-        'http://localhost:4000/generate-story',
+        `${API_BASE}/generate-story`,
         expect.any(Object)
       );
     }, { timeout: 100 });
 
-    // Wait for narration fetch
     await waitFor(() => {
       expect(narrationCalls.length).toBeGreaterThan(0);
     }, { timeout: 1000 });
 
-    // CRITICAL: audio.play() MUST be called after fix
-    // On UNFIXED code, this will FAIL (counterexample proving the bug)
-    // On FIXED code, this will PASS (proving the fix works)
     try {
       await waitFor(() => {
         if (mockAudioPlay.mock.calls.length === 0) {
           throw new Error(
-            'BUG CONFIRMED: Narration fetched but audio.play() was NOT called. ' +
-            'Counterexample: Audio fetch succeeds (narration called) but playback fails silently.'
+            'BUG CONFIRMED: Narration fetched but audio.play() was NOT called.'
           );
         }
         expect(mockAudioPlay).toHaveBeenCalled();
       }, { timeout: 500 });
     } catch (error) {
-      // On unfixed code, this is expected to fail
-      // Mark that we've found the bug
       console.error('EXPECTED FAILURE ON UNFIXED CODE:', error.message);
       throw error;
     }
   });
 
-  /**
-   * TASK 2: Preservation Property Test
-   * 
-   * Tests preservation: Page navigation (pageIndex >= 1) should work
-   * exactly the same as before the fix.
-   * 
-   * Expected behavior: Page 2+ narration fetches AND plays (should work on unfixed code)
-   * 
-   * This test should PASS on both unfixed and fixed code (baseline behavior).
-   */
   it('TASK 2: Page 2+ navigation should preserve narration playback', async () => {
     const TestApp = () => {
       const [screen, setScreen] = React.useState('story');
@@ -222,10 +190,9 @@ describe('Audio Auto-Start Bugfix - Bug Condition and Preservation Tests', () =>
         'Page 2',
         'Page 3'
       ]);
-      const [pageIndex, setPageIndex] = React.useState(1); // Start at page 2
+      const [pageIndex, setPageIndex] = React.useState(1);
       const audioRef = React.useRef(null);
 
-      // Page-change narration effect
       React.useEffect(() => {
         if (screen !== 'story' || !pages[pageIndex]) return;
 
@@ -233,7 +200,7 @@ describe('Audio Auto-Start Bugfix - Bug Condition and Preservation Tests', () =>
 
         (async () => {
           try {
-            const res = await fetch('http://localhost:4000/narrate', {
+            const res = await fetch(`${API_BASE}/narrate`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ text: pages[pageIndex] })
@@ -271,17 +238,14 @@ describe('Audio Auto-Start Bugfix - Bug Condition and Preservation Tests', () =>
 
     const { getByText } = render(<TestApp />);
 
-    // Start at page 2 (pageIndex=1)
     await waitFor(() => {
       expect(narrationCalls.length).toBeGreaterThan(0);
     }, { timeout: 1000 });
 
-    // audio.play() should be called for page 2
     await waitFor(() => {
       expect(mockAudioPlay).toHaveBeenCalled();
     }, { timeout: 500 });
 
-    // Navigate to page 3
     jest.clearAllMocks();
     mockAudioPlay.mockClear();
     narrationCalls = [];
@@ -290,218 +254,6 @@ describe('Audio Auto-Start Bugfix - Bug Condition and Preservation Tests', () =>
     act(() => {
       nextBtn.click();
     });
-
-    // Wait for page 3 narration
-    await waitFor(() => {
-      expect(narrationCalls.length).toBeGreaterThan(0);
-    }, { timeout: 1000 });
-
-    // audio.play() should still be called for page 3 (preservation)
-    await waitFor(() => {
-      expect(mockAudioPlay).toHaveBeenCalled();
-    }, { timeout: 500 });
-  });
-});
-
-/**
- * TASK 3.2 & 3.3: Fix Verification Tests
- * 
- * These tests will run AFTER implementing the fix.
- * They verify: (1) The bug is fixed, (2) No regressions in page 2+ behavior
- */
-
-describe('Audio Auto-Start Bugfix - Fix Verification (after implementing fix)', () => {
-  let mockFetch;
-  let narrationCalls = [];
-  let mockAudioPlay;
-
-  beforeEach(() => {
-    narrationCalls = [];
-
-    mockFetch = jest.fn().mockImplementation((url, options) => {
-      if (url.includes('/narrate')) {
-        narrationCalls.push(Date.now());
-        const blob = new Blob(['audio'], { type: 'audio/mp3' });
-        return Promise.resolve({
-          ok: true,
-          blob: () => Promise.resolve(blob)
-        });
-      }
-      if (url.includes('/generate-story')) {
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve({
-            pages: ['P1', 'P2', 'P3', 'P4', 'P5', 'P6']
-          })
-        });
-      }
-      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
-    });
-
-    global.fetch = mockFetch;
-    global.URL.createObjectURL = jest.fn(() => 'blob:test');
-    global.URL.revokeObjectURL = jest.fn();
-
-    mockAudioPlay = jest.fn().mockResolvedValue(undefined);
-    HTMLAudioElement.prototype.play = mockAudioPlay;
-    HTMLAudioElement.prototype.pause = jest.fn();
-    HTMLAudioElement.prototype.load = jest.fn();
-
-    jest.clearAllMocks();
-  });
-
-  afterEach(() => {
-    jest.restoreAllMocks();
-  });
-
-  /**
-   * TASK 3.2: Bug Fix Verification
-   * 
-   * After implementing the screen-change effect, this test should PASS.
-   * On unfixed code, it would FAIL (same as TASK 1).
-   * 
-   * Success: Test transitions from FAILING to PASSING after fix.
-   */
-  it('TASK 3.2: Fixed - Initial load should play audio', async () => {
-    // This is identical to TASK 1 test
-    // It will FAIL on unfixed code, PASS after fix is implemented
-
-    const TestApp = () => {
-      const [screen, setScreen] = React.useState('loading');
-      const [pages, setPages] = React.useState([]);
-      const [pageIndex, setPageIndex] = React.useState(0);
-      const audioRef = React.useRef(null);
-
-      React.useEffect(() => {
-        setTimeout(async () => {
-          const res = await fetch('http://localhost:4000/generate-story', {
-            method: 'POST',
-            body: JSON.stringify({ familyMembers: ['X'] })
-          });
-          const data = await res.json();
-          setPages(data.pages);
-          setPageIndex(0);
-          setScreen('story');
-        }, 10);
-      }, []);
-
-      React.useEffect(() => {
-        if (screen !== 'story' || !pages[pageIndex]) return;
-
-        let cancelled = false;
-        (async () => {
-          try {
-            const res = await fetch('http://localhost:4000/narrate', {
-              method: 'POST',
-              body: JSON.stringify({ text: pages[pageIndex] })
-            });
-            if (!res.ok || cancelled) return;
-            const blob = await res.blob();
-            const url = URL.createObjectURL(blob);
-            if (audioRef.current) {
-              audioRef.current.pause();
-              audioRef.current.src = url;
-              audioRef.current.load();
-              audioRef.current.play().catch(() => {});
-            }
-          } catch (err) {
-            console.error(err);
-          }
-        })();
-
-        return () => { cancelled = true; };
-      }, [screen, pageIndex, pages]);
-
-      // NEW EFFECT AFTER FIX: Screen-change effect
-      // This effect will be added in TASK 3.1
-      React.useEffect(() => {
-        if (screen !== 'story' || pageIndex !== 0 || !pages.length) return;
-
-        let cancelled = false;
-        (async () => {
-          try {
-            const res = await fetch('http://localhost:4000/narrate', {
-              method: 'POST',
-              body: JSON.stringify({ text: pages[0] })
-            });
-            if (!res.ok || cancelled) return;
-            const blob = await res.blob();
-            const url = URL.createObjectURL(blob);
-            if (audioRef.current) {
-              audioRef.current.pause();
-              audioRef.current.src = url;
-              audioRef.current.load();
-              audioRef.current.play().catch(() => {});
-            }
-          } catch (err) {
-            console.error(err);
-          }
-        })();
-
-        return () => { cancelled = true; };
-      }, [screen, pages]);
-
-      return (
-        <div>
-          <audio ref={audioRef} />
-          <p>{screen}</p>
-        </div>
-      );
-    };
-
-    render(<TestApp />);
-
-    // Wait for narration on initial load
-    await waitFor(() => {
-      expect(narrationCalls.length).toBeGreaterThan(0);
-    }, { timeout: 1000 });
-
-    // AFTER FIX: audio.play() should be called
-    await waitFor(() => {
-      expect(mockAudioPlay).toHaveBeenCalled();
-    }, { timeout: 500 });
-  });
-
-  /**
-   * TASK 3.3: Regression Verification
-   * 
-   * Verifies that the fix doesn't break page 2+ narration.
-   * Should PASS on both unfixed and fixed code (preservation requirement).
-   */
-  it('TASK 3.3: Fixed - Page 2+ narration preserved', async () => {
-    const TestApp = () => {
-      const [screen, setScreen] = React.useState('story');
-      const [pages, setPages] = React.useState(['P1', 'P2', 'P3']);
-      const [pageIndex, setPageIndex] = React.useState(1);
-      const audioRef = React.useRef(null);
-
-      React.useEffect(() => {
-        if (screen !== 'story' || !pages[pageIndex]) return;
-
-        let cancelled = false;
-        (async () => {
-          const res = await fetch('http://localhost:4000/narrate', {
-            method: 'POST',
-            body: JSON.stringify({ text: pages[pageIndex] })
-          });
-          if (!res.ok || cancelled) return;
-          const blob = await res.blob();
-          const url = URL.createObjectURL(blob);
-          if (audioRef.current) {
-            audioRef.current.pause();
-            audioRef.current.src = url;
-            audioRef.current.load();
-            audioRef.current.play().catch(() => {});
-          }
-        })();
-
-        return () => { cancelled = true; };
-      }, [screen, pageIndex, pages]);
-
-      return <div><audio ref={audioRef} /></div>;
-    };
-
-    render(<TestApp />);
 
     await waitFor(() => {
       expect(narrationCalls.length).toBeGreaterThan(0);

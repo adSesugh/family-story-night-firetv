@@ -15,8 +15,7 @@ import { THEME_CATEGORIES, DEFAULT_CATEGORY_ID, THEMES } from "./constants/theme
 import { VOICES } from "./constants/voices";
 
 const API_BASE =
-  (typeof process !== "undefined" && process.env && process.env.VITE_API_BASE) ||
-  "http://localhost:4000";
+  (typeof process !== "undefined" && process.env && process.env.VITE_API_BASE);
 
 export default function App() {
   const [screen, setScreen] = useState("setup"); // setup | loading | story | history | settings
