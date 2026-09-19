@@ -305,12 +305,13 @@ export default function HistoryScreen({ onSelect, onBack }) {
                   tabIndex={0}
                   onClick={() => onSelect(story)}
                   onKeyDown={(e) => {
+                    if (e.target.closest("button")) return;
                     if (e.key === "Enter" || e.key === " ") {
                       e.preventDefault();
                       onSelect(story);
                     }
                   }}
-                  className="group relative flex flex-col rounded-2xl border border-starlight/15 bg-panel/85 hover:bg-panel hover:border-lamp/60 transition-all duration-300 shadow-md hover:shadow-2xl hover:shadow-lamp/15 hover:-translate-y-1.5 cursor-pointer overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lamp focus-visible:border-lamp"
+                  className="group relative flex flex-col rounded-2xl border border-starlight/15 bg-panel/85 hover:bg-panel hover:border-lamp/60 transition-all duration-300 shadow-md hover:shadow-2xl hover:shadow-lamp/15 hover:-translate-y-1.5 cursor-pointer overflow-hidden focus:outline-none focus:ring-2 focus:ring-lamp focus:border-lamp"
                   data-testid={`history-card-${story.id}`}
                 >
                   {/* Cover Thumbnail */}
@@ -356,11 +357,12 @@ export default function HistoryScreen({ onSelect, onBack }) {
                     <div className="absolute top-2.5 right-2.5 z-10">
                       <button
                         type="button"
+                        tabIndex={0}
                         onClick={(e) => {
                           e.stopPropagation();
                           requestDeleteStory(story.id, story.theme);
                         }}
-                        className="flex h-7 w-7 items-center justify-center rounded-full bg-dusk/80 text-starlight/70 backdrop-blur-md transition-all hover:bg-red-900/80 hover:text-red-200 border border-starlight/20 hover:border-red-500"
+                        className="flex h-7 w-7 items-center justify-center rounded-full bg-dusk/80 text-starlight/70 backdrop-blur-md transition-all hover:bg-red-900/80 hover:text-red-200 border border-starlight/20 hover:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:bg-red-900/80"
                         title="Delete story"
                         aria-label="Delete story"
                       >

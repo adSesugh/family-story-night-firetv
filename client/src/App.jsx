@@ -998,9 +998,12 @@ export default function App() {
     };
   }, [screen, pageIndex, pages, voice, lesson, networkRetryKey]);
 
-  // Coordinate playback so audio only plays when the illustration for the current page is ready
+  // Coordinate playback so audio only plays when the illustration for the current page is ready (or immediately if on the conclusion screen)
   useEffect(() => {
-    if (pendingAudioPlay === pageIndex && illustrations[pageIndex] && audioRef.current) {
+    const isConclusionPage = pageIndex >= pages.length;
+    const isIllustrationReady = isConclusionPage || illustrations[pageIndex];
+
+    if (pendingAudioPlay === pageIndex && isIllustrationReady && audioRef.current) {
       setPendingAudioPlay(null);
       try {
         const playPromise = audioRef.current.play();
@@ -1122,7 +1125,8 @@ export default function App() {
       // Global Home key: return to home screen (setup) from any screen
       if (isHome) {
         e.preventDefault();
-        setScreen("setup");
+        e.stopPropagation();
+        handleReturnHome();
         return;
       }
 
