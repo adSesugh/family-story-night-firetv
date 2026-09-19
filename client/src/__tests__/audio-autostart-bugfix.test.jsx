@@ -3,7 +3,7 @@ import { render, waitFor, act } from '@testing-library/react';
 import '@testing-library/jest-dom';
 
 // Use environment variable for API base, fallback to production
-const API_BASE = process.env.VITE_API_BASE;
+const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:4000";
 
 /**
  * TASK 1 & TASK 2: Bug Condition Exploration and Preservation Tests
