@@ -56,7 +56,15 @@ export default function StoryScreen({
   voice = "Joanna",
 }) {
   const swiperRef = useRef(null);
+  const activeWordRef = useRef(null);
   const hasConclusion = Boolean(nextStoredChapterNumber || lesson || (choices && choices.length > 0));
+
+  useEffect(() => {
+    if (activeWordRef.current) {
+      // Keep the spoken word roughly in the center of the text container
+      activeWordRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [activeSpeechMark]);
   const isBookMode = useBookMode();
   const totalSlides = pages.length + (hasConclusion ? 1 : 0);
 
@@ -243,6 +251,7 @@ export default function StoryScreen({
                 <>
                   <span>{pageText.slice(0, activeSpeechMark.start)}</span>
                   <span
+                    ref={activeWordRef}
                     data-testid="karaoke-word"
                     className="text-lamp font-semibold drop-shadow-[0_0_14px_rgba(232,163,61,0.85)] bg-lamp/15 px-1 py-0.5 rounded transition-all duration-150"
                   >

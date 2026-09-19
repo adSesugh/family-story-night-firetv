@@ -29,6 +29,7 @@ export default function App() {
   const [pageIndex, setPageIndex] = useState(0);
   const [error, setError] = useState(null);
   const [illustrations, setIllustrations] = useState([]);
+  const [pendingAudioPlay, setPendingAudioPlay] = useState(null);
   const [turnKey, setTurnKey] = useState(0); // bump to replay the page-turn animation
   const [history, setHistory] = useState([]);
 
@@ -975,14 +976,8 @@ export default function App() {
             try { audioRef.current.load(); } catch (e) {}
           }
           if (typeof audioRef.current.play === "function") {
-            try {
-              const playPromise = audioRef.current.play();
-              if (playPromise !== undefined) {
-                playPromise.catch((err) => {
-                  console.warn("Audio autoplay blocked or interrupted:", err);
-                });
-              }
-            } catch (e) {}
+            // Defer audio playback until illustration is loaded
+            setPendingAudioPlay(pageIndex);
           }
         }
       } catch (err) {
@@ -994,6 +989,21 @@ export default function App() {
       cancelled = true;
     };
   }, [screen, pageIndex, pages, voice, lesson]);
+
+  // Coordinate playback so audio only plays when the illustration for the current page is ready
+  useEffect(() => {
+    if (pendingAudioPlay === pageIndex && illustrations[pageIndex] && audioRef.current) {
+      setPendingAudioPlay(null);
+      try {
+        const playPromise = audioRef.current.play();
+        if (playPromise !== undefined) {
+          playPromise.catch((err) => {
+            console.warn("Audio autoplay blocked or interrupted:", err);
+          });
+        }
+      } catch (e) {}
+    }
+  }, [pendingAudioPlay, pageIndex, illustrations]);
 
   useEffect(() => {
     if (!audioRef.current) return;

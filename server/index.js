@@ -12,10 +12,9 @@ app.use(express.json());
 
 const REGION = process.env.AWS_REGION || "us-east-1";
 const MODEL_ID = process.env.BEDROCK_MODEL_ID || "anthropic.claude-3-5-sonnet-20241022-v2:0";
-const IMAGE_MODEL_ID = process.env.BEDROCK_IMAGE_MODEL_ID || "amazon.nova-canvas-v1:0";
-const isNovaCanvas = IMAGE_MODEL_ID.includes("nova-canvas");
-// Amazon Nova Canvas is supported in us-east-1
-const IMAGE_REGION = process.env.BEDROCK_IMAGE_REGION || "us-east-1";
+const IMAGE_MODEL_ID = process.env.BEDROCK_IMAGE_MODEL_ID || "stability.stable-image-core-v1:1";
+// Stability AI Image Core is best supported in us-west-2
+const IMAGE_REGION = process.env.BEDROCK_IMAGE_REGION || "us-west-2";
 
 const bedrock = new BedrockRuntimeClient({ region: REGION });
 const bedrockImage = new BedrockRuntimeClient({ region: IMAGE_REGION });
@@ -135,23 +134,12 @@ async function generateIllustration(pageText, theme, seed, retries = 3, scenePro
     `Style: ${styleDescriptor}. ` +
     `Bedtime storybook, gentle, safe for children, no text, no words, no letters, no scary elements.`;
 
-  if (!isNovaCanvas) {
-    console.error("Unsupported image model. Only Nova Canvas is supported.");
-    return null;
-  }
-
+  // Stability AI Payload (e.g. Stable Image Core)
   const requestPayload = {
-    taskType: "TEXT_IMAGE",
-    textToImageParams: {
-      text: illustrationPrompt,
-    },
-    imageGenerationConfig: {
-      numberOfImages: 1,
-      height: 640,
-      width: 512,
-      cfgScale: 8.0,
-      seed: Math.abs(seed) % 858993459,
-    },
+    prompt: illustrationPrompt,
+    aspect_ratio: "1:1", // 1:1 perfectly maps to 512x512 downscaling
+    seed: Math.abs(seed) % 4294967295,
+    output_format: "png",
   };
 
   const command = new InvokeModelCommand({
@@ -507,6 +495,8 @@ async function streamToBuffer(stream) {
 app.post("/narrate", async (req, res) => {
   try {
     const { text, voiceId, baseVoice, speechMarks } = req.body;
+    console.log(`[narrate] Request received - voiceId: ${voiceId || "default"}, baseVoice: ${baseVoice || "none"}, textLength: ${text ? text.length : 0}, speechMarks: ${!!speechMarks}`);
+
     if (!text) return res.status(400).json({ error: "text is required" });
 
     // Support custom family voice clones & tone matching
@@ -565,6 +555,7 @@ app.post("/narrate", async (req, res) => {
         }
       }
 
+      console.log(`[narrate] Successfully generated audio+marks for voice: ${selectedVoice}`);
       return res.json({
         audio: `data:audio/mpeg;base64,${audioBuffer.toString("base64")}`,
         speechMarks: parsedMarks,
@@ -579,6 +570,7 @@ app.post("/narrate", async (req, res) => {
     for await (const chunk of stream) {
       res.write(chunk);
     }
+    console.log(`[narrate] Successfully streamed audio for voice: ${selectedVoice}`);
     res.end();
   } catch (err) {
     console.error("narrate error:", err);
