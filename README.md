@@ -128,17 +128,22 @@ npm run dev   # Starts Vite dev server on http://localhost:3001
 ```
 
 ### 4. Running the Comprehensive Test Suite
+
 ```bash
-# In client/ (24 test suites, 135 tests)
-npm test -- --watchAll=false
+# In client/ (26 test suites, 150 tests)
+cd client
+npm test
 
 # In server/ (2 test suites, 27 tests)
+cd server
 npm test
 ```
+*Total: 177 automated test cases verifying remote keycodes, audio synthesis, bedtime dimming, and voice cloning.*
 
 ---
 
-## 📦 Fire TV Packaging & Deployment
+<a id="fire-tv-deployment--testing"></a>
+## 📦 Fire TV Deployment & Testing
 
 To package the client for Amazon Fire TV:
 
@@ -149,7 +154,7 @@ npm run package
 ```
 
 1. Install **Amazon Web App Tester** on your Fire TV Stick / Fire TV Cube from the Amazon Appstore.
-2. Enter your host URL (or sideload `family-story-night.zip`).
+2. Enter your host URL (or sideload `client/family-story-night.zip`).
 3. Verify remote D-pad navigation, audio narration, and full-screen 1080p/4K 10-foot rendering.
 
 ---
