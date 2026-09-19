@@ -1,0 +1,11 @@
+{
+  "name": "family-story-night",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "package": "npm --prefix client run package",
+    "test": "npm --prefix client test && npm --prefix server test",
+    "client": "npm --prefix client run dev",
+    "server": "npm --prefix server run dev"
+  }
+}
