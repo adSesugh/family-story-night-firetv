@@ -39,6 +39,7 @@ export default function SettingsScreen({
   onSettingsChange,
   voice = "Joanna",
   setVoice,
+  voices = VOICES,
   storyLength = 6,
   setStoryLength,
   themeMode = "preset",
@@ -364,6 +365,7 @@ export default function SettingsScreen({
                   value={voice}
                   onChange={setVoice}
                   variant="cards"
+                  voices={voices}
                 />
               </div>
             </div>

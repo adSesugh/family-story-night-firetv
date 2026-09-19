@@ -11,6 +11,7 @@ import { blobToDataUrl, compressBlobToDataUrl, createFallbackIllustrationUrl } f
 import { playBedtimeLullabyChime } from "./utils/audioChimes";
 
 import { THEME_CATEGORIES, DEFAULT_CATEGORY_ID, THEMES } from "./constants/themes";
+import { VOICES } from "./constants/voices";
 
 const API_BASE =
   (typeof process !== "undefined" && process.env && process.env.VITE_API_BASE) ||
@@ -19,6 +20,8 @@ const API_BASE =
 export default function App() {
   const [screen, setScreen] = useState("setup"); // setup | loading | story | history | settings
   const [names, setNames] = useState("");
+  const [categories, setCategories] = useState(THEME_CATEGORIES);
+  const [serverVoices, setServerVoices] = useState(VOICES);
   const [category, setCategory] = useState(DEFAULT_CATEGORY_ID);
   const [themeIndex, setThemeIndex] = useState(0);
   const [themeMode, setThemeMode] = useState("preset"); // preset | custom
@@ -49,8 +52,8 @@ export default function App() {
   const [currentStoryId, setCurrentStoryId] = useState(null);
   const [activeStoryMetadata, setActiveStoryMetadata] = useState(null); // { theme, familyMembers, category }
 
-  const currentCategory = THEME_CATEGORIES.find((c) => c.id === category) || THEME_CATEGORIES[0];
-  const activeThemes = currentCategory.themes;
+  const currentCategory = categories.find((c) => c.id === category) || categories[0] || THEME_CATEGORIES[0];
+  const activeThemes = currentCategory?.themes || THEMES;
 
   const audioRef = useRef(null);
   const storyStartTimeRef = useRef(null);
@@ -58,9 +61,29 @@ export default function App() {
   const turnTimerRef = useRef(null);
   const isPrimingAudioRef = useRef(false);
 
-  // Load history on mount
+  // Load history on mount and fetch server-driven themes & voices
   useEffect(() => {
     setHistory(loadHistory());
+
+    if (typeof fetch === "function") {
+      fetch(`${API_BASE}/themes`)
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (data?.categories && Array.isArray(data.categories)) {
+            setCategories(data.categories);
+          }
+        })
+        .catch((err) => console.warn("Failed to fetch server themes:", err));
+
+      fetch(`${API_BASE}/voices`)
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (data?.voices && Array.isArray(data.voices)) {
+            setServerVoices(data.voices);
+          }
+        })
+        .catch((err) => console.warn("Failed to fetch server voices:", err));
+    }
   }, []);
 
   const handleVoiceChange = useCallback((newVoice) => {
@@ -1277,7 +1300,7 @@ export default function App() {
           setThemeIndex={setThemeIndex}
           category={category}
           setCategory={setCategory}
-          categories={THEME_CATEGORIES}
+          categories={categories}
           themeMode={themeMode}
           setThemeMode={setThemeMode}
           customTheme={customTheme}
@@ -1305,6 +1328,7 @@ export default function App() {
           onSettingsChange={handleSettingsChange}
           voice={voice}
           setVoice={handleVoiceChange}
+          voices={serverVoices}
           storyLength={storyLength}
           setStoryLength={setStoryLength}
           themeMode={themeMode}

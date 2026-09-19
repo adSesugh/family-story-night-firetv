@@ -1,0 +1,52 @@
+/**
+ * Standard Amazon Polly narrator voices for Family Story Night.
+ */
+
+export const VOICES = [
+  {
+    id: "Joanna",
+    name: "Joanna (warm, friendly)",
+    region: "en-US",
+    displayName: "Joanna",
+    tagline: "Warm & Gentle",
+    description: "Classic storyteller tone, soothing for bedtime tales.",
+    avatar: "🌙",
+    pitch: "Warm soprano",
+    previewSnippet: "Once upon a starlit night, gentle magic whispered through the quiet trees.",
+  },
+  {
+    id: "Matthew",
+    name: "Matthew (calm, deep)",
+    region: "en-US",
+    displayName: "Matthew",
+    tagline: "Calm & Resonant",
+    description: "Deep, reassuring presence perfect for grand journeys.",
+    avatar: "🦉",
+    pitch: "Deep baritone",
+    previewSnippet: "Far across the misty mountains, an ancient secret waited to be found.",
+  },
+  {
+    id: "Emma",
+    name: "Emma (youthful)",
+    region: "en-US",
+    displayName: "Emma",
+    tagline: "Expressive & Lively",
+    description: "Vibrant and spirited pacing, great for playful adventures.",
+    avatar: "✨",
+    pitch: "Lively alto",
+    previewSnippet: "With a swift leap and a laugh, they stepped into the wonderland!",
+  },
+  {
+    id: "Ivy",
+    name: "Ivy (young, bright)",
+    region: "en-US",
+    displayName: "Ivy",
+    tagline: "Bright & Cheerful",
+    description: "Sweet, gentle melodic cadence loved by younger children.",
+    avatar: "🦊",
+    pitch: "Bright & youthful",
+    previewSnippet: "The little fox blinked its eyes and hopped over the soft green moss.",
+  },
+];
+
+export const DEFAULT_VOICE = "Joanna";

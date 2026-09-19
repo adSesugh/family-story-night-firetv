@@ -22,20 +22,15 @@ const bedrockImage = new BedrockRuntimeClient({ region: IMAGE_REGION });
 const polly = new PollyClient({ region: REGION });
 const POLLY_ENGINE = process.env.POLLY_ENGINE || "standard";
 
-export const CANONICAL_BIBLE_STORIES = [
-  { title: "Noah's Ark & the Rainbow Promise", reference: "Genesis 6–9", virtue: "Patience & God's faithfulness" },
-  { title: "David & Goliath (Courage in God)", reference: "1 Samuel 17", virtue: "Courage & trust in God" },
-  { title: "Daniel in the Lions' Den", reference: "Daniel 6", virtue: "Steadfast faith & prayer" },
-  { title: "Jonah and the Big Fish", reference: "Jonah 1–4", virtue: "Second chances & obedience" },
-  { title: "Jesus Calms the Wind & the Waves", reference: "Mark 4:35–41", virtue: "Peace & trusting Jesus in storms" },
-  { title: "The Good Samaritan", reference: "Luke 10:25–37", virtue: "Loving and helping our neighbors" },
-  { title: "The Shepherd and the Lost Sheep", reference: "Luke 15:1–7", virtue: "How deeply God loves every one of us" },
-  { title: "Moses and the Parting of the Red Sea", reference: "Exodus 14", virtue: "God makes a way through the sea" },
-  { title: "Ruth and Naomi's Loyal Love", reference: "Ruth 1–2", virtue: "Family loyalty & kindness" },
-  { title: "The Nativity & the Star of Bethlehem", reference: "Luke 2", virtue: "Hope, peace & joy" },
-  { title: "Joseph's Colorful Coat & Forgiveness", reference: "Genesis 37, 45", virtue: "Forgiveness & God's good plan" },
-  { title: "Jesus Feeds the Five Thousand", reference: "John 6:1–14", virtue: "Gratitude & sharing with others" },
-];
+import {
+  CANONICAL_BIBLE_STORIES,
+  THEME_CATEGORIES,
+  DEFAULT_CATEGORY_ID,
+  THEMES,
+} from "./constants/themes.js";
+import { VOICES, DEFAULT_VOICE } from "./constants/voices.js";
+
+export { CANONICAL_BIBLE_STORIES, THEME_CATEGORIES, DEFAULT_CATEGORY_ID, THEMES, VOICES, DEFAULT_VOICE };
 
 /**
  * Creates a beautiful SVG watercolor bedtime scene used as an emergency fallback
@@ -596,7 +591,24 @@ app.post("/narrate", async (req, res) => {
   }
 });
 
+app.get("/themes", (_req, res) => {
+  res.json({
+    categories: THEME_CATEGORIES,
+    defaultCategoryId: DEFAULT_CATEGORY_ID,
+    canonicalBibleStories: CANONICAL_BIBLE_STORIES,
+  });
+});
+
+app.get("/voices", (_req, res) => {
+  res.json({
+    voices: VOICES,
+    defaultVoice: DEFAULT_VOICE,
+  });
+});
+
 app.get("/health", (_req, res) => res.json({ status: "ok" }));
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => console.log(`Family Story Night server running on port ${PORT}`));
+
+export { app };

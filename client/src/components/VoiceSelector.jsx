@@ -18,6 +18,7 @@ export default function VoiceSelector({
   id = "voice-selector",
   onNavigateUp,
   onNavigateDown,
+  voices = VOICES,
 }) {
   const [customVoices, setCustomVoices] = useState([]);
   const [playingVoiceId, setPlayingVoiceId] = useState(null);
@@ -51,7 +52,7 @@ export default function VoiceSelector({
     }
   }, [value, variant]);
 
-  const allVoices = [...customVoices, ...VOICES];
+  const allVoices = [...customVoices, ...voices];
 
   const handlePreview = (e, voiceObj) => {
     e.stopPropagation();
