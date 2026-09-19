@@ -14,8 +14,8 @@ const REGION = process.env.AWS_REGION || "us-east-1";
 const MODEL_ID = process.env.BEDROCK_MODEL_ID || "anthropic.claude-3-5-sonnet-20241022-v2:0";
 const IMAGE_MODEL_ID = process.env.BEDROCK_IMAGE_MODEL_ID || "amazon.nova-canvas-v1:0";
 const isNovaCanvas = IMAGE_MODEL_ID.includes("nova-canvas");
-// Nova Canvas is supported in us-east-1; Stability is in us-west-2
-const IMAGE_REGION = process.env.BEDROCK_IMAGE_REGION || (isNovaCanvas ? "us-east-1" : "us-west-2");
+// Amazon Nova Canvas is supported in us-east-1
+const IMAGE_REGION = process.env.BEDROCK_IMAGE_REGION || "us-east-1";
 
 const bedrock = new BedrockRuntimeClient({ region: REGION });
 const bedrockImage = new BedrockRuntimeClient({ region: IMAGE_REGION });
@@ -102,8 +102,7 @@ function extractVisualScene(pageText, theme) {
 }
 
 /**
- * Generates a child-friendly illustration for a story page using Amazon Nova Canvas
- * or Stability SD 3.5 Large (auto-detected from model configuration).
+ * Generates a child-friendly illustration for a story page using Amazon Nova Canvas.
  * Returns { url, alt } on success, or null on failure (graceful degradation).
  *
  * @param {string} pageText - The story page text to illustrate
@@ -129,39 +128,31 @@ async function generateIllustration(pageText, theme, seed, retries = 3, scenePro
     ? "Children's storybook watercolor painting, radiant golden bedtime lighting, ancient Mediterranean atmosphere, warm luminous washes, serene biblical storybook art"
     : "Children's storybook watercolor painting, soft gentle luminous washes, warm golden starlight illumination, cozy bedtime aesthetic";
 
-  // Crucial: Primary visual subject and action MUST come first so the diffusion model
+  // Crucial: Primary visual subject and action MUST come first so the image generation model
   // focuses strictly on the exact actions, characters, and props described on this page.
   const illustrationPrompt =
     `${primaryScene}. ` +
     `Style: ${styleDescriptor}. ` +
     `Bedtime storybook, gentle, safe for children, no text, no words, no letters, no scary elements.`;
 
-  let requestPayload;
-  if (isNovaCanvas) {
-    requestPayload = {
-      taskType: "TEXT_IMAGE",
-      textToImageParams: {
-        text: illustrationPrompt,
-      },
-      imageGenerationConfig: {
-        numberOfImages: 1,
-        height: 640,
-        width: 512,
-        cfgScale: 8.0,
-        seed: Math.abs(seed) % 858993459,
-      },
-    };
-  } else {
-    // Stability SD 3.5 Large / SDXL format
-    // requestPayload = {
-    //   prompt: illustrationPrompt,
-    //   aspect_ratio: "4:5",
-    //   output_format: "png",
-    //   seed: Math.abs(seed) % 858993459,
-    // };
+  if (!isNovaCanvas) {
     console.error("Unsupported image model. Only Nova Canvas is supported.");
-    return null;  // Gracefully skip illustrations if not Nova Canvas
+    return null;
   }
+
+  const requestPayload = {
+    taskType: "TEXT_IMAGE",
+    textToImageParams: {
+      text: illustrationPrompt,
+    },
+    imageGenerationConfig: {
+      numberOfImages: 1,
+      height: 640,
+      width: 512,
+      cfgScale: 8.0,
+      seed: Math.abs(seed) % 858993459,
+    },
+  };
 
   const command = new InvokeModelCommand({
     modelId: IMAGE_MODEL_ID,
