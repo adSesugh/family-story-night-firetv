@@ -86,6 +86,27 @@ describe("Bible Stories Integration & Category Selection", () => {
 
       expect(screen.getByText(bibleThemes[0])).toBeInTheDocument();
     });
+
+    it("displays canonical Scripture reference badge and virtue focus for the selected Bible story", () => {
+      const bibleThemes = THEME_CATEGORIES.find((c) => c.id === "bible").themes;
+
+      render(
+        <SetupScreen
+          names=""
+          setNames={jest.fn()}
+          themeIndex={0}
+          setThemeIndex={jest.fn()}
+          category="bible"
+          setCategory={jest.fn()}
+          categories={THEME_CATEGORIES}
+          themes={bibleThemes}
+          onSubmit={jest.fn()}
+        />
+      );
+
+      expect(screen.getByTestId("bible-reference-badge")).toHaveTextContent("Genesis 6–9");
+      expect(screen.getByTestId("bible-virtue-description")).toHaveTextContent("Patience & God's faithfulness");
+    });
   });
 
   describe("App Full Flow with Bible Stories", () => {

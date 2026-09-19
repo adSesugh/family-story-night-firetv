@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Play, Square, Check, Volume2, Moon, Compass, Sparkles, Sun, Plus, Trash2, Heart } from "lucide-react";
+import { Play, Square, Check, Volume2, Moon, Compass, Sparkles, Sun, Plus, Trash2, Heart, ChevronLeft, ChevronRight } from "lucide-react";
 import { VOICES } from "../constants/voices";
 import { loadCustomVoices, deleteCustomVoice } from "../utils/customVoices";
 import FamilyVoiceStudioModal from "./FamilyVoiceStudioModal";
@@ -16,11 +16,14 @@ export default function VoiceSelector({
   onChange,
   variant = "cards", // "cards" | "compact"
   id = "voice-selector",
+  onNavigateUp,
+  onNavigateDown,
 }) {
   const [customVoices, setCustomVoices] = useState([]);
   const [playingVoiceId, setPlayingVoiceId] = useState(null);
   const [isStudioOpen, setIsStudioOpen] = useState(false);
   const customAudioPlayerRef = useRef(null);
+  const voiceRowRef = useRef(null);
 
   const refreshVoices = () => {
     setCustomVoices(loadCustomVoices());
@@ -38,6 +41,15 @@ export default function VoiceSelector({
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (voiceRowRef.current && variant === "compact") {
+      const selectedBtn = voiceRowRef.current.querySelector('[aria-pressed="true"]');
+      if (selectedBtn && typeof selectedBtn.scrollIntoView === "function") {
+        selectedBtn.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+      }
+    }
+  }, [value, variant]);
 
   const allVoices = [...customVoices, ...VOICES];
 
@@ -191,9 +203,8 @@ export default function VoiceSelector({
                             </span>
                           )}
                           {isSelected && (
-                            <span className="flex items-center gap-1 rounded-full bg-lamp/20 px-2 py-0.5 text-[10px] font-medium text-lamp ring-1 ring-lamp/40">
+                            <span className="flex items-center justify-center rounded-full bg-lamp/20 p-1 text-lamp ring-1 ring-lamp/40" title="Selected">
                               <Check className="h-2.5 w-2.5" />
-                              Active
                             </span>
                           )}
                         </div>
@@ -276,43 +287,131 @@ export default function VoiceSelector({
           </div>
         </div>
       ) : (
-        /* ── Compact Variant ── */
-        <div className="flex flex-wrap gap-2">
-          {allVoices.map((v) => {
-            const isSelected = value === v.id;
-            const IconComponent = v.isCustom ? Heart : VOICE_ICONS[v.id] || Volume2;
-
-            return (
-              <button
-                key={v.id}
-                type="button"
-                onClick={() => handleSelect(v.id)}
-                className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-left text-xs font-medium transition-all ${
-                  isSelected
-                    ? "border-lamp bg-lamp/20 text-parchment shadow-sm ring-1 ring-lamp/60"
-                    : "border-starlight/20 bg-dusk/70 text-starlight hover:border-starlight/40 hover:text-parchment"
-                }`}
-                aria-pressed={isSelected}
-              >
-                <IconComponent className={`h-3.5 w-3.5 ${isSelected ? "text-lamp" : "text-starlight/70"}`} />
-                <div>
-                  <div className="font-serif text-xs font-medium text-parchment flex items-center gap-1">
-                    <span>{v.displayName || v.name}</span>
-                    {v.isCustom && <span className="text-[9px] text-rose-300">⭐</span>}
-                  </div>
-                  <div className="text-[10px] text-starlight/70">{v.tagline}</div>
-                </div>
-              </button>
-            );
-          })}
+        /* ── Compact Variant: Single Horizontal Scroll Row ── */
+        <div className="relative flex items-center min-w-0 w-full">
           <button
             type="button"
-            data-testid="compact-record-family-voice-btn"
-            onClick={() => setIsStudioOpen(true)}
-            className="flex items-center gap-1.5 rounded-lg border border-dashed border-lamp/40 bg-panel/30 px-3 py-2 text-xs text-lamp hover:border-lamp hover:bg-panel/60 transition-all cursor-pointer"
+            tabIndex={-1}
+            onClick={() => {
+              voiceRowRef.current?.scrollBy({ left: -160, behavior: "smooth" });
+            }}
+            className="hidden sm:flex items-center justify-center h-7 w-7 rounded-full bg-dusk/80 border border-starlight/20 text-starlight/80 hover:text-parchment hover:border-lamp/60 transition-all shrink-0 mr-1.5 cursor-pointer"
+            aria-label="Scroll voices left"
           >
-            <Plus className="h-3.5 w-3.5" />
-            <span>Record Voice</span>
+            <ChevronLeft size={15} />
+          </button>
+          <div
+            ref={voiceRowRef}
+            className="flex items-center gap-2 overflow-x-auto no-scrollbar py-2 px-1 max-w-full scroll-smooth flex-1 min-w-0"
+            role="group"
+            aria-label="Narrator Voices"
+          >
+            {allVoices.map((v, idx) => {
+              const isSelected = value === v.id;
+              const IconComponent = v.isCustom ? Heart : VOICE_ICONS[v.id] || Volume2;
+
+              return (
+                <button
+                  key={v.id}
+                  type="button"
+                  onClick={() => handleSelect(v.id)}
+                  onFocus={(e) => {
+                    if (value !== v.id) {
+                      handleSelect(v.id);
+                    }
+                    if (typeof e.target?.scrollIntoView === "function") {
+                      e.target.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "ArrowRight") {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      const buttons = voiceRowRef.current?.querySelectorAll("button");
+                      const nextBtn = buttons?.[idx + 1];
+                      if (nextBtn) {
+                        nextBtn.focus();
+                        nextBtn.scrollIntoView?.({ behavior: "smooth", inline: "center", block: "nearest" });
+                      }
+                    } else if (e.key === "ArrowLeft") {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      const buttons = voiceRowRef.current?.querySelectorAll("button");
+                      const prevBtn = buttons?.[idx - 1];
+                      if (prevBtn) {
+                        prevBtn.focus();
+                        prevBtn.scrollIntoView?.({ behavior: "smooth", inline: "center", block: "nearest" });
+                      }
+                    } else if (e.key === "ArrowUp") {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (onNavigateUp) onNavigateUp();
+                    } else if (e.key === "ArrowDown") {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (onNavigateDown) onNavigateDown();
+                    }
+                  }}
+                  style={{ outline: "none" }}
+                  className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-left text-xs font-medium shrink-0 transition-all cursor-pointer focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lamp focus-visible:ring-offset-2 focus-visible:ring-offset-dusk ${
+                    isSelected
+                      ? "border-lamp/80 bg-lamp/25 text-parchment shadow-md shadow-lamp/15 font-semibold"
+                      : "border-starlight/20 bg-dusk/70 text-starlight hover:border-starlight/40 hover:text-parchment"
+                  }`}
+                  aria-pressed={isSelected}
+                >
+                  <IconComponent className={`h-3.5 w-3.5 shrink-0 ${isSelected ? "text-lamp" : "text-starlight/70"}`} />
+                  <div className="shrink-0">
+                    <div className="font-serif text-xs font-medium text-parchment flex items-center gap-1 whitespace-nowrap">
+                      <span>{v.displayName || v.name}</span>
+                      {v.isCustom && <span className="text-[9px] text-rose-300">⭐</span>}
+                    </div>
+                    <div className="text-[10px] text-starlight/70 whitespace-nowrap">{v.tagline}</div>
+                  </div>
+                </button>
+              );
+            })}
+            <button
+              type="button"
+              data-testid="compact-record-family-voice-btn"
+              onClick={() => setIsStudioOpen(true)}
+              onKeyDown={(e) => {
+                if (e.key === "ArrowLeft") {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  const buttons = voiceRowRef.current?.querySelectorAll("button");
+                  const prevBtn = buttons?.[allVoices.length - 1];
+                  if (prevBtn) {
+                    prevBtn.focus();
+                    prevBtn.scrollIntoView?.({ behavior: "smooth", inline: "center", block: "nearest" });
+                  }
+                } else if (e.key === "ArrowUp") {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (onNavigateUp) onNavigateUp();
+                } else if (e.key === "ArrowDown") {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (onNavigateDown) onNavigateDown();
+                }
+              }}
+              style={{ outline: "none" }}
+              className="flex items-center gap-1.5 rounded-lg border border-dashed border-lamp/40 bg-panel/30 px-3 py-2.5 text-xs text-lamp hover:border-lamp hover:bg-panel/60 transition-all shrink-0 cursor-pointer focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lamp focus-visible:ring-offset-2 focus-visible:ring-offset-dusk"
+            >
+              <Plus className="h-3.5 w-3.5 shrink-0" />
+              <span className="whitespace-nowrap font-medium">+ Record Voice</span>
+            </button>
+          </div>
+          <button
+            type="button"
+            tabIndex={-1}
+            onClick={() => {
+              voiceRowRef.current?.scrollBy({ left: 160, behavior: "smooth" });
+            }}
+            className="hidden sm:flex items-center justify-center h-7 w-7 rounded-full bg-dusk/80 border border-starlight/20 text-starlight/80 hover:text-parchment hover:border-lamp/60 transition-all shrink-0 ml-1.5 cursor-pointer"
+            aria-label="Scroll voices right"
+          >
+            <ChevronRight size={15} />
           </button>
         </div>
       )}

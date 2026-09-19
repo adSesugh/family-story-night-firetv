@@ -39,6 +39,8 @@ export default function SettingsScreen({
   onSettingsChange,
   voice = "Joanna",
   setVoice,
+  storyLength = 6,
+  setStoryLength,
   themeMode = "preset",
   setThemeMode,
   customTheme = "",
@@ -367,89 +369,132 @@ export default function SettingsScreen({
             </div>
           </div>
 
-          {/* Story Theme */}
-          <div className="rounded-sm bg-panel/60 p-4 sm:p-6 shadow-lg">
-            <div className="flex items-center gap-2.5 border-b border-starlight/20 pb-3">
-              <Palette className="h-5 w-5 text-[#E8A33D]" />
-              <h2 className="font-serif text-2xl text-parchment">Story Theme Style</h2>
-            </div>
+          {/* Column 2: Story Theme Style & Story Length */}
+          <div className="flex flex-col gap-6">
+            {/* Story Theme */}
+            <div className="rounded-sm bg-panel/60 p-4 sm:p-6 shadow-lg">
+              <div className="flex items-center gap-2.5 border-b border-starlight/20 pb-3">
+                <Palette className="h-5 w-5 text-[#E8A33D]" />
+                <h2 className="font-serif text-2xl text-parchment">Story Theme Style</h2>
+              </div>
 
-            <div className="mt-4">
-              <p className="text-xs text-starlight/70">
-                Choose preset themes or craft your own personalized story theme.
-                {!allowCustomThemes && (
-                  <span className="ml-1 text-lamp/80">
-                    (Custom themes restricted by parent controls)
-                  </span>
-                )}
-              </p>
+              <div className="mt-4">
+                <p className="text-xs text-starlight/70">
+                  Choose preset themes or craft your own personalized story theme.
+                  {!allowCustomThemes && (
+                    <span className="ml-1 text-lamp/80">
+                      (Custom themes restricted by parent controls)
+                    </span>
+                  )}
+                </p>
 
-              <div className="mt-3 flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setThemeMode && setThemeMode("preset")}
-                  className={`rounded-sm px-4 py-2 font-sans text-sm font-medium transition-colors ${themeMode === "preset"
-                    ? "bg-lamp text-dusk"
-                    : "bg-starlight/20 text-parchment hover:bg-starlight/30"
-                    }`}
-                  aria-pressed={themeMode === "preset"}
-                >
-                  Preset
-                </button>
-                {allowCustomThemes && (
+                <div className="mt-3 flex gap-2">
                   <button
                     type="button"
-                    onClick={() => setThemeMode && setThemeMode("custom")}
-                    className={`rounded-sm px-4 py-2 font-sans text-sm font-medium transition-colors ${themeMode === "custom"
+                    onClick={() => setThemeMode && setThemeMode("preset")}
+                    className={`rounded-sm px-4 py-2 font-sans text-sm font-medium transition-colors ${themeMode === "preset"
                       ? "bg-lamp text-dusk"
                       : "bg-starlight/20 text-parchment hover:bg-starlight/30"
                       }`}
-                    aria-pressed={themeMode === "custom"}
+                    aria-pressed={themeMode === "preset"}
                   >
-                    Custom
+                    Preset
                   </button>
-                )}
-              </div>
-
-              {themeMode === "preset" && themes.length > 0 && (
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {themes.map((t, i) => (
+                  {allowCustomThemes && (
                     <button
-                      key={i}
                       type="button"
-                      onClick={() => setThemeIndex && setThemeIndex(i)}
-                      className={`rounded-sm px-3 py-1.5 font-sans text-xs transition-colors ${i === themeIndex
-                        ? "bg-lamp text-dusk font-medium"
+                      onClick={() => setThemeMode && setThemeMode("custom")}
+                      className={`rounded-sm px-4 py-2 font-sans text-sm font-medium transition-colors ${themeMode === "custom"
+                        ? "bg-lamp text-dusk"
                         : "bg-starlight/20 text-parchment hover:bg-starlight/30"
                         }`}
+                      aria-pressed={themeMode === "custom"}
                     >
-                      {t}
+                      Custom
+                    </button>
+                  )}
+                </div>
+
+                {themeMode === "preset" && themes.length > 0 && (
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {themes.map((t, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => setThemeIndex && setThemeIndex(i)}
+                        className={`rounded-sm px-3 py-1.5 font-sans text-xs transition-colors ${i === themeIndex
+                          ? "bg-lamp text-dusk font-medium"
+                          : "bg-starlight/20 text-parchment hover:bg-starlight/30"
+                          }`}
+                      >
+                        {t}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {themeMode === "custom" && allowCustomThemes && (
+                  <div className="mt-4">
+                    <textarea
+                      value={customTheme}
+                      onChange={(e) =>
+                        setCustomTheme &&
+                        setCustomTheme(e.target.value.slice(0, MAX_CUSTOM_THEME_LENGTH))
+                      }
+                      placeholder="Describe your custom story theme..."
+                      aria-label="Custom story theme"
+                      maxLength={MAX_CUSTOM_THEME_LENGTH}
+                      className="w-full rounded-sm border-b-2 border-starlight/40 bg-transparent px-1 py-2 font-serif text-sm text-parchment placeholder:text-starlight/50 focus:border-[#e8a33d] focus:outline-none"
+                      rows="3"
+                    />
+                    <div className="mt-1 flex justify-end">
+                      <span className="font-sans text-xs text-starlight/60">
+                        {customTheme.length} / {MAX_CUSTOM_THEME_LENGTH}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Story Length */}
+            <div className="rounded-sm bg-panel/60 p-4 sm:p-6 shadow-lg">
+              <div className="flex items-center gap-2.5 border-b border-starlight/20 pb-3">
+                <BookOpen className="h-5 w-5 text-[#E8A33D]" />
+                <h2 className="font-serif text-2xl text-parchment">Story Length</h2>
+              </div>
+
+              <div className="mt-4">
+                <p className="text-xs text-starlight/70">
+                  Choose the default reading length for bedtime stories.
+                </p>
+                <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  {[
+                    { length: 4, label: "Short (4p)", desc: "Quick bedtime tale (~3 min)" },
+                    { length: 6, label: "Standard (6p)", desc: "Classic bedtime chapter (~5 min)" },
+                    { length: 8, label: "Long (8p)", desc: "Immersive deep adventure (~8 min)" },
+                  ].map(({ length, label, desc }) => (
+                    <button
+                      key={length}
+                      type="button"
+                      aria-label={label}
+                      onClick={() => setStoryLength && setStoryLength(length)}
+                      style={{ outline: "none" }}
+                      className={`rounded-lg border p-3 text-left transition-all cursor-pointer focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lamp focus-visible:ring-offset-2 focus-visible:ring-offset-dusk ${
+                        storyLength === length
+                          ? "border-lamp bg-lamp/20 text-parchment shadow-md shadow-lamp/15 font-semibold ring-1 ring-lamp/60"
+                          : "border-starlight/20 bg-dusk/70 text-starlight hover:border-starlight/40 hover:text-parchment"
+                      }`}
+                      aria-pressed={storyLength === length}
+                    >
+                      <div className="font-serif text-sm font-semibold text-parchment">
+                        {label}
+                      </div>
+                      <div className="text-[11px] text-starlight/70 mt-1">{desc}</div>
                     </button>
                   ))}
                 </div>
-              )}
-
-              {themeMode === "custom" && allowCustomThemes && (
-                <div className="mt-4">
-                  <textarea
-                    value={customTheme}
-                    onChange={(e) =>
-                      setCustomTheme &&
-                      setCustomTheme(e.target.value.slice(0, MAX_CUSTOM_THEME_LENGTH))
-                    }
-                    placeholder="Describe your custom story theme..."
-                    aria-label="Custom story theme"
-                    maxLength={MAX_CUSTOM_THEME_LENGTH}
-                    className="w-full rounded-sm border-b-2 border-starlight/40 bg-transparent px-1 py-2 font-serif text-sm text-parchment placeholder:text-starlight/50 focus:border-[#e8a33d] focus:outline-none"
-                    rows="3"
-                  />
-                  <div className="mt-1 flex justify-end">
-                    <span className="font-sans text-xs text-starlight/60">
-                      {customTheme.length} / {MAX_CUSTOM_THEME_LENGTH}
-                    </span>
-                  </div>
-                </div>
-              )}
+              </div>
             </div>
           </div>
         </div>

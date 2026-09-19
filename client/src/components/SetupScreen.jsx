@@ -1,8 +1,16 @@
 import React from "react";
-import { VOICES } from "../constants/voices";
-import VoiceSelector from "./VoiceSelector";
-import { ArrowLeft, CogIcon, History, BookOpen, Sparkles, Mic, MicOff } from "lucide-react";
+import { ArrowLeft, CogIcon, History, BookOpen, Sparkles, Mic, MicOff, Feather, Trees, Rocket, Moon, ChevronLeft, ChevronRight } from "lucide-react";
 import { useSpeechRecognition } from "../utils/useSpeechRecognition";
+import { CANONICAL_BIBLE_STORIES } from "../constants/themes";
+
+const CATEGORY_ICONS = {
+  adventures: Sparkles,
+  bible: BookOpen,
+  fables: Feather,
+  nature: Trees,
+  science: Rocket,
+  calm: Moon,
+};
 
 export default function SetupScreen({
   names,
@@ -42,15 +50,50 @@ export default function SetupScreen({
     onResult: (text) => setCustomTheme && setCustomTheme(text.slice(0, maxCustomThemeLength)),
   });
 
+  const activeBibleStory =
+    category === "bible" && themes && themes.length > 0
+      ? CANONICAL_BIBLE_STORIES.find((s) => s.title === themes[themeIndex]) ||
+      CANONICAL_BIBLE_STORIES[themeIndex % CANONICAL_BIBLE_STORIES.length] ||
+      CANONICAL_BIBLE_STORIES[0]
+      : null;
+
+  const settingsBtnRef = React.useRef(null);
+  const namesInputRef = React.useRef(null);
+  const namesMicBtnRef = React.useRef(null);
+  const categoryTabsRef = React.useRef(null);
+  const themeControlsRef = React.useRef(null);
+  const customThemeRef = React.useRef(null);
+  const themeMicBtnRef = React.useRef(null);
+  const viewHistoryBtnRef = React.useRef(null);
+  const beginStoryBtnRef = React.useRef(null);
+
+  React.useEffect(() => {
+    if (categoryTabsRef.current) {
+      const selectedBtn = categoryTabsRef.current.querySelector('[aria-selected="true"]');
+      if (selectedBtn && typeof selectedBtn.scrollIntoView === "function") {
+        selectedBtn.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+      }
+    }
+  }, [category]);
+
   return (
-    <div className="relative z-10 w-full max-w-2xl px-4 sm:px-8 md:px-12 py-6 sm:py-8 my-auto overflow-y-auto max-h-[95vh]">
+    <div className="relative z-10 w-full max-w-3xl px-4 sm:px-8 md:px-12 py-6 sm:py-8 my-auto overflow-y-auto max-h-[95vh]">
       <div className="flex items-center justify-between gap-2 mb-2">
         <p className="font-sans text-sm sm:text-base md:text-lg text-starlight">Family Story Night</p>
         {onOpenSettings && (
           <button
+            ref={settingsBtnRef}
             type="button"
             onClick={onOpenSettings}
-            className="flex items-center gap-1.5 rounded-sm bg-starlight/15 px-3 py-1.5 font-sans text-xs sm:text-sm text-starlight transition-colors hover:bg-starlight/25 hover:text-parchment cursor-pointer"
+            onKeyDown={(e) => {
+              if (e.key === "ArrowDown" || e.key === "ArrowLeft") {
+                e.preventDefault();
+                e.stopPropagation();
+                namesInputRef.current?.focus();
+              }
+            }}
+            style={{ outline: "none" }}
+            className="flex items-center gap-1.5 rounded-sm bg-starlight/15 px-3 py-1.5 font-sans text-xs sm:text-sm text-starlight transition-colors hover:bg-starlight/25 hover:text-parchment cursor-pointer focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lamp focus-visible:ring-offset-2 focus-visible:ring-offset-dusk"
             aria-label="Parent Settings"
           >
             <CogIcon size={16} /> Settings
@@ -64,9 +107,30 @@ export default function SetupScreen({
 
       <div className="relative mt-6 sm:mt-10">
         <input
+          ref={namesInputRef}
           className="w-full rounded-sm border-b-2 border-starlight/40 bg-transparent pr-12 px-1 py-2 sm:py-3 font-serif text-xl sm:text-2xl md:text-3xl text-parchment placeholder:text-starlight/50 focus:border-[#e8a33d] focus:outline-none"
           value={names}
           onChange={(e) => setNames(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "ArrowUp") {
+              e.preventDefault();
+              e.stopPropagation();
+              settingsBtnRef.current?.focus();
+            } else if (e.key === "ArrowDown") {
+              e.preventDefault();
+              e.stopPropagation();
+              const activeTab = categoryTabsRef.current?.querySelector('[aria-selected="true"]') ||
+                categoryTabsRef.current?.querySelector('button');
+              activeTab?.focus();
+            } else if (e.key === "ArrowRight" && namesSpeech.isSupported) {
+              const isAtEnd = e.target.selectionEnd === e.target.value.length;
+              if (isAtEnd) {
+                e.preventDefault();
+                e.stopPropagation();
+                namesMicBtnRef.current?.focus();
+              }
+            }
+          }}
           placeholder={
             category === "bible"
               ? "(Optional) Maya, Dad..."
@@ -76,13 +140,32 @@ export default function SetupScreen({
         />
         {namesSpeech.isSupported && (
           <button
+            ref={namesMicBtnRef}
             type="button"
             onClick={namesSpeech.toggleListening}
+            onKeyDown={(e) => {
+              if (e.key === "ArrowLeft") {
+                e.preventDefault();
+                e.stopPropagation();
+                namesInputRef.current?.focus();
+              } else if (e.key === "ArrowUp") {
+                e.preventDefault();
+                e.stopPropagation();
+                settingsBtnRef.current?.focus();
+              } else if (e.key === "ArrowDown") {
+                e.preventDefault();
+                e.stopPropagation();
+                const activeTab = categoryTabsRef.current?.querySelector('[aria-selected="true"]') ||
+                  categoryTabsRef.current?.querySelector('button');
+                activeTab?.focus();
+              }
+            }}
+            style={{ outline: "none" }}
             aria-label={namesSpeech.isListening ? "Stop listening" : "Speak names into remote"}
             title={namesSpeech.isListening ? "Listening... click to stop" : "Speak names with voice"}
-            className={`absolute right-2 top-1/2 -translate-y-1/2 flex items-center justify-center h-9 w-9 rounded-full transition-all cursor-pointer ${namesSpeech.isListening
-                ? "bg-lamp text-night animate-pulse shadow-lg shadow-lamp/50 scale-110"
-                : "bg-starlight/15 text-starlight hover:bg-starlight/25 hover:text-parchment"
+            className={`absolute right-2 top-1/2 -translate-y-1/2 flex items-center justify-center h-9 w-9 rounded-full transition-all cursor-pointer focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lamp focus-visible:ring-offset-2 focus-visible:ring-offset-dusk ${namesSpeech.isListening
+              ? "bg-lamp text-night animate-pulse shadow-lg shadow-lamp/50 scale-110"
+              : "bg-starlight/15 text-starlight hover:bg-starlight/25 hover:text-parchment"
               }`}
           >
             {namesSpeech.isListening ? <MicOff size={18} /> : <Mic size={18} />}
@@ -120,69 +203,235 @@ export default function SetupScreen({
           <div>
             {/* Category Selector Tabs */}
             {categories && categories.length > 1 && (
-              <div className="flex items-center gap-2 mb-3">
-                <span className="text-xs uppercase tracking-wider text-starlight/60 font-sans font-medium mr-1">
+              <div className="flex items-center gap-1.5 mb-3 min-w-0">
+                <span className="text-xs uppercase tracking-wider text-starlight/60 font-sans font-medium mr-1 shrink-0">
                   Collection:
                 </span>
-                <div className="flex gap-2" role="tablist" aria-label="Story Categories">
-                  {categories.map((cat) => {
-                    const isSelected = (category || "adventures") === cat.id;
-                    const IconComponent = cat.id === "bible" ? BookOpen : Sparkles;
-                    return (
-                      <button
-                        key={cat.id}
-                        type="button"
-                        role="tab"
-                        aria-selected={isSelected}
-                        data-testid={`category-tab-${cat.id}`}
-                        onClick={() => {
-                          if (setCategory) {
-                            setCategory(cat.id);
-                            setThemeIndex(0);
-                          }
-                        }}
-                        className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full font-sans text-xs font-semibold transition-all ${isSelected
-                          ? "bg-lamp/25 text-lamp border border-lamp/60 shadow-md shadow-lamp/10"
-                          : "bg-starlight/10 text-starlight/75 border border-transparent hover:bg-starlight/20 hover:text-parchment"
-                          }`}
-                      >
-                        <IconComponent size={14} />
-                        <span>{cat.label}</span>
-                      </button>
-                    );
-                  })}
+                <div className="relative flex items-center min-w-0 flex-1">
+                  <button
+                    type="button"
+                    tabIndex={-1}
+                    onClick={() => {
+                      categoryTabsRef.current?.scrollBy({ left: -160, behavior: "smooth" });
+                    }}
+                    className="hidden sm:flex items-center justify-center h-7 w-7 rounded-full bg-dusk/80 border border-starlight/20 text-starlight/80 hover:text-parchment hover:border-lamp/60 transition-all shrink-0 mr-1 cursor-pointer"
+                    aria-label="Scroll collections left"
+                  >
+                    <ChevronLeft size={15} />
+                  </button>
+                  <div
+                    ref={categoryTabsRef}
+                    className="flex items-center gap-2 overflow-x-auto no-scrollbar py-2 px-1 max-w-full scroll-smooth"
+                    role="tablist"
+                    aria-label="Story Categories"
+                  >
+                    {categories.map((cat, idx) => {
+                      const isSelected = (category || "adventures") === cat.id;
+                      const IconComponent = CATEGORY_ICONS[cat.id] || Sparkles;
+                      return (
+                        <button
+                          key={cat.id}
+                          type="button"
+                          role="tab"
+                          aria-selected={isSelected}
+                          data-testid={`category-tab-${cat.id}`}
+                          onClick={() => {
+                            if (setCategory) {
+                              setCategory(cat.id);
+                              setThemeIndex(0);
+                            }
+                          }}
+                          onFocus={(e) => {
+                            if (setCategory && category !== cat.id) {
+                              setCategory(cat.id);
+                              setThemeIndex(0);
+                            }
+                            if (typeof e.target?.scrollIntoView === "function") {
+                              e.target.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+                            }
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "ArrowRight") {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              const nextIdx = (idx + 1) % categories.length;
+                              const nextCat = categories[nextIdx];
+                              if (setCategory) {
+                                setCategory(nextCat.id);
+                                setThemeIndex(0);
+                              }
+                              const buttons = categoryTabsRef.current?.querySelectorAll('[role="tab"]');
+                              const target = buttons?.[nextIdx];
+                              target?.focus();
+                              if (target && typeof target.scrollIntoView === "function") {
+                                target.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+                              }
+                            } else if (e.key === "ArrowLeft") {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              const prevIdx = (idx - 1 + categories.length) % categories.length;
+                              const prevCat = categories[prevIdx];
+                              if (setCategory) {
+                                setCategory(prevCat.id);
+                                setThemeIndex(0);
+                              }
+                              const buttons = categoryTabsRef.current?.querySelectorAll('[role="tab"]');
+                              const target = buttons?.[prevIdx];
+                              target?.focus();
+                              if (target && typeof target.scrollIntoView === "function") {
+                                target.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+                              }
+                            } else if (e.key === "ArrowUp") {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              namesInputRef.current?.focus();
+                            } else if (e.key === "ArrowDown") {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              if (activeThemeMode === "custom") {
+                                customThemeRef.current?.focus();
+                              } else {
+                                const themeBtn = themeControlsRef.current?.querySelector('button:not([tabindex="-1"])');
+                                if (themeBtn) {
+                                  themeBtn.focus();
+                                } else {
+                                  (viewHistoryBtnRef.current || beginStoryBtnRef.current)?.focus();
+                                }
+                              }
+                            }
+                          }}
+                          style={{ outline: "none" }}
+                          className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full font-sans text-xs font-semibold shrink-0 transition-all cursor-pointer focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lamp focus-visible:ring-offset-2 focus-visible:ring-offset-dusk ${isSelected
+                            ? "bg-lamp/25 text-lamp border border-lamp/80 shadow-md shadow-lamp/15 font-bold"
+                            : "bg-starlight/10 text-starlight/75 border border-transparent hover:bg-starlight/20 hover:text-parchment"
+                            }`}
+                        >
+                          <IconComponent size={14} className="shrink-0" />
+                          <span className="whitespace-nowrap">{cat.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <button
+                    type="button"
+                    tabIndex={-1}
+                    onClick={() => {
+                      categoryTabsRef.current?.scrollBy({ left: 160, behavior: "smooth" });
+                    }}
+                    className="hidden sm:flex items-center justify-center h-7 w-7 rounded-full bg-dusk/80 border border-starlight/20 text-starlight/80 hover:text-parchment hover:border-lamp/60 transition-all shrink-0 ml-1 cursor-pointer"
+                    aria-label="Scroll collections right"
+                  >
+                    <ChevronRight size={15} />
+                  </button>
                 </div>
               </div>
             )}
 
-            <div className="mt-3 flex flex-wrap items-center gap-3 font-sans text-base">
-              <span className="text-starlight text-sm">Tonight&rsquo;s theme</span>
-              <span className="text-parchment font-serif text-lg md:text-xl font-medium tracking-wide">
-                {themes[themeIndex]}
+            <div ref={themeControlsRef} className="mt-3 flex flex-wrap items-center gap-3 font-sans text-base">
+              <span className="text-starlight text-sm shrink-0">
+                {category === "bible" ? "Tonight\u2019s story" : "Tonight\u2019s theme"}
               </span>
-              <div className="flex gap-1.5">
-                {themes.map((_, i) => (
-                  <button
-                    key={i}
-                    type="button"
-                    onClick={() => setThemeIndex(i)}
-                    className={`h-2.5 w-2.5 rounded-full transition-colors ${i === themeIndex ? "bg-lamp scale-110" : "bg-starlight/30 hover:bg-starlight/50"
-                      }`}
-                    aria-label={`Theme ${i + 1}`}
-                  />
-                ))}
+
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => setThemeIndex((i) => (i - 1 + themes.length) % themes.length)}
+                  onKeyDown={(e) => {
+                    if (e.key === "ArrowUp") {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      categoryTabsRef.current?.querySelector('[aria-selected="true"]')?.focus();
+                    } else if (e.key === "ArrowDown") {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      (viewHistoryBtnRef.current || beginStoryBtnRef.current)?.focus();
+                    } else if (e.key === "ArrowRight") {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      themeControlsRef.current?.querySelectorAll("button")?.[1]?.focus();
+                    }
+                  }}
+                  aria-label="Previous story theme"
+                  title="Previous theme"
+                  style={{ outline: "none" }}
+                  className="flex items-center justify-center h-7 w-7 rounded-full bg-starlight/15 text-starlight hover:text-parchment hover:bg-starlight/25 transition-colors cursor-pointer focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lamp"
+                >
+                  <ChevronLeft size={15} />
+                </button>
+
+                <span className="text-parchment font-serif text-lg md:text-xl font-medium tracking-wide px-1">
+                  {themes[themeIndex]}
+                </span>
+
+                <button
+                  type="button"
+                  onClick={() => setThemeIndex((i) => (i + 1) % themes.length)}
+                  onKeyDown={(e) => {
+                    if (e.key === "ArrowUp") {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      categoryTabsRef.current?.querySelector('[aria-selected="true"]')?.focus();
+                    } else if (e.key === "ArrowDown") {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      (viewHistoryBtnRef.current || beginStoryBtnRef.current)?.focus();
+                    } else if (e.key === "ArrowLeft") {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      themeControlsRef.current?.querySelectorAll("button")?.[0]?.focus();
+                    }
+                  }}
+                  aria-label="Next story theme"
+                  title="Next theme"
+                  style={{ outline: "none" }}
+                  className="flex items-center justify-center h-7 w-7 rounded-full bg-starlight/15 text-starlight hover:text-parchment hover:bg-starlight/25 transition-colors cursor-pointer focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lamp"
+                >
+                  <ChevronRight size={15} />
+                </button>
               </div>
-              <span className="text-starlight/60 text-xs">↑ / ↓ to change</span>
+
+              {activeBibleStory && (
+                <span
+                  className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-lamp/15 text-lamp border border-lamp/30"
+                  data-testid="bible-reference-badge"
+                >
+                  {activeBibleStory.reference}
+                </span>
+              )}
             </div>
+            {activeBibleStory?.virtue && (
+              <p className="mt-2 font-sans text-xs text-starlight/80" data-testid="bible-virtue-description">
+                <span className="text-lamp/90 font-semibold">Virtue focus:</span> {activeBibleStory.virtue}
+              </p>
+            )}
           </div>
         ) : (
           <div className="mt-4">
             <div className="relative">
               <textarea
+                ref={customThemeRef}
                 value={customTheme}
                 onChange={(e) =>
                   setCustomTheme && setCustomTheme(e.target.value.slice(0, maxCustomThemeLength))
                 }
+                onKeyDown={(e) => {
+                  if (e.key === "ArrowUp") {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    namesInputRef.current?.focus();
+                  } else if (e.key === "ArrowDown") {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    (viewHistoryBtnRef.current || beginStoryBtnRef.current)?.focus();
+                  } else if (e.key === "ArrowRight" && themeSpeech.isSupported) {
+                    const isAtEnd = e.target.selectionEnd === e.target.value.length;
+                    if (isAtEnd) {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      themeMicBtnRef.current?.focus();
+                    }
+                  }
+                }}
                 placeholder="Describe your custom story theme..."
                 maxLength={maxCustomThemeLength}
                 className="w-full rounded-sm border-b-2 border-starlight/40 bg-transparent pr-12 px-1 py-3 font-serif text-base text-parchment placeholder:text-starlight/50 focus:border-[#e8a33d] focus:outline-none"
@@ -190,13 +439,30 @@ export default function SetupScreen({
               />
               {themeSpeech.isSupported && (
                 <button
+                  ref={themeMicBtnRef}
                   type="button"
                   onClick={themeSpeech.toggleListening}
+                  onKeyDown={(e) => {
+                    if (e.key === "ArrowLeft") {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      customThemeRef.current?.focus();
+                    } else if (e.key === "ArrowUp") {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      namesInputRef.current?.focus();
+                    } else if (e.key === "ArrowDown") {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      (viewHistoryBtnRef.current || beginStoryBtnRef.current)?.focus();
+                    }
+                  }}
+                  style={{ outline: "none" }}
                   aria-label={themeSpeech.isListening ? "Stop listening" : "Speak custom theme into remote"}
                   title={themeSpeech.isListening ? "Listening... click to stop" : "Speak custom theme with voice"}
-                  className={`absolute right-2 top-3 flex items-center justify-center h-8 w-8 rounded-full transition-all cursor-pointer ${themeSpeech.isListening
-                      ? "bg-lamp text-night animate-pulse shadow-lg shadow-lamp/50 scale-110"
-                      : "bg-starlight/15 text-starlight hover:bg-starlight/25 hover:text-parchment"
+                  className={`absolute right-2 top-3 flex items-center justify-center h-8 w-8 rounded-full transition-all cursor-pointer focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lamp focus-visible:ring-offset-2 focus-visible:ring-offset-dusk ${themeSpeech.isListening
+                    ? "bg-lamp text-night animate-pulse shadow-lg shadow-lamp/50 scale-110"
+                    : "bg-starlight/15 text-starlight hover:bg-starlight/25 hover:text-parchment"
                     }`}
                 >
                   {themeSpeech.isListening ? <MicOff size={16} /> : <Mic size={16} />}
@@ -232,82 +498,64 @@ export default function SetupScreen({
         )}
       </div>
 
-      {/* Story Length */}
-      <div className="mt-6">
-        <span className="block font-sans text-sm text-starlight">Story Length</span>
-        <div className="mt-2 flex gap-2">
-          {[
-            { length: 4, label: "Short (4p)" },
-            { length: 6, label: "Standard (6p)" },
-            { length: 8, label: "Long (8p)" },
-          ].map(({ length, label }) => (
-            <button
-              key={length}
-              type="button"
-              onClick={() => setStoryLength && setStoryLength(length)}
-              className={`flex-1 rounded-sm px-3 py-2 font-sans text-xs font-medium transition-colors ${storyLength === length
-                ? "bg-lamp text-dusk font-semibold shadow-sm"
-                : "bg-starlight/20 text-parchment hover:bg-starlight/30"
-                }`}
-              aria-pressed={storyLength === length}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Narrator Voice & Loved One's Cloned Voice */}
-      {setVoice && (
-        <div className="mt-6">
-          <div className="flex items-center justify-between mb-2">
-            <span className="block font-sans text-sm text-starlight">Narrator Voice</span>
-            <span className="text-[11px] text-starlight/60">Choose storyteller or record loved one</span>
-          </div>
-          <VoiceSelector
-            id="setup-voice-select"
-            value={voice}
-            onChange={setVoice}
-            variant="compact"
-          />
-        </div>
-      )}
-
       {error && <p className="mt-6 font-sans text-base text-red-300">{error}</p>}
       {customThemeError && (
         <p className="mt-2 font-sans text-base text-red-300">{customThemeError}</p>
       )}
 
       <div className="flex flex-col sm:flex-row gap-3 mt-6 sm:mt-8">
-        {onOpenSettings && (
-          <button
-            type="button"
-            onClick={onOpenSettings}
-            className="flex justify-center gap-2 items-center rounded-sm bg-starlight/20 px-6 sm:px-8 py-2.5 font-sans text-base sm:text-lg font-medium text-parchment transition-transform hover:scale-[1.02] focus:outline-none focus-visible:ring-2 focus-visible:ring-lamp cursor-pointer w-full sm:w-auto"
-            aria-label="Settings"
-            data-testid="home-settings-button"
-          >
-            <CogIcon size={18} /> Settings
-          </button>
-        )}
         {allowHistory && hasHistory && (
           <button
+            ref={viewHistoryBtnRef}
             type="button"
             onClick={onViewHistory}
-            className="flex justify-center gap-2 items-center rounded-sm bg-starlight/20 px-6 sm:px-8 py-2.5 font-sans text-base sm:text-lg font-medium text-parchment transition-transform hover:scale-[1.02] focus:outline-none focus-visible:ring-2 focus-visible:ring-lamp cursor-pointer w-full sm:w-auto"
+            onKeyDown={(e) => {
+              if (e.key === "ArrowRight") {
+                e.preventDefault();
+                e.stopPropagation();
+                beginStoryBtnRef.current?.focus();
+              } else if (e.key === "ArrowUp") {
+                e.preventDefault();
+                e.stopPropagation();
+                if (activeThemeMode === "custom") {
+                  customThemeRef.current?.focus();
+                } else {
+                  themeControlsRef.current?.querySelectorAll("button")?.[0]?.focus();
+                }
+              }
+            }}
+            style={{ outline: "none" }}
+            className="flex justify-center gap-2 items-center rounded-sm bg-starlight/20 px-6 sm:px-8 py-2.5 font-sans text-base sm:text-lg font-medium text-parchment transition-transform hover:scale-[1.02] focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lamp focus-visible:ring-offset-2 focus-visible:ring-offset-dusk cursor-pointer w-full sm:w-auto"
           >
             <History size={16} /> View History
           </button>
         )}
         <button
+          ref={beginStoryBtnRef}
           type="button"
           onClick={onSubmit}
-          className="flex justify-center items-center rounded-sm bg-lamp px-6 sm:px-8 py-2.5 font-sans text-base sm:text-lg font-medium text-dusk transition-transform hover:scale-[1.02] focus:outline-none focus-visible:ring-2 focus-visible:ring-lamp cursor-pointer w-full sm:w-auto"
+          onKeyDown={(e) => {
+            if (e.key === "ArrowLeft" && allowHistory && hasHistory) {
+              e.preventDefault();
+              e.stopPropagation();
+              viewHistoryBtnRef.current?.focus();
+            } else if (e.key === "ArrowUp") {
+              e.preventDefault();
+              e.stopPropagation();
+              if (activeThemeMode === "custom") {
+                customThemeRef.current?.focus();
+              } else {
+                themeControlsRef.current?.querySelectorAll("button")?.[0]?.focus();
+              }
+            }
+          }}
+          style={{ outline: "none" }}
+          className="flex justify-center items-center rounded-sm bg-lamp px-6 sm:px-8 py-2.5 font-sans text-base sm:text-lg font-medium text-dusk transition-transform hover:scale-[1.02] focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lamp focus-visible:ring-offset-2 focus-visible:ring-offset-dusk cursor-pointer w-full sm:w-auto"
         >
           Begin the story
         </button>
       </div>
-      <p className="mt-3 font-sans text-xs sm:text-sm text-starlight/60">or press Enter</p>
+      {/* <p className="mt-3 font-sans text-xs sm:text-sm text-starlight/60">or press Enter</p> */}
     </div>
   );
 }

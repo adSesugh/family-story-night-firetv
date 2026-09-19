@@ -118,22 +118,22 @@ describe("Enhancements Full Integration (Tasks 7.3, 9.1, 11.1, 19.2)", () => {
 
     render(<App />);
 
-    // Open settings to select Matthew voice
+    // Open settings to select Matthew voice and Long (8p) story length
     const settingsBtn = screen.getByRole("button", { name: "Parent Settings" });
     fireEvent.click(settingsBtn);
 
     const voiceSelect = screen.getByLabelText("Narrator Voice");
     fireEvent.change(voiceSelect, { target: { value: "Matthew" } });
 
+    // Select Long (8p) in Settings
+    const longLengthBtn = screen.getByRole("button", { name: /Long/ });
+    fireEvent.click(longLengthBtn);
+
     // Return to setup screen
     fireEvent.click(screen.getByRole("button", { name: /Back/ }));
 
     const nameInput = screen.getByPlaceholderText("Maya, Dad, Biscuit the dog");
     fireEvent.change(nameInput, { target: { value: "Maya" } });
-
-    // Select Long (8p)
-    const longLengthBtn = screen.getByRole("button", { name: /Long/ });
-    fireEvent.click(longLengthBtn);
 
     // Submit
     fireEvent.click(screen.getByRole("button", { name: "Begin the story" }));

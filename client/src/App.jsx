@@ -1058,8 +1058,8 @@ export default function App() {
       }
 
       if (screen === "setup") {
-        if (e.target?.tagName === "INPUT" || e.target?.tagName === "TEXTAREA") {
-          if (isSelect) {
+        if (e.target?.tagName === "INPUT" || e.target?.tagName === "TEXTAREA" || e.target?.tagName === "BUTTON") {
+          if (isSelect && (e.target?.tagName === "INPUT" || e.target?.tagName === "TEXTAREA")) {
             e.preventDefault();
             generateStory();
           }
@@ -1305,6 +1305,8 @@ export default function App() {
           onSettingsChange={handleSettingsChange}
           voice={voice}
           setVoice={handleVoiceChange}
+          storyLength={storyLength}
+          setStoryLength={setStoryLength}
           themeMode={themeMode}
           setThemeMode={setThemeMode}
           customTheme={customTheme}

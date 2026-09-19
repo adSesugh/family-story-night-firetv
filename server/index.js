@@ -22,6 +22,21 @@ const bedrockImage = new BedrockRuntimeClient({ region: IMAGE_REGION });
 const polly = new PollyClient({ region: REGION });
 const POLLY_ENGINE = process.env.POLLY_ENGINE || "standard";
 
+export const CANONICAL_BIBLE_STORIES = [
+  { title: "Noah's Ark & the Rainbow Promise", reference: "Genesis 6–9", virtue: "Patience & God's faithfulness" },
+  { title: "David & Goliath (Courage in God)", reference: "1 Samuel 17", virtue: "Courage & trust in God" },
+  { title: "Daniel in the Lions' Den", reference: "Daniel 6", virtue: "Steadfast faith & prayer" },
+  { title: "Jonah and the Big Fish", reference: "Jonah 1–4", virtue: "Second chances & obedience" },
+  { title: "Jesus Calms the Wind & the Waves", reference: "Mark 4:35–41", virtue: "Peace & trusting Jesus in storms" },
+  { title: "The Good Samaritan", reference: "Luke 10:25–37", virtue: "Loving and helping our neighbors" },
+  { title: "The Shepherd and the Lost Sheep", reference: "Luke 15:1–7", virtue: "How deeply God loves every one of us" },
+  { title: "Moses and the Parting of the Red Sea", reference: "Exodus 14", virtue: "God makes a way through the sea" },
+  { title: "Ruth and Naomi's Loyal Love", reference: "Ruth 1–2", virtue: "Family loyalty & kindness" },
+  { title: "The Nativity & the Star of Bethlehem", reference: "Luke 2", virtue: "Hope, peace & joy" },
+  { title: "Joseph's Colorful Coat & Forgiveness", reference: "Genesis 37, 45", virtue: "Forgiveness & God's good plan" },
+  { title: "Jesus Feeds the Five Thousand", reference: "John 6:1–14", virtue: "Gratitude & sharing with others" },
+];
+
 /**
  * Creates a beautiful SVG watercolor bedtime scene used as an emergency fallback
  * if AI image generation is unavailable or exhausted.
@@ -105,7 +120,7 @@ function extractVisualScene(pageText, theme) {
  */
 async function generateIllustration(pageText, theme, seed, retries = 3, scenePrompt = null) {
   const isBibleIllustration =
-    /\b(noah|ark|david|goliath|daniel|lion'?s den|jonah|samaritan|bethlehem|jesus|moses|creation|bible|scripture|rainbow promise|starry night in bethlehem)\b/i.test(
+    /\b(noah|ark|david|goliath|daniel|lion'?s den|jonah|whale|big fish|samaritan|bethlehem|jesus|moses|creation|eden|bible|scripture|rainbow promise|starry night in bethlehem|shepherd|lost sheep|red sea|ruth|naomi|joseph|coat|five thousand|calms the wind|waves)\b/i.test(
       theme + " " + pageText + " " + (scenePrompt || "")
     );
 
@@ -227,8 +242,8 @@ app.post("/generate-story", async (req, res) => {
 
     const isBibleStory =
       category === "bible" ||
-      /\b(noah|ark|david|goliath|daniel|lion'?s den|jonah|whale|big fish|samaritan|bethlehem|jesus|moses|creation|eden|bible|scripture|rainbow promise|starry night in bethlehem)\b/i.test(
-        theme
+      /\b(noah|ark|david|goliath|daniel|lion'?s den|jonah|whale|big fish|samaritan|bethlehem|jesus|moses|creation|eden|bible|scripture|rainbow promise|starry night in bethlehem|shepherd|lost sheep|red sea|ruth|naomi|joseph|coat|five thousand|calms the wind|waves)\b/i.test(
+        theme || ""
       );
 
     if (familyMembers.length === 0 && !isBibleStory) {
@@ -247,8 +262,22 @@ app.post("/generate-story", async (req, res) => {
     const currentChapterNum = Number(chapter) || 1;
     const nextChapterNum = currentChapterNum + 1;
 
+    let effectiveTheme = theme;
+    if (isBibleStory && (!effectiveTheme || effectiveTheme === "random" || effectiveTheme.trim() === "")) {
+      effectiveTheme = CANONICAL_BIBLE_STORIES[Math.floor(Math.random() * CANONICAL_BIBLE_STORIES.length)].title;
+    }
+
+    const matchedCanonical = isBibleStory
+      ? CANONICAL_BIBLE_STORIES.find(
+          (s) =>
+            s.title.toLowerCase() === (effectiveTheme || "").toLowerCase() ||
+            (effectiveTheme || "").toLowerCase().includes(s.title.toLowerCase()) ||
+            s.title.toLowerCase().includes((effectiveTheme || "").toLowerCase())
+        )
+      : null;
+
     console.log(
-      `[generate-story] category: ${category}, isBible: ${isBibleStory}, isCustomTheme: ${isCustomTheme}, length: ${parsedLength}, theme: "${theme}", chapter: ${currentChapterNum}` +
+      `[generate-story] category: ${category}, isBible: ${isBibleStory}, isCustomTheme: ${isCustomTheme}, length: ${parsedLength}, theme: "${effectiveTheme}", chapter: ${currentChapterNum}` +
       (selectedChoice ? `, choice: "${selectedChoice}"` : "")
     );
 
@@ -266,8 +295,13 @@ app.post("/generate-story", async (req, res) => {
           ? `Weave these family members: ${familyMembers.join(", ")} into the story with warmth, reverence, and joy as gentle helpers, companions, or witnesses who learn timeless virtues alongside the biblical figures.`
           : `Focus reverently and warmly on the biblical characters and their inspiring journey, making the timeless virtues easy for young children to understand and cherish.`;
 
+      const scriptureGrounding = matchedCanonical
+        ? `Canonical Scripture passage: ${matchedCanonical.reference}. Virtue focus: ${matchedCanonical.virtue}. Ground the narrative strictly in authentic biblical Scripture—do not invent fictional events or false doctrines.`
+        : `Ground the narrative faithfully in authentic biblical Scripture—do not invent fictional theological doctrines or false events.`;
+
       prompt = `Write Chapter ${currentChapterNum} of a gentle, inspiring bedtime Bible story (${parsedLength} pages, 2-3 sentences per page) \
-based on: ${theme}.${contextClause} \
+based on: ${effectiveTheme}.${contextClause} \
+${scriptureGrounding} \
 ${familyWeave} \
 Make it peaceful, comforting, and bedtime-appropriate (strictly no violence, frightening elements, or harsh conflict). \
 Important rules: do not use dashes, hyphenated words, or em dashes anywhere in the story text. \
@@ -288,9 +322,20 @@ Return ONLY a valid JSON object with this exact structure:
   "choices": ["Option 1 for Chapter ${nextChapterNum}", "Option 2 for Chapter ${nextChapterNum}"]
 }`;
     } else {
+      let toneInstruction = "Make it gentle, imaginative, and suitable for all ages.";
+      if (category === "fables") {
+        toneInstruction = "Make it rich in timeless folk wisdom, gentle humor, and heartwarming moral growth suitable for bedtime.";
+      } else if (category === "nature") {
+        toneInstruction = "Make it peaceful, grounded in nature and gentle animal life, with soothing sensory descriptions of the natural world settling down for sleep.";
+      } else if (category === "science") {
+        toneInstruction = "Make it filled with gentle wonder, curiosity about our world and universe, and inspiring discovery without bedtime overstimulation.";
+      } else if (category === "calm") {
+        toneInstruction = "Make it ultra-calming, slow-paced, cozy, sensory, and deeply soothing, specifically crafted to help children relax and fall peacefully asleep.";
+      }
+
       prompt = `Write Chapter ${currentChapterNum} of a warm bedtime story (${parsedLength} pages, 2-3 sentences per page) \
 starring these family members: ${familyMembers.join(", ")}. Theme: ${theme}.${contextClause} \
-Make it gentle, imaginative, and suitable for all ages. \
+${toneInstruction} \
 Important rules: do not use dashes, hyphenated words, or em dashes anywhere in the story text. \
 Write every sentence in plain language with standard punctuation only. \
 For each page, provide: \
@@ -416,6 +461,8 @@ Return ONLY a valid JSON object with this exact structure:
       lesson,
       choices,
       chapter: Number(chapter) || 1,
+      scriptureReference: matchedCanonical ? matchedCanonical.reference : null,
+      virtue: matchedCanonical ? matchedCanonical.virtue : null,
     });
   } catch (err) {
     console.error("generate-story error:", err);
