@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useRef, useState, useEffect, useCallback } from "react";
 import {
   ArrowLeft,
   Mic,
@@ -12,6 +12,7 @@ import {
   Award,
   Sparkles,
   BookOpen,
+  Compass,
 } from "lucide-react";
 import {
   loadSettings,
@@ -24,8 +25,14 @@ import { VOICES } from "../constants/voices";
 import VoiceSelector from "./VoiceSelector";
 import ConfirmModal from "./ConfirmModal";
 import Toast from "./Toast";
+import DpadController from "./DpadController";
 
 const MAX_CUSTOM_THEME_LENGTH = 100;
+
+const TABS = [
+  { id: "story", label: "Story Preferences", shortLabel: "Story", icon: Mic },
+  { id: "parent", label: "Parent Controls", shortLabel: "Parent", icon: Lock },
+];
 
 export default function SettingsScreen({
   onBack,
@@ -39,9 +46,13 @@ export default function SettingsScreen({
   themes = [],
   themeIndex = 0,
   setThemeIndex,
+  initialTab = "story",
 }) {
   const [settingsData, setSettingsData] = useState(() => loadSettings());
   const [isUnlocked, setIsUnlocked] = useState(false);
+  const [activeTab, setActiveTab] = useState(initialTab);
+  const tabRefs = useRef({});
+  const screenRef = useRef(null);
 
   // PIN setup / verify state
   const [pinInput, setPinInput] = useState("");
@@ -56,6 +67,144 @@ export default function SettingsScreen({
 
   const hasPin = Boolean(settingsData.pinHash);
   const allowCustomThemes = settingsData.settings?.allowCustomThemes !== false;
+
+  // Switching tabs also drops any half-typed PIN or unfinished "change PIN" flow.
+  const selectTab = (id) => {
+    if (id === activeTab) return;
+    setActiveTab(id);
+    setPinInput("");
+    setConfirmPinInput("");
+    setPinError(null);
+    setIsChangingPin(false);
+  };
+
+  // Arrow keys / Home / End move between tabs.
+  const handleTabKeyDown = (e) => {
+    const current = TABS.findIndex((t) => t.id === activeTab);
+    let next = null;
+    if (e.key === "ArrowRight") next = (current + 1) % TABS.length;
+    else if (e.key === "ArrowLeft") next = (current - 1 + TABS.length) % TABS.length;
+    else if (e.key === "Home") next = 0;
+    else if (e.key === "End") next = TABS.length - 1;
+    if (next === null) return;
+    e.preventDefault();
+    const nextId = TABS[next].id;
+    selectTab(nextId);
+    tabRefs.current[nextId]?.focus();
+  };
+
+  const handleDpadNavigate = useCallback(
+    (direction) => {
+      if (!screenRef.current) return;
+
+      const focusableSelector =
+        'button:not([disabled]):not([tabindex="-1"]), [role="tab"], input:not([disabled]), textarea:not([disabled]), select:not([disabled])';
+      const rawElements = Array.from(screenRef.current.querySelectorAll(focusableSelector));
+
+      const elements = rawElements.filter(
+        (el) => !el.closest('[aria-hidden="true"]') && el.style.display !== "none"
+      );
+
+      if (direction === "left") {
+        if (activeTab === "parent") {
+          selectTab("story");
+          tabRefs.current["story"]?.focus();
+        } else {
+          const activeEl = document.activeElement;
+          const currentIndex = elements.indexOf(activeEl);
+          const prevIndex =
+            currentIndex === -1 ? elements.length - 1 : (currentIndex - 1 + elements.length) % elements.length;
+          elements[prevIndex]?.focus();
+          elements[prevIndex]?.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
+        }
+        return;
+      }
+
+      if (direction === "right") {
+        if (activeTab === "story") {
+          selectTab("parent");
+          tabRefs.current["parent"]?.focus();
+        } else {
+          const activeEl = document.activeElement;
+          const currentIndex = elements.indexOf(activeEl);
+          const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % elements.length;
+          elements[nextIndex]?.focus();
+          elements[nextIndex]?.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
+        }
+        return;
+      }
+
+      if (elements.length === 0) return;
+
+      const activeEl = document.activeElement;
+      const currentIndex = elements.indexOf(activeEl);
+
+      if (direction === "down") {
+        const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % elements.length;
+        elements[nextIndex]?.focus();
+        elements[nextIndex]?.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
+      } else if (direction === "up") {
+        const prevIndex =
+          currentIndex === -1 ? elements.length - 1 : (currentIndex - 1 + elements.length) % elements.length;
+        elements[prevIndex]?.focus();
+        elements[prevIndex]?.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
+      } else if (direction === "select") {
+        if (activeEl && typeof activeEl.click === "function") {
+          activeEl.click();
+        }
+      } else if (direction === "back") {
+        if (onBack) onBack();
+      }
+    },
+    [activeTab, onBack]
+  );
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      const isInput =
+        e.target?.tagName === "INPUT" || e.target?.tagName === "TEXTAREA";
+
+      if (isInput) {
+        if (e.key === "Escape" || e.key === "GoBack" || e.keyCode === 4) {
+          e.preventDefault();
+          onBack?.();
+        }
+        return;
+      }
+
+      if (e.key === "ArrowDown" || e.keyCode === 40) {
+        e.preventDefault();
+        handleDpadNavigate("down");
+      } else if (e.key === "ArrowUp" || e.keyCode === 38) {
+        e.preventDefault();
+        handleDpadNavigate("up");
+      } else if (e.key === "ArrowLeft" || e.keyCode === 37) {
+        e.preventDefault();
+        handleDpadNavigate("left");
+      } else if (e.key === "ArrowRight" || e.keyCode === 39) {
+        e.preventDefault();
+        handleDpadNavigate("right");
+      } else if (e.key === "Enter" || e.keyCode === 13) {
+        if (document.activeElement && typeof document.activeElement.click === "function") {
+          e.preventDefault();
+          document.activeElement.click();
+        }
+      } else if (
+        e.key === "Escape" ||
+        e.key === "Backspace" ||
+        e.key === "GoBack" ||
+        e.keyCode === 4 ||
+        e.keyCode === 8 ||
+        e.keyCode === 27
+      ) {
+        e.preventDefault();
+        onBack?.();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [handleDpadNavigate, onBack]);
 
   const handleCreatePin = (e) => {
     e?.preventDefault();
@@ -126,151 +275,196 @@ export default function SettingsScreen({
   };
 
   return (
-    <div className="relative z-10 flex h-full max-h-[95vh] w-full max-w-5xl flex-col overflow-y-auto px-4 py-4 sm:px-8 sm:py-6 md:px-10">
+    <div
+      ref={screenRef}
+      className="relative z-10 flex h-full max-h-[95vh] w-full max-w-6xl flex-col overflow-y-auto px-4 py-4 sm:px-8 sm:py-6 md:px-10"
+    >
       {/* Header */}
-      <div className="mb-4 sm:mb-6 flex items-center justify-between border-b border-starlight/20 pb-3 sm:pb-4">
+      <div className="mb-3 sm:mb-4 flex items-center justify-between">
         <div>
           <p className="font-sans text-xs sm:text-sm text-starlight">Family Story Night</p>
           <h1 className="font-serif text-2xl sm:text-3xl md:text-4xl text-parchment">Settings</h1>
         </div>
         <button
           onClick={onBack}
-          className="flex items-center gap-1.5 sm:gap-2 rounded-sm bg-starlight/20 px-3.5 sm:px-5 py-1.5 sm:py-2 font-sans text-sm sm:text-base text-parchment transition-colors hover:bg-starlight/30 focus:outline-none cursor-pointer"
+          className="flex items-center gap-1.5 sm:gap-2 rounded-sm bg-starlight/20 px-3.5 sm:px-5 py-1.5 sm:py-2 font-sans text-sm sm:text-base text-parchment transition-colors hover:bg-starlight/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-lamp cursor-pointer"
         >
           <ArrowLeft className="h-4 w-4" />
           <span>Back</span>
         </button>
       </div>
 
-      {/* Two-column layout */}
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-        {/* ── Column 1: Story Preferences (Voice & Theme) ── */}
-        <div className="space-y-6">
+      {/* Tabs */}
+      <div
+        role="tablist"
+        aria-label="Settings sections"
+        onKeyDown={handleTabKeyDown}
+        className="mb-5 sm:mb-6 grid grid-cols-2 border-b border-starlight/20 sm:flex sm:gap-2"
+      >
+        {TABS.map(({ id, label, shortLabel, icon }) => {
+          const selected = activeTab === id;
+          // The Parent tab shows an open lock once the PIN has been entered.
+          const Icon = id === "parent" && hasPin && isUnlocked ? Unlock : icon;
+          return (
+            <button
+              key={id}
+              ref={(el) => {
+                tabRefs.current[id] = el;
+              }}
+              type="button"
+              role="tab"
+              id={`settings-tab-${id}`}
+              aria-selected={selected}
+              aria-controls={selected ? `settings-panel-${id}` : undefined}
+              tabIndex={selected ? 0 : -1}
+              onClick={() => selectTab(id)}
+              className={`-mb-px flex cursor-pointer items-center justify-center gap-2 border-b-2 px-3 py-2.5 font-sans text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-lamp sm:px-6 sm:text-base ${selected
+                  ? "border-lamp font-medium text-parchment"
+                  : "border-transparent text-starlight hover:text-parchment"
+                }`}
+            >
+              <Icon
+                className={`h-4 w-4 ${selected ? "text-[#E8A33D]" : ""}`}
+                aria-hidden="true"
+              />
+              <span className="sm:hidden">{shortLabel}</span>
+              <span className="hidden sm:inline">{label}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ── Tab 1: Story Preferences (Voice & Theme) ── */}
+      {activeTab === "story" && (
+        <div
+          role="tabpanel"
+          id="settings-panel-story"
+          aria-labelledby="settings-tab-story"
+          className="grid grid-cols-1 items-start gap-6 md:grid-cols-2"
+        >
+          {/* Narrator Voice */}
           <div className="rounded-sm bg-panel/60 p-4 sm:p-6 shadow-lg">
             <div className="flex items-center gap-2.5 border-b border-starlight/20 pb-3">
               <Mic className="h-5 w-5 text-[#E8A33D]" />
               <h2 className="font-serif text-2xl text-parchment">
-                Story Preferences
+                <label htmlFor="settings-voice-select">Narrator Voice</label>
               </h2>
             </div>
 
-            <div className="mt-6 space-y-6">
-              {/* Voice Selector */}
-              <div>
-                <div className="flex items-center justify-between">
-                  <label
-                    htmlFor="settings-voice-select"
-                    className="block font-sans text-base font-medium text-parchment"
-                  >
-                    Narrator Voice
-                  </label>
-                  <span className="text-xs text-starlight/60">Click card to select or preview</span>
-                </div>
-                <p className="mt-0.5 text-xs text-starlight/70">
-                  Select the storyteller tone and cadence for tonight&rsquo;s reading.
-                </p>
-                <div className="mt-3">
-                  <VoiceSelector
-                    id="settings-voice-select"
-                    value={voice}
-                    onChange={setVoice}
-                    variant="cards"
-                  />
-                </div>
-              </div>
-
-              {/* Theme Selector / Custom Theme */}
-              <div>
-                <div className="flex items-center gap-2">
-                  <Palette className="h-4 w-4 text-[#E8A33D]" />
-                  <span className="block font-sans text-base font-medium text-parchment">
-                    Story Theme Style
-                  </span>
-                </div>
-                <p className="mt-0.5 text-xs text-starlight/70">
-                  Choose preset themes or craft your own personalized story theme.
-                  {!allowCustomThemes && (
-                    <span className="ml-1 text-lamp/80">
-                      (Custom themes restricted by parent controls)
-                    </span>
-                  )}
-                </p>
-
-                <div className="mt-3 flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setThemeMode && setThemeMode("preset")}
-                    className={`rounded-sm px-4 py-2 font-sans text-sm font-medium transition-colors ${themeMode === "preset"
-                        ? "bg-lamp text-dusk"
-                        : "bg-starlight/20 text-parchment hover:bg-starlight/30"
-                      }`}
-                    aria-pressed={themeMode === "preset"}
-                  >
-                    Preset
-                  </button>
-                  {allowCustomThemes && (
-                    <button
-                      type="button"
-                      onClick={() => setThemeMode && setThemeMode("custom")}
-                      className={`rounded-sm px-4 py-2 font-sans text-sm font-medium transition-colors ${themeMode === "custom"
-                          ? "bg-lamp text-dusk"
-                          : "bg-starlight/20 text-parchment hover:bg-starlight/30"
-                        }`}
-                      aria-pressed={themeMode === "custom"}
-                    >
-                      Custom
-                    </button>
-                  )}
-                </div>
-
-                {themeMode === "preset" && themes.length > 0 && (
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    {themes.map((t, i) => (
-                      <button
-                        key={i}
-                        type="button"
-                        onClick={() => setThemeIndex && setThemeIndex(i)}
-                        className={`rounded-sm px-3 py-1.5 font-sans text-xs transition-colors ${i === themeIndex
-                            ? "bg-lamp text-dusk font-medium"
-                            : "bg-starlight/20 text-parchment hover:bg-starlight/30"
-                          }`}
-                      >
-                        {t}
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {themeMode === "custom" && allowCustomThemes && (
-                  <div className="mt-4">
-                    <textarea
-                      value={customTheme}
-                      onChange={(e) =>
-                        setCustomTheme &&
-                        setCustomTheme(e.target.value.slice(0, MAX_CUSTOM_THEME_LENGTH))
-                      }
-                      placeholder="Describe your custom story theme..."
-                      maxLength={MAX_CUSTOM_THEME_LENGTH}
-                      className="w-full rounded-sm border-b-2 border-starlight/40 bg-transparent px-1 py-2 font-serif text-sm text-parchment placeholder:text-starlight/50 focus:border-[#e8a33d] focus:outline-none"
-                      rows="3"
-                    />
-                    <div className="mt-1 flex justify-end">
-                      <span className="font-sans text-xs text-starlight/60">
-                        {customTheme.length} / {MAX_CUSTOM_THEME_LENGTH}
-                      </span>
-                    </div>
-                  </div>
-                )}
+            <div className="mt-4">
+              <p className="text-xs text-starlight/70">
+                Select the storyteller tone and cadence for tonight&rsquo;s reading.
+              </p>
+              <p className="mt-0.5 text-xs text-starlight/60">Click card to select or preview</p>
+              <div className="mt-3">
+                <VoiceSelector
+                  id="settings-voice-select"
+                  value={voice}
+                  onChange={setVoice}
+                  variant="cards"
+                />
               </div>
             </div>
           </div>
-        </div>
 
-        {/* ── Column 2: Parent Controls & Analytics ── */}
-        <div className="space-y-6">
+          {/* Story Theme */}
+          <div className="rounded-sm bg-panel/60 p-4 sm:p-6 shadow-lg">
+            <div className="flex items-center gap-2.5 border-b border-starlight/20 pb-3">
+              <Palette className="h-5 w-5 text-[#E8A33D]" />
+              <h2 className="font-serif text-2xl text-parchment">Story Theme Style</h2>
+            </div>
+
+            <div className="mt-4">
+              <p className="text-xs text-starlight/70">
+                Choose preset themes or craft your own personalized story theme.
+                {!allowCustomThemes && (
+                  <span className="ml-1 text-lamp/80">
+                    (Custom themes restricted by parent controls)
+                  </span>
+                )}
+              </p>
+
+              <div className="mt-3 flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setThemeMode && setThemeMode("preset")}
+                  className={`rounded-sm px-4 py-2 font-sans text-sm font-medium transition-colors ${themeMode === "preset"
+                    ? "bg-lamp text-dusk"
+                    : "bg-starlight/20 text-parchment hover:bg-starlight/30"
+                    }`}
+                  aria-pressed={themeMode === "preset"}
+                >
+                  Preset
+                </button>
+                {allowCustomThemes && (
+                  <button
+                    type="button"
+                    onClick={() => setThemeMode && setThemeMode("custom")}
+                    className={`rounded-sm px-4 py-2 font-sans text-sm font-medium transition-colors ${themeMode === "custom"
+                      ? "bg-lamp text-dusk"
+                      : "bg-starlight/20 text-parchment hover:bg-starlight/30"
+                      }`}
+                    aria-pressed={themeMode === "custom"}
+                  >
+                    Custom
+                  </button>
+                )}
+              </div>
+
+              {themeMode === "preset" && themes.length > 0 && (
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {themes.map((t, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => setThemeIndex && setThemeIndex(i)}
+                      className={`rounded-sm px-3 py-1.5 font-sans text-xs transition-colors ${i === themeIndex
+                        ? "bg-lamp text-dusk font-medium"
+                        : "bg-starlight/20 text-parchment hover:bg-starlight/30"
+                        }`}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {themeMode === "custom" && allowCustomThemes && (
+                <div className="mt-4">
+                  <textarea
+                    value={customTheme}
+                    onChange={(e) =>
+                      setCustomTheme &&
+                      setCustomTheme(e.target.value.slice(0, MAX_CUSTOM_THEME_LENGTH))
+                    }
+                    placeholder="Describe your custom story theme..."
+                    aria-label="Custom story theme"
+                    maxLength={MAX_CUSTOM_THEME_LENGTH}
+                    className="w-full rounded-sm border-b-2 border-starlight/40 bg-transparent px-1 py-2 font-serif text-sm text-parchment placeholder:text-starlight/50 focus:border-[#e8a33d] focus:outline-none"
+                    rows="3"
+                  />
+                  <div className="mt-1 flex justify-end">
+                    <span className="font-sans text-xs text-starlight/60">
+                      {customTheme.length} / {MAX_CUSTOM_THEME_LENGTH}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Tab 2: Parent Controls (PIN, Content & Analytics) ── */}
+      {activeTab === "parent" && (
+        <div
+          role="tabpanel"
+          id="settings-panel-parent"
+          aria-labelledby="settings-tab-parent"
+        >
           {/* PIN Setup (no PIN set or user opted to change PIN) */}
           {(!hasPin || isChangingPin) && (
-            <div className="rounded-sm bg-panel/70 p-6 shadow-lg backdrop-blur-sm">
+            <div className="mx-auto w-full max-w-md rounded-sm bg-panel/70 p-6 shadow-lg backdrop-blur-sm">
               <div className="flex items-center gap-2">
                 <KeyRound className="h-5 w-5 text-[#E8A33D]" />
                 <h2 className="font-serif text-2xl text-parchment">
@@ -288,6 +482,8 @@ export default function SettingsScreen({
                   </label>
                   <input
                     type="password"
+                    inputMode="numeric"
+                    autoComplete="off"
                     maxLength={4}
                     value={pinInput}
                     onChange={(e) => setPinInput(e.target.value.replace(/\D/g, ""))}
@@ -302,6 +498,8 @@ export default function SettingsScreen({
                   </label>
                   <input
                     type="password"
+                    inputMode="numeric"
+                    autoComplete="off"
                     maxLength={4}
                     value={confirmPinInput}
                     onChange={(e) => setConfirmPinInput(e.target.value.replace(/\D/g, ""))}
@@ -338,7 +536,7 @@ export default function SettingsScreen({
 
           {/* PIN Verification (PIN exists, locked) */}
           {hasPin && !isUnlocked && !isChangingPin && (
-            <div className="rounded-sm bg-panel/70 p-6 shadow-lg backdrop-blur-sm">
+            <div className="mx-auto w-full max-w-md rounded-sm bg-panel/70 p-6 shadow-lg backdrop-blur-sm">
               <div className="flex items-center gap-2">
                 <Lock className="h-5 w-5 text-[#E8A33D]" />
                 <h2 className="font-serif text-2xl text-parchment">Enter Parent PIN</h2>
@@ -351,10 +549,13 @@ export default function SettingsScreen({
                 <div>
                   <input
                     type="password"
+                    inputMode="numeric"
+                    autoComplete="off"
                     maxLength={4}
                     value={pinInput}
                     onChange={(e) => setPinInput(e.target.value.replace(/\D/g, ""))}
                     placeholder="••••"
+                    aria-label="Parent PIN"
                     className="w-full rounded-sm border-b-2 border-starlight/40 bg-transparent px-2 py-1.5 text-center font-mono text-3xl tracking-widest text-parchment focus:border-[#e8a33d] focus:outline-none"
                     autoFocus
                   />
@@ -375,7 +576,7 @@ export default function SettingsScreen({
 
           {/* Unlocked Parent Controls & Analytics */}
           {hasPin && isUnlocked && !isChangingPin && (
-            <>
+            <div className="grid grid-cols-1 items-start gap-6 md:grid-cols-2">
               {/* Content & Feature Preferences */}
               <div className="rounded-sm bg-panel/60 p-6 shadow-lg">
                 <div className="flex items-center justify-between border-b border-starlight/20 pb-3">
@@ -509,9 +710,23 @@ export default function SettingsScreen({
                   </div>
                 </div>
               </div>
-            </>
+            </div>
           )}
         </div>
+      )}
+
+      {/* ── Fire TV D-Pad Remote Controller & Navigator ── */}
+      <div className="mt-8 pt-5 border-t border-starlight/20 flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className="text-center md:text-left">
+          <p className="font-serif text-lg text-parchment flex items-center justify-center md:justify-start gap-2">
+            <Compass className="h-4 w-4 text-[#E8A33D]" />
+            <span>Fire TV 10-Foot D-Pad Navigation</span>
+          </p>
+          <p className="font-sans text-xs text-starlight/70 max-w-md mt-1">
+            Navigate all settings using your Fire TV remote D-pad, keyboard arrow keys, or the interactive on-screen controller.
+          </p>
+        </div>
+        <DpadController onNavigate={handleDpadNavigate} />
       </div>
 
       {/* Confirmation Modal */}

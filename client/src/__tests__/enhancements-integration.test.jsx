@@ -167,6 +167,10 @@ describe("Enhancements Full Integration (Tasks 7.3, 9.1, 11.1, 19.2)", () => {
     const settingsBtn = screen.getByRole("button", { name: "Parent Settings" });
     fireEvent.click(settingsBtn);
 
+    // Switch to Parent Controls tab to configure PIN
+    const parentTab = screen.getByRole("tab", { name: /Parent/i });
+    fireEvent.click(parentTab);
+
     expect(screen.getByText("Create a 4-Digit Parent PIN")).toBeInTheDocument();
 
     // Create PIN
@@ -181,7 +185,9 @@ describe("Enhancements Full Integration (Tasks 7.3, 9.1, 11.1, 19.2)", () => {
     const customCheckbox = screen.getByLabelText("Allow Custom Themes");
     fireEvent.click(customCheckbox);
 
-    // Verify Custom button is now hidden in Settings
+    // Switch to Story Preferences tab to verify Custom theme button is disabled/hidden
+    const storyTab = screen.getByRole("tab", { name: /Story/i });
+    fireEvent.click(storyTab);
     expect(screen.queryByRole("button", { name: "Custom" })).not.toBeInTheDocument();
 
     // Go back

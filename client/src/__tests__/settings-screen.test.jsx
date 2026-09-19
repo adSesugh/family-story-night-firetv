@@ -18,15 +18,15 @@ describe("SettingsScreen component (Task 15.2 & 20.2)", () => {
     StorageService.removeItem(ANALYTICS_STORAGE_KEY);
   });
 
-  it("renders Create PIN form when no PIN is set", () => {
-    render(<SettingsScreen onBack={jest.fn()} />);
+  it("renders Create PIN form when no PIN is set on parent tab", () => {
+    render(<SettingsScreen onBack={jest.fn()} initialTab="parent" />);
     expect(screen.getByText("Create a 4-Digit Parent PIN")).toBeInTheDocument();
     expect(screen.getByText("Enter 4-Digit PIN")).toBeInTheDocument();
     expect(screen.getByText("Confirm PIN")).toBeInTheDocument();
   });
 
   it("shows error if PINs do not match", async () => {
-    render(<SettingsScreen onBack={jest.fn()} />);
+    render(<SettingsScreen onBack={jest.fn()} initialTab="parent" />);
     const inputs = screen.getAllByPlaceholderText("••••");
     fireEvent.change(inputs[0], { target: { value: "1234" } });
     fireEvent.change(inputs[1], { target: { value: "5678" } });
@@ -38,7 +38,7 @@ describe("SettingsScreen component (Task 15.2 & 20.2)", () => {
   });
 
   it("unlocks settings panel when PIN is created successfully", async () => {
-    render(<SettingsScreen onBack={jest.fn()} />);
+    render(<SettingsScreen onBack={jest.fn()} initialTab="parent" />);
     const inputs = screen.getAllByPlaceholderText("••••");
     fireEvent.change(inputs[0], { target: { value: "1234" } });
     fireEvent.change(inputs[1], { target: { value: "1234" } });
@@ -64,7 +64,7 @@ describe("SettingsScreen component (Task 15.2 & 20.2)", () => {
       },
     });
 
-    render(<SettingsScreen onBack={jest.fn()} />);
+    render(<SettingsScreen onBack={jest.fn()} initialTab="parent" />);
     expect(screen.getByText("Enter Parent PIN")).toBeInTheDocument();
 
     const pinInput = screen.getByPlaceholderText("••••");
@@ -105,7 +105,7 @@ describe("SettingsScreen component (Task 15.2 & 20.2)", () => {
       version: 1,
     });
 
-    render(<SettingsScreen onBack={jest.fn()} />);
+    render(<SettingsScreen onBack={jest.fn()} initialTab="parent" />);
     const pinInput = screen.getByPlaceholderText("••••");
     fireEvent.change(pinInput, { target: { value: "1234" } });
     fireEvent.click(screen.getByRole("button", { name: "Unlock Controls" }));
@@ -124,5 +124,44 @@ describe("SettingsScreen component (Task 15.2 & 20.2)", () => {
 
     expect(screen.getByText("Story analytics data cleared")).toBeInTheDocument();
     expect(screen.getAllByText("None").length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("renders Story Preferences by default and toggles between tabs", () => {
+    render(<SettingsScreen onBack={jest.fn()} />);
+
+    // Defaults to Story Preferences tab
+    expect(screen.getByRole("heading", { name: /Narrator Voice/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /Story Theme Style/i })).toBeInTheDocument();
+
+    // Click Parent Controls tab
+    const parentTab = screen.getByRole("tab", { name: /Parent/i });
+    fireEvent.click(parentTab);
+
+    expect(screen.getByText("Create a 4-Digit Parent PIN")).toBeInTheDocument();
+  });
+
+  it("renders on-screen Fire TV D-Pad controller and responds to navigation", () => {
+    const handleBack = jest.fn();
+    render(<SettingsScreen onBack={handleBack} />);
+
+    // Verify D-pad controller is rendered
+    expect(screen.getByTestId("dpad-controller")).toBeInTheDocument();
+    expect(screen.getByLabelText("D-pad Up")).toBeInTheDocument();
+    expect(screen.getByLabelText("D-pad Down")).toBeInTheDocument();
+    expect(screen.getByLabelText("D-pad Left")).toBeInTheDocument();
+    expect(screen.getByLabelText("D-pad Right")).toBeInTheDocument();
+    expect(screen.getByLabelText("D-pad Select")).toBeInTheDocument();
+
+    // Click D-pad Down to move focus
+    fireEvent.click(screen.getByLabelText("D-pad Down"));
+    expect(document.activeElement).not.toBeNull();
+
+    // Click D-pad Right to switch tab to Parent Controls
+    fireEvent.click(screen.getByLabelText("D-pad Right"));
+    expect(screen.getByText("Create a 4-Digit Parent PIN")).toBeInTheDocument();
+
+    // Click D-pad Left to switch tab back to Story Preferences
+    fireEvent.click(screen.getByLabelText("D-pad Left"));
+    expect(screen.getByRole("heading", { name: /Narrator Voice/i })).toBeInTheDocument();
   });
 });

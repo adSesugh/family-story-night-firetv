@@ -279,11 +279,22 @@ export default function SetupScreen({
       )}
 
       <div className="flex flex-col sm:flex-row gap-3 mt-6 sm:mt-8">
+        {onOpenSettings && (
+          <button
+            type="button"
+            onClick={onOpenSettings}
+            className="flex justify-center gap-2 items-center rounded-sm bg-starlight/20 px-6 sm:px-8 py-2.5 font-sans text-base sm:text-lg font-medium text-parchment transition-transform hover:scale-[1.02] focus:outline-none focus-visible:ring-2 focus-visible:ring-lamp cursor-pointer w-full sm:w-auto"
+            aria-label="Settings"
+            data-testid="home-settings-button"
+          >
+            <CogIcon size={18} /> Settings
+          </button>
+        )}
         {allowHistory && hasHistory && (
           <button
             type="button"
             onClick={onViewHistory}
-            className="flex justify-center gap-2 items-center rounded-sm bg-starlight/20 px-6 sm:px-8 py-2.5 font-sans text-base sm:text-lg font-medium text-parchment transition-transform hover:scale-[1.02] focus:outline-none cursor-pointer w-full sm:w-auto"
+            className="flex justify-center gap-2 items-center rounded-sm bg-starlight/20 px-6 sm:px-8 py-2.5 font-sans text-base sm:text-lg font-medium text-parchment transition-transform hover:scale-[1.02] focus:outline-none focus-visible:ring-2 focus-visible:ring-lamp cursor-pointer w-full sm:w-auto"
           >
             <History size={16} /> View History
           </button>
@@ -291,7 +302,7 @@ export default function SetupScreen({
         <button
           type="button"
           onClick={onSubmit}
-          className="flex justify-center items-center rounded-sm bg-lamp px-6 sm:px-8 py-2.5 font-sans text-base sm:text-lg font-medium text-dusk transition-transform hover:scale-[1.02] focus:outline-none cursor-pointer w-full sm:w-auto"
+          className="flex justify-center items-center rounded-sm bg-lamp px-6 sm:px-8 py-2.5 font-sans text-base sm:text-lg font-medium text-dusk transition-transform hover:scale-[1.02] focus:outline-none focus-visible:ring-2 focus-visible:ring-lamp cursor-pointer w-full sm:w-auto"
         >
           Begin the story
         </button>
