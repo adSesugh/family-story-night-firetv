@@ -153,12 +153,14 @@ async function generateIllustration(pageText, theme, seed, retries = 3, scenePro
     };
   } else {
     // Stability SD 3.5 Large / SDXL format
-    requestPayload = {
-      prompt: illustrationPrompt,
-      aspect_ratio: "4:5",
-      output_format: "png",
-      seed: Math.abs(seed) % 858993459,
-    };
+    // requestPayload = {
+    //   prompt: illustrationPrompt,
+    //   aspect_ratio: "4:5",
+    //   output_format: "png",
+    //   seed: Math.abs(seed) % 858993459,
+    // };
+    console.error("Unsupported image model. Only Nova Canvas is supported.");
+    return null;  // Gracefully skip illustrations if not Nova Canvas
   }
 
   const command = new InvokeModelCommand({
@@ -264,11 +266,11 @@ app.post("/generate-story", async (req, res) => {
 
     const matchedCanonical = isBibleStory
       ? CANONICAL_BIBLE_STORIES.find(
-          (s) =>
-            s.title.toLowerCase() === (effectiveTheme || "").toLowerCase() ||
-            (effectiveTheme || "").toLowerCase().includes(s.title.toLowerCase()) ||
-            s.title.toLowerCase().includes((effectiveTheme || "").toLowerCase())
-        )
+        (s) =>
+          s.title.toLowerCase() === (effectiveTheme || "").toLowerCase() ||
+          (effectiveTheme || "").toLowerCase().includes(s.title.toLowerCase()) ||
+          s.title.toLowerCase().includes((effectiveTheme || "").toLowerCase())
+      )
       : null;
 
     console.log(
