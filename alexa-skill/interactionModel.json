@@ -16,11 +16,16 @@
             "tonight's heroes are {Names}",
             "our names are {Names}",
             "names are {Names}",
+            "the names are {Names}",
             "who is in tonight's story {Names}",
             "add {Names}",
             "put {Names} in the story",
             "the children are {Names}",
-            "{Names}"
+            "my children are {Names}",
+            "include {Names}",
+            "featuring {Names}",
+            "with {Names}",
+            "for {Names}"
           ]
         },
         {
@@ -34,12 +39,15 @@
           "samples": [
             "choose theme {Theme}",
             "set theme to {Theme}",
+            "theme is {Theme}",
+            "choose {Theme}",
+            "select {Theme}",
             "tell a {Theme} story",
             "tell an {Theme} story",
             "explore {Theme}",
+            "read about {Theme}",
             "theme {Theme}",
-            "play {Theme}",
-            "{Theme}"
+            "play {Theme}"
           ]
         },
         {
