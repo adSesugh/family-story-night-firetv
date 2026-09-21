@@ -4,6 +4,9 @@ This document outlines specific developer friction encountered during the develo
 
 ---
 
+## Friction Log Entry 1: Amazon Polly SpeechMark Synchronization & Fire TV WebView Storage Quotas
+**Date:** September 19, 2026
+
 ### Task Attempted
 Synchronizing real-time text highlight glow on a 65" Fire TV screen with Amazon Polly Neural narration and Fire TV WebView storage.
 
@@ -46,6 +49,7 @@ Synchronizing real-time text highlight glow on a 65" Fire TV screen with Amazon 
 ---
 
 ## Friction Log Entry 2: Fire TV Remote Alexa Voice Input & Web App Tester Microphone Access
+**Date:** September 21, 2026
 
 ### Task Attempted
 Enabling family voice input via the Fire TV remote to dictate family member names, choose bedtime story themes, and control story playback hands-free.
