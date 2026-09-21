@@ -1,6 +1,7 @@
 import React from "react";
 import { ArrowLeft, CogIcon, History, BookOpen, Sparkles, Mic, MicOff, Feather, Trees, Rocket, Moon, ChevronLeft, ChevronRight } from "lucide-react";
 import { useSpeechRecognition } from "../utils/useSpeechRecognition";
+import { isFireTVDevice } from "../utils/device";
 import { CANONICAL_BIBLE_STORIES } from "../constants/themes";
 
 const CATEGORY_ICONS = {
@@ -11,6 +12,34 @@ const CATEGORY_ICONS = {
   science: Rocket,
   calm: Moon,
 };
+
+function formatSpeechError(error) {
+  if (!error) return null;
+  const isFireTV = typeof navigator !== "undefined" && isFireTVDevice(navigator.userAgent);
+  if (isFireTV) {
+    return "Microphone is unavailable in Fire TV Web App Tester. Please select the input box and use the on-screen keyboard (or dictate via the Fire TV mobile app).";
+  }
+  if (error === "insecure-context") {
+    return "Microphone requires HTTPS or localhost. Connecting via network HTTP (http://...) blocks microphone access in browsers.";
+  }
+  if (error === "not-allowed") {
+    const isInsecure =
+      typeof window !== "undefined" &&
+      (window.isSecureContext === false ||
+        (window.location &&
+          window.location.protocol === "http:" &&
+          window.location.hostname !== "localhost" &&
+          window.location.hostname !== "127.0.0.1"));
+    if (isInsecure) {
+      return "Microphone blocked: Browser requires HTTPS or localhost. Connecting via network HTTP (http://...) blocks microphone access.";
+    }
+    return "Microphone access blocked. Please allow microphone permission in browser settings. (Tip: Speak naturally after clicking; do not hold the Alexa remote button).";
+  }
+  if (error === "no-speech") {
+    return "No voice heard. Please try speaking closer to your microphone.";
+  }
+  return `Microphone notice: ${error}`;
+}
 
 export default function SetupScreen({
   names,
@@ -36,6 +65,7 @@ export default function SetupScreen({
   setStoryLength,
   parentSettings,
   onOpenSettings,
+  alexaPairingCode,
 }) {
   const maxCustomThemeLength = 100;
   const allowCustomThemes = parentSettings?.settings?.allowCustomThemes !== false;
@@ -77,9 +107,20 @@ export default function SetupScreen({
   }, [category]);
 
   return (
-    <div className="relative z-10 w-full max-w-3xl px-4 sm:px-8 md:px-12 py-6 sm:py-8 my-auto overflow-y-auto max-h-[95vh]">
+    <div className="relative z-10 w-full max-w-4xl px-4 sm:px-8 md:px-12 py-6 sm:py-8 my-auto overflow-y-auto max-h-[95vh]">
       <div className="flex items-center justify-between gap-2 mb-2">
-        <p className="font-sans text-sm sm:text-base md:text-lg text-starlight">Family Story Night</p>
+        <div className="flex items-center gap-3">
+          <p className="font-sans text-sm sm:text-base md:text-lg text-starlight">Family Story Night</p>
+          {alexaPairingCode && (
+            <span
+              className="inline-flex items-center gap-1.5 rounded-full bg-lamp/15 border border-lamp/30 px-2.5 py-0.5 font-sans text-xs text-lamp"
+              title={`Alexa Voice Code: ${alexaPairingCode}`}
+            >
+              <Mic size={12} className="text-lamp animate-pulse" />
+              <span>Alexa Code: <strong className="tracking-widest font-mono">{alexaPairingCode}</strong></span>
+            </span>
+          )}
+        </div>
         {onOpenSettings && (
           <button
             ref={settingsBtnRef}
@@ -184,11 +225,7 @@ export default function SetupScreen({
       )}
       {namesSpeech.error && (
         <p className="mt-2 text-xs font-sans text-amber-300">
-          {namesSpeech.error === "not-allowed"
-            ? "Microphone access blocked. Please allow microphone permission in browser settings."
-            : namesSpeech.error === "no-speech"
-              ? "No voice heard. Please try speaking closer to your microphone."
-              : `Microphone notice: ${namesSpeech.error}`}
+          {formatSpeechError(namesSpeech.error)}
         </p>
       )}
       {category === "bible" && (
@@ -481,11 +518,7 @@ export default function SetupScreen({
             )}
             {themeSpeech.error && (
               <p className="mt-1 text-xs font-sans text-amber-300">
-                {themeSpeech.error === "not-allowed"
-                  ? "Microphone access blocked. Please allow microphone permission in browser settings."
-                  : themeSpeech.error === "no-speech"
-                    ? "No voice heard. Please try speaking closer to your microphone."
-                    : `Microphone notice: ${themeSpeech.error}`}
+                {formatSpeechError(themeSpeech.error)}
               </p>
             )}
             <div className="mt-2 flex justify-between">

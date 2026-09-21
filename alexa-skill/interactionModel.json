@@ -1,0 +1,139 @@
+{
+  "interactionModel": {
+    "languageModel": {
+      "invocationName": "family story night",
+      "intents": [
+        {
+          "name": "SetNamesIntent",
+          "slots": [
+            {
+              "name": "Names",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "the heroes are {Names}",
+            "tonight's heroes are {Names}",
+            "our names are {Names}",
+            "names are {Names}",
+            "who is in tonight's story {Names}",
+            "add {Names}",
+            "put {Names} in the story",
+            "the children are {Names}",
+            "{Names}"
+          ]
+        },
+        {
+          "name": "ChooseThemeIntent",
+          "slots": [
+            {
+              "name": "Theme",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "choose theme {Theme}",
+            "set theme to {Theme}",
+            "tell a {Theme} story",
+            "tell an {Theme} story",
+            "explore {Theme}",
+            "theme {Theme}",
+            "play {Theme}",
+            "{Theme}"
+          ]
+        },
+        {
+          "name": "StartStoryIntent",
+          "slots": [],
+          "samples": [
+            "start the story",
+            "start story",
+            "begin the story",
+            "begin story",
+            "read story",
+            "read the bedtime story",
+            "let's read",
+            "start reading",
+            "open the story"
+          ]
+        },
+        {
+          "name": "NextPageIntent",
+          "slots": [],
+          "samples": [
+            "next page",
+            "turn the page",
+            "turn page",
+            "flip page",
+            "go forward",
+            "go to next page"
+          ]
+        },
+        {
+          "name": "PreviousPageIntent",
+          "slots": [],
+          "samples": [
+            "previous page",
+            "go back",
+            "back page",
+            "last page",
+            "flip back"
+          ]
+        },
+        {
+          "name": "ToggleNarrationIntent",
+          "slots": [],
+          "samples": [
+            "pause narration",
+            "resume narration",
+            "toggle narration",
+            "pause the story",
+            "resume the story",
+            "play story",
+            "stop talking",
+            "continue reading"
+          ]
+        },
+        {
+          "name": "LinkDeviceIntent",
+          "slots": [
+            {
+              "name": "Code",
+              "type": "AMAZON.FOUR_DIGIT_NUMBER"
+            }
+          ],
+          "samples": [
+            "link code {Code}",
+            "connect code {Code}",
+            "pair code {Code}",
+            "pair with code {Code}",
+            "code is {Code}",
+            "my code is {Code}",
+            "{Code}"
+          ]
+        },
+        {
+          "name": "AMAZON.HelpIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.StopIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.CancelIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.FallbackIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.NavigateHomeIntent",
+          "samples": []
+        }
+      ],
+      "types": []
+    }
+  }
+}

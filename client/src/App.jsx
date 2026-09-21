@@ -10,6 +10,7 @@ import { loadCustomVoices } from "./utils/customVoices";
 import { trackEvent } from "./utils/analytics";
 import { blobToDataUrl, compressBlobToDataUrl, createFallbackIllustrationUrl } from "./utils/imageUtils";
 import { playBedtimeLullabyChime } from "./utils/audioChimes";
+import { useAlexaVoiceSync } from "./utils/useAlexaVoiceSync";
 
 import { THEME_CATEGORIES, DEFAULT_CATEGORY_ID, THEMES } from "./constants/themes";
 import { VOICES } from "./constants/voices";
@@ -199,10 +200,10 @@ export default function App() {
                 const scene = typeof p === "object" ? p.scene : undefined;
                 return currentStoredUrls[i]
                   ? {
-                      text,
-                      scene,
-                      illustration: { url: currentStoredUrls[i], alt: `Illustration for page ${i + 1}` },
-                    }
+                    text,
+                    scene,
+                    illustration: { url: currentStoredUrls[i], alt: `Illustration for page ${i + 1}` },
+                  }
                   : { text, scene };
               }),
             };
@@ -225,10 +226,10 @@ export default function App() {
                   const scene = typeof p === "object" ? p.scene : undefined;
                   return currentStoredUrls[i]
                     ? {
-                        text,
-                        scene,
-                        illustration: { url: currentStoredUrls[i], alt: `Illustration for page ${i + 1}` },
-                      }
+                      text,
+                      scene,
+                      illustration: { url: currentStoredUrls[i], alt: `Illustration for page ${i + 1}` },
+                    }
                     : { text, scene };
                 }),
               };
@@ -243,10 +244,10 @@ export default function App() {
               const scene = typeof p === "object" ? p.scene : undefined;
               return currentStoredUrls[i]
                 ? {
-                    text,
-                    scene,
-                    illustration: { url: currentStoredUrls[i], alt: `Illustration for page ${i + 1}` },
-                  }
+                  text,
+                  scene,
+                  illustration: { url: currentStoredUrls[i], alt: `Illustration for page ${i + 1}` },
+                }
                 : { text, scene };
             }),
             chapters: updatedChapters.length > 0 ? updatedChapters : undefined,
@@ -310,7 +311,7 @@ export default function App() {
     setError(null);
     const startTime = Date.now();
     const currentSessionId = ++illustrationSessionRef.current;
-    
+
     const familyMembers = names
       .split(",")
       .map((n) => n.trim())
@@ -497,7 +498,7 @@ export default function App() {
       try {
         audioRef.current.pause();
         audioRef.current.removeAttribute("src");
-      } catch (e) {}
+      } catch (e) { }
     }
     setHistory(loadHistory());
     setScreen("history");
@@ -512,7 +513,7 @@ export default function App() {
       try {
         audioRef.current.pause();
         audioRef.current.removeAttribute("src");
-      } catch (e) {}
+      } catch (e) { }
     }
     primeAudio();
     setCurrentStoryId(story.id || null);
@@ -526,14 +527,14 @@ export default function App() {
       Array.isArray(story.chapters) && story.chapters.length > 0
         ? story.chapters
         : [
-            {
-              chapter: story.chapter || 1,
-              pages: story.pages || [],
-              illustrations: story.illustrations || [],
-              lesson: story.lesson || "",
-              choices: story.choices || [],
-            },
-          ];
+          {
+            chapter: story.chapter || 1,
+            pages: story.pages || [],
+            illustrations: story.illustrations || [],
+            lesson: story.lesson || "",
+            choices: story.choices || [],
+          },
+        ];
 
     setActiveStoryChapters(storyChapters);
     setActiveChapterIndex(0);
@@ -567,7 +568,7 @@ export default function App() {
       try {
         audioRef.current.pause();
         audioRef.current.removeAttribute("src");
-      } catch (e) {}
+      } catch (e) { }
     }
     primeAudio();
     const nextIdx = activeChapterIndex + 1;
@@ -779,7 +780,7 @@ export default function App() {
       try {
         audioRef.current.pause();
         audioRef.current.removeAttribute("src");
-      } catch (e) {}
+      } catch (e) { }
     }
     setCurrentStoryId(null);
     setActiveStoryMetadata(null);
@@ -797,7 +798,7 @@ export default function App() {
       try {
         audioRef.current.pause();
         audioRef.current.removeAttribute("src");
-      } catch (e) {}
+      } catch (e) { }
     }
     setHistory(loadHistory());
     setScreen("setup");
@@ -867,7 +868,7 @@ export default function App() {
   const handleToggleNarration = useCallback(() => {
     if (!audioRef.current) return;
     if (audioRef.current.paused) {
-      audioRef.current.play().catch(() => {});
+      audioRef.current.play().catch(() => { });
     } else {
       audioRef.current.pause();
     }
@@ -899,6 +900,60 @@ export default function App() {
     window.addEventListener("online", handleOnline);
     return () => window.removeEventListener("online", handleOnline);
   }, []);
+
+  // Alexa Voice Skills Kit Synchronization
+  const handleAlexaSetTheme = useCallback((themeText) => {
+    if (!themeText) return;
+    const lower = themeText.toLowerCase().trim();
+    for (const cat of categories) {
+      const foundIdx = (cat.themes || []).findIndex(
+        (t) => t.toLowerCase().includes(lower) || lower.includes(t.toLowerCase())
+      );
+      if (foundIdx !== -1) {
+        setCategory(cat.id);
+        setThemeIndex(foundIdx);
+        setThemeMode("preset");
+        return;
+      }
+    }
+    setThemeMode("custom");
+    setCustomTheme(themeText.slice(0, 100));
+  }, [categories]);
+
+  const handleAlexaNavigatePage = useCallback((direction) => {
+    if (direction === "next") {
+      setPageIndex((curr) => {
+        const next = Math.min(curr + 1, pages.length);
+        turnTo(next);
+        return next;
+      });
+    } else if (direction === "prev") {
+      setPageIndex((curr) => {
+        const prev = Math.max(curr - 1, 0);
+        turnTo(prev);
+        return prev;
+      });
+    }
+  }, [pages.length, turnTo]);
+
+  const { pairingCode: alexaPairingCode } = useAlexaVoiceSync({
+    apiBase: API_BASE,
+    onSetNames: (spokenNames) => {
+      setNames(spokenNames);
+      if (screen !== "setup") {
+        setScreen("setup");
+      }
+    },
+    onSetTheme: handleAlexaSetTheme,
+    onStartStory: () => {
+      if (screen === "setup") {
+        generateStory();
+      }
+    },
+    onNavigatePage: handleAlexaNavigatePage,
+    onToggleNarration: handleToggleNarration,
+    enabled: true,
+  });
 
   // Narrate current page (or lesson on conclusion slide) whenever screen="story", page changes, or voice changes
   useEffect(() => {
@@ -977,11 +1032,11 @@ export default function App() {
           setActiveSpeechMark(null);
           isPrimingAudioRef.current = false;
           if (typeof audioRef.current.pause === "function") {
-            try { audioRef.current.pause(); } catch (e) {}
+            try { audioRef.current.pause(); } catch (e) { }
           }
           audioRef.current.src = audioUrl;
           if (typeof audioRef.current.load === "function") {
-            try { audioRef.current.load(); } catch (e) {}
+            try { audioRef.current.load(); } catch (e) { }
           }
           if (typeof audioRef.current.play === "function") {
             // Defer audio playback until illustration is loaded
@@ -1012,7 +1067,7 @@ export default function App() {
             console.warn("Audio autoplay blocked or interrupted:", err);
           });
         }
-      } catch (e) {}
+      } catch (e) { }
     }
   }, [pendingAudioPlay, pageIndex, illustrations]);
 
@@ -1338,7 +1393,7 @@ export default function App() {
 
       {/* Single warm light source behind the page — the one deliberate visual moment */}
       <div
-        className="pointer-events-none absolute left-1/2 top-1/2 h-[60vh] w-[60vh] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-30 blur-3xl"
+        className="pointer-events-none absolute left-1/2 top-1/2 h-[70vh] w-[70vh] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-30 blur-3xl"
         style={{ background: "radial-gradient(circle, #E8A33D 0%, transparent 70%)" }}
       />
 
@@ -1366,6 +1421,7 @@ export default function App() {
           setStoryLength={setStoryLength}
           parentSettings={parentSettings}
           onOpenSettings={handleOpenSettings}
+          alexaPairingCode={alexaPairingCode}
         />
       )}
       {screen === "loading" && <LoadingScreen chapter={chapter} choice={activeChoiceTitle} />}

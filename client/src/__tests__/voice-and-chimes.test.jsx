@@ -109,6 +109,27 @@ describe("Voice Input & Bedtime Lullaby Chime (Features A & C)", () => {
   });
 
   describe("SetupScreen Voice Input Integration", () => {
+    it("detects insecure context when isSecureContext is false", () => {
+      class MockSpeechRecognition {
+        start() {}
+        stop() {}
+        abort() {}
+      }
+      window.webkitSpeechRecognition = MockSpeechRecognition;
+      const originalSecure = window.isSecureContext;
+      window.isSecureContext = false;
+
+      const { result } = renderHook(() => useSpeechRecognition());
+      act(() => {
+        result.current.startListening();
+      });
+
+      expect(result.current.error).toBe("insecure-context");
+
+      window.isSecureContext = originalSecure;
+      delete window.webkitSpeechRecognition;
+    });
+
     it("renders microphone voice button when SpeechRecognition is supported", () => {
       class MockSpeechRecognition {
         start() {}

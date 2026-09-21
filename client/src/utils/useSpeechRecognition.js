@@ -56,6 +56,22 @@ export function useSpeechRecognition({ onResult, onError } = {}) {
       } catch (e) {}
     }
 
+    const isInsecure =
+      typeof window !== "undefined" &&
+      (window.isSecureContext === false ||
+        (window.location &&
+          window.location.protocol === "http:" &&
+          window.location.hostname !== "localhost" &&
+          window.location.hostname !== "127.0.0.1"));
+
+    if (isInsecure) {
+      setError("insecure-context");
+      if (onErrorRef.current) {
+        onErrorRef.current("insecure-context");
+      }
+      return;
+    }
+
     try {
       const recognition = new SpeechRecognition();
       recognition.continuous = false;
