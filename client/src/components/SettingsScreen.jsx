@@ -470,29 +470,30 @@ export default function SettingsScreen({
                 <p className="text-xs text-starlight/70">
                   Choose the default reading length for bedtime stories.
                 </p>
-                <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                <div className="mt-3 grid grid-cols-3 gap-2.5">
                   {[
-                    { length: 4, label: "Short (4p)", desc: "Quick bedtime tale (~3 min)" },
-                    { length: 6, label: "Standard (6p)", desc: "Classic bedtime chapter (~5 min)" },
-                    { length: 8, label: "Long (8p)", desc: "Immersive deep adventure (~8 min)" },
-                  ].map(({ length, label, desc }) => (
+                    { emoji: "🐣", label: "Toddler", ages: "2–4", length: 3, desc: "~2 min" },
+                    { emoji: "📖", label: "Early Reader", ages: "5–7", length: 6, desc: "~5 min" },
+                    { emoji: "🚀", label: "Chapter Book", ages: "8+", length: 9, desc: "~8 min" },
+                  ].map(({ emoji, label, ages, length, desc }) => (
                     <button
                       key={length}
                       type="button"
-                      aria-label={label}
+                      aria-label={`${label} (${ages}), ${length} pages, ${desc}`}
                       onClick={() => setStoryLength && setStoryLength(length)}
                       style={{ outline: "none" }}
-                      className={`rounded-lg border p-3 text-left transition-all cursor-pointer focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lamp focus-visible:ring-offset-2 focus-visible:ring-offset-dusk ${
+                      className={`flex flex-col items-center gap-0.5 rounded-xl border p-3 transition-all cursor-pointer focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lamp focus-visible:ring-offset-2 focus-visible:ring-offset-dusk ${
                         storyLength === length
-                          ? "border-lamp bg-lamp/20 text-parchment shadow-md shadow-lamp/15 font-semibold ring-1 ring-lamp/60"
+                          ? "border-lamp bg-lamp/20 shadow-md shadow-lamp/15 ring-1 ring-lamp/60"
                           : "border-starlight/20 bg-dusk/70 text-starlight hover:border-starlight/40 hover:text-parchment"
                       }`}
                       aria-pressed={storyLength === length}
                     >
-                      <div className="font-serif text-sm font-semibold text-parchment">
+                      <span className="text-2xl">{emoji}</span>
+                      <div className={`font-sans text-sm font-bold mt-0.5 ${storyLength === length ? "text-lamp" : "text-parchment"}`}>
                         {label}
                       </div>
-                      <div className="text-[11px] text-starlight/70 mt-1">{desc}</div>
+                      <div className="text-[11px] text-starlight/60 mt-0.5">{ages} · {desc}</div>
                     </button>
                   ))}
                 </div>

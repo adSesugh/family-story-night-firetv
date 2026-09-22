@@ -1,5 +1,5 @@
 import React from "react";
-import { ArrowLeft, CogIcon, History, BookOpen, Sparkles, Mic, MicOff, Feather, Trees, Rocket, Moon, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, CogIcon, History, BookOpen, Sparkles, Mic, MicOff, Feather, Trees, Rocket, Moon, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { useSpeechRecognition } from "../utils/useSpeechRecognition";
 import { isFireTVDevice } from "../utils/device";
 import { CANONICAL_BIBLE_STORIES } from "../constants/themes";
@@ -150,8 +150,10 @@ export default function SetupScreen({
             type="button"
             onClick={dismissBedtimeBanner}
             aria-label="Dismiss"
-            className="text-starlight/60 hover:text-parchment transition-colors text-lg leading-none cursor-pointer"
-          >×</button>
+            className="text-starlight/60 hover:text-parchment transition-colors text-lg leading-none cursor-pointer p-1"
+          >
+            <X size={10} className="text-white" />
+          </button>
         </div>
       )}
       <div className="flex items-center justify-between gap-2 mb-2">
@@ -195,9 +197,8 @@ export default function SetupScreen({
       <div className="relative mt-6 sm:mt-10">
         <input
           ref={namesInputRef}
-          className={`w-full rounded-sm border-b-2 border-starlight/40 bg-transparent px-1 py-2 sm:py-3 font-serif text-xl sm:text-2xl md:text-3xl text-parchment placeholder:text-starlight/50 focus:border-[#e8a33d] focus:outline-none ${
-            namesSpeech.isSupported ? "pr-20" : names ? "pr-10" : "pr-12"
-          }`}
+          className={`w-full rounded-sm border-b-2 border-starlight/40 bg-transparent px-1 py-2 sm:py-3 font-serif text-xl sm:text-2xl md:text-3xl text-parchment placeholder:text-starlight/50 focus:border-[#e8a33d] focus:outline-none ${namesSpeech.isSupported ? "pr-20" : names ? "pr-10" : "pr-12"
+            }`}
           value={names}
           onChange={(e) => setNames(e.target.value)}
           onKeyDown={(e) => {
@@ -261,11 +262,10 @@ export default function SetupScreen({
             style={{ outline: "none" }}
             aria-label="Clear names"
             title="Clear"
-            className={`absolute top-1/2 -translate-y-1/2 flex items-center justify-center h-6 w-6 rounded-full bg-starlight/10 text-starlight/50 hover:bg-starlight/25 hover:text-parchment transition-all cursor-pointer focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lamp focus-visible:ring-offset-2 focus-visible:ring-offset-dusk ${
-              namesSpeech.isSupported ? "right-12" : "right-2"
-            }`}
+            className={`absolute top-1/2 -translate-y-1/2 flex items-center justify-center h-6 w-6 rounded-full bg-starlight/10 text-starlight/50 hover:bg-starlight/25 hover:text-parchment transition-all cursor-pointer focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lamp focus-visible:ring-offset-2 focus-visible:ring-offset-dusk ${namesSpeech.isSupported ? "right-12" : "right-2"
+              }`}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
           </button>
         )}
         {namesSpeech.isSupported && (
@@ -570,9 +570,8 @@ export default function SetupScreen({
                 }}
                 placeholder="Describe your custom story theme..."
                 maxLength={maxCustomThemeLength}
-                className={`w-full rounded-sm border-b-2 border-starlight/40 bg-transparent px-1 py-3 font-serif text-base text-parchment placeholder:text-starlight/50 focus:border-[#e8a33d] focus:outline-none ${
-                  themeSpeech.isSupported ? "pr-20" : customTheme ? "pr-10" : "pr-12"
-                }`}
+                className={`w-full rounded-sm border-b-2 border-starlight/40 bg-transparent px-1 py-3 font-serif text-base text-parchment placeholder:text-starlight/50 focus:border-[#e8a33d] focus:outline-none ${themeSpeech.isSupported ? "pr-20" : customTheme ? "pr-10" : "pr-12"
+                  }`}
                 rows="2"
               />
               {customTheme && (
@@ -602,11 +601,10 @@ export default function SetupScreen({
                   style={{ outline: "none" }}
                   aria-label="Clear custom theme"
                   title="Clear"
-                  className={`absolute top-3 flex items-center justify-center h-6 w-6 rounded-full bg-starlight/10 text-starlight/50 hover:bg-starlight/25 hover:text-parchment transition-all cursor-pointer focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lamp focus-visible:ring-offset-2 focus-visible:ring-offset-dusk ${
-                    themeSpeech.isSupported ? "right-12" : "right-2"
-                  }`}
+                  className={`absolute top-3 flex items-center justify-center h-6 w-6 rounded-full bg-starlight/10 text-starlight/50 hover:bg-starlight/25 hover:text-parchment transition-all cursor-pointer focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lamp focus-visible:ring-offset-2 focus-visible:ring-offset-dusk ${themeSpeech.isSupported ? "right-12" : "right-2"
+                    }`}
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
                 </button>
               )}
               {themeSpeech.isSupported && (
@@ -676,34 +674,6 @@ export default function SetupScreen({
         <p className="mt-2 font-sans text-base text-red-300">{customThemeError}</p>
       )}
 
-      {/* Feature 10: Age-group story length picker */}
-      <div className="mt-6">
-        <p className="font-sans text-xs uppercase tracking-wider text-starlight/60 font-medium mb-2">Story length</p>
-        <div className="grid grid-cols-3 gap-2">
-          {AGE_GROUPS.map(({ emoji, label, ages, pages, desc }) => {
-            const isSelected = storyLength === pages;
-            return (
-              <button
-                key={pages}
-                type="button"
-                onClick={() => setStoryLength && setStoryLength(pages)}
-                style={{ outline: "none" }}
-                aria-pressed={isSelected}
-                aria-label={`${label} (${ages}), ${pages} pages, ${desc}`}
-                className={`flex flex-col items-center gap-0.5 py-2.5 px-2 rounded-xl border transition-all cursor-pointer focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lamp focus-visible:ring-offset-2 focus-visible:ring-offset-dusk ${
-                  isSelected
-                    ? "border-lamp bg-lamp/20 shadow-md shadow-lamp/15 ring-1 ring-lamp/60"
-                    : "border-starlight/20 bg-starlight/5 hover:border-starlight/40 hover:bg-starlight/10"
-                }`}
-              >
-                <span className="text-xl">{emoji}</span>
-                <span className={`font-sans text-xs font-bold ${isSelected ? "text-lamp" : "text-parchment"}`}>{label}</span>
-                <span className="font-sans text-[10px] text-starlight/60">{ages} · {desc}</span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
 
       {/* Feature 9: Illustration style picker */}
       {category !== "bible" && (
@@ -720,11 +690,10 @@ export default function SetupScreen({
                   style={{ outline: "none" }}
                   aria-pressed={isSelected}
                   aria-label={`${label} illustration style`}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border font-sans text-xs font-semibold transition-all cursor-pointer focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lamp focus-visible:ring-offset-2 focus-visible:ring-offset-dusk ${
-                    isSelected
-                      ? "border-lamp bg-lamp/20 text-lamp shadow-sm shadow-lamp/20"
-                      : "border-starlight/20 bg-starlight/5 text-starlight/70 hover:border-starlight/40 hover:text-parchment"
-                  }`}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border font-sans text-xs font-semibold transition-all cursor-pointer focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lamp focus-visible:ring-offset-2 focus-visible:ring-offset-dusk ${isSelected
+                    ? "border-lamp bg-lamp/20 text-lamp shadow-sm shadow-lamp/20"
+                    : "border-starlight/20 bg-starlight/5 text-starlight/70 hover:border-starlight/40 hover:text-parchment"
+                    }`}
                 >
                   <span>{emoji}</span><span>{label}</span>
                 </button>
