@@ -410,6 +410,21 @@ export default function StoryScreen({
           );
         })}
 
+        {/* Feature 8: Animated 'Continue the adventure' cue on the last story page */}
+        {hasConclusion && pageIndex === pages.length - 1 && (
+          <div className="pointer-events-none absolute inset-x-0 bottom-16 sm:bottom-12 z-30 flex justify-center">
+            <button
+              type="button"
+              onClick={() => onTurn && onTurn(pages.length)}
+              className="pointer-events-auto flex items-center gap-2 px-4 py-2 rounded-full bg-lamp text-night font-sans text-xs sm:text-sm font-bold shadow-lg shadow-lamp/40 animate-bounce cursor-pointer hover:scale-105 transition-transform"
+              aria-label="Continue to adventure choices"
+            >
+              <span>Continue the adventure</span>
+              <span className="text-base">→</span>
+            </button>
+          </div>
+        )}
+
         {/* Conclusion, Bedtime Lesson & Interactive Next Chapter Choices Slide */}
         {hasConclusion && (
           <SwiperSlide
@@ -627,8 +642,8 @@ export default function StoryScreen({
       {!isBookMode && (
         <div className="pointer-events-none absolute bottom-10 sm:bottom-8 max-md:landscape:bottom-2 left-1/2 z-20 -translate-x-1/2 font-sans text-xs sm:text-sm text-starlight/70">
           {pageIndex >= pages.length
-            ? `Chapter ${chapter} • The End`
-            : `Page ${pageIndex + 1} of ${pages.length}`}
+            ? `Ch. ${chapter} • The End`
+            : `Ch. ${chapter} • Page ${pageIndex + 1} of ${pages.length}`}
         </div>
       )}
     </div>

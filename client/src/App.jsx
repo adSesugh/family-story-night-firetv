@@ -45,6 +45,9 @@ export default function App() {
     return settings?.settings?.defaultVoice || "Joanna";
   });
   const [storyLength, setStoryLength] = useState(6);
+  const [illustrationStyle, setIllustrationStyle] = useState(() => {
+    return StorageService.getItem("familyStoryNight_illustrationStyle") || "watercolor";
+  });
   const [lesson, setLesson] = useState("");
   const [choices, setChoices] = useState([]);
   const [chapter, setChapter] = useState(1);
@@ -150,6 +153,7 @@ export default function App() {
                 scene: pageScene,
                 theme: activeTheme,
                 seed: seedBase + idx * 1000,
+                illustrationStyle,
               }),
             });
 
@@ -376,6 +380,7 @@ export default function App() {
             scene: firstPageScene,
             theme: activeTheme,
             seed: 0,
+            illustrationStyle,
           }),
         });
         if (illRes.ok) {
@@ -475,7 +480,7 @@ export default function App() {
       setError("Couldn't reach the storyteller. Is the backend running?");
       setScreen("setup");
     }
-  }, [names, themeIndex, themeMode, customTheme, storyLength, voice, category, activeThemes]);
+  }, [names, themeIndex, themeMode, customTheme, storyLength, voice, category, activeThemes, illustrationStyle]);
 
   const turnTo = useCallback((next) => {
     if (turnTimerRef.current) {
@@ -656,6 +661,7 @@ export default function App() {
               scene: firstPageScene,
               theme: activeTheme,
               seed: nextChapter * 500,
+              illustrationStyle,
             }),
           });
           if (illRes.ok) {
@@ -769,7 +775,7 @@ export default function App() {
         setScreen("story");
       }
     },
-    [chapter, themeMode, customTheme, themeIndex, names, pages, storyLength, primeAudio, voice, fetchSubsequentIllustrations, category, activeThemes, currentStoryId, activeStoryMetadata]
+    [chapter, themeMode, customTheme, themeIndex, names, pages, storyLength, primeAudio, voice, fetchSubsequentIllustrations, category, activeThemes, currentStoryId, activeStoryMetadata, illustrationStyle]
   );
 
   const handleReturnHome = useCallback(() => {
@@ -1464,6 +1470,11 @@ export default function App() {
           setVoice={handleVoiceChange}
           storyLength={storyLength}
           setStoryLength={setStoryLength}
+          illustrationStyle={illustrationStyle}
+          setIllustrationStyle={(s) => {
+            setIllustrationStyle(s);
+            StorageService.setItem("familyStoryNight_illustrationStyle", s);
+          }}
           parentSettings={parentSettings}
           onOpenSettings={handleOpenSettings}
           alexaPairingCode={alexaPairingCode}

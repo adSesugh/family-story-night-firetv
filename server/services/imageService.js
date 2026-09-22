@@ -89,7 +89,7 @@ export function extractVisualScene(pageText, theme) {
  * @param {string} [scenePrompt] - Explicit visual scene description for this page
  * @returns {Promise<{url: string, alt: string} | null>}
  */
-export async function generateIllustration(pageText, theme, seed, retries = 3, scenePrompt = null) {
+export async function generateIllustration(pageText, theme, seed, retries = 3, scenePrompt = null, illustrationStyle = "watercolor") {
   const isBibleIllustration =
     /\b(noah|ark|david|goliath|daniel|lion'?s den|jonah|whale|big fish|samaritan|bethlehem|jesus|moses|creation|eden|bible|scripture|rainbow promise|starry night in bethlehem|shepherd|lost sheep|red sea|ruth|naomi|joseph|coat|five thousand|calms the wind|waves)\b/i.test(
       theme + " " + pageText + " " + (scenePrompt || "")
@@ -101,9 +101,18 @@ export async function generateIllustration(pageText, theme, seed, retries = 3, s
       ? scenePrompt.trim()
       : extractVisualScene(pageText, theme);
 
+  const STYLE_DESCRIPTORS = {
+    storybook:
+      "Children's picture book illustration, bold ink outlines, vibrant flat colors, clean graphic style, bright warm lighting, cozy bedtime palette",
+    sketch:
+      "Pencil sketch illustration with light watercolor washes, hand-drawn cozy feel, soft warm tones, gentle bedtime aesthetic",
+    watercolor:
+      "Children's storybook watercolor painting, soft gentle luminous washes, warm golden starlight illumination, cozy bedtime aesthetic",
+  };
+
   const styleDescriptor = isBibleIllustration
     ? "Children's storybook watercolor painting, radiant golden bedtime lighting, ancient Mediterranean atmosphere, warm luminous washes, serene biblical storybook art"
-    : "Children's storybook watercolor painting, soft gentle luminous washes, warm golden starlight illumination, cozy bedtime aesthetic";
+    : (STYLE_DESCRIPTORS[illustrationStyle] || STYLE_DESCRIPTORS.watercolor);
 
   // Crucial: Primary visual subject and action MUST come first so the image generation model
   // focuses strictly on the exact actions, characters, and props described on this page.

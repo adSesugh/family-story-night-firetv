@@ -1,11 +1,11 @@
 import { generateIllustration, createBedtimeFallbackSvg } from "../services/imageService.js";
 
 export const illustrate = async (req, res) => {
-  const { text, theme = "a cozy adventure", scene, seed = Math.floor(Math.random() * 858993459) } = req.body;
+  const { text, theme = "a cozy adventure", scene, seed = Math.floor(Math.random() * 858993459), illustrationStyle = "watercolor" } = req.body;
   if (!text && !scene) return res.status(400).json({ error: "text or scene is required" });
 
   try {
-    const illustration = await generateIllustration(text || "", theme, seed, 3, scene);
+    const illustration = await generateIllustration(text || "", theme, seed, 3, scene, illustrationStyle);
     if (illustration && illustration.url) {
       const base64Data = illustration.url.replace(/^data:image\/png;base64,/, "");
       const imageBuffer = Buffer.from(base64Data, "base64");

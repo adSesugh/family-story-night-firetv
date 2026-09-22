@@ -63,6 +63,8 @@ export default function SetupScreen({
   setVoice,
   storyLength = 6,
   setStoryLength,
+  illustrationStyle = "watercolor",
+  setIllustrationStyle,
   parentSettings,
   onOpenSettings,
   alexaPairingCode,
@@ -71,6 +73,33 @@ export default function SetupScreen({
   const allowCustomThemes = parentSettings?.settings?.allowCustomThemes !== false;
   const allowHistory = parentSettings?.settings?.allowHistory !== false;
   const activeThemeMode = allowCustomThemes ? themeMode : "preset";
+
+  // --- Feature 6: Evening bedtime prompt ---
+  const [bedtimeDismissed, setBedtimeDismissed] = React.useState(
+    () => typeof sessionStorage !== "undefined" && !!sessionStorage.getItem("fsn_bedtime_dismissed")
+  );
+  const showBedtimeBanner = React.useMemo(() => {
+    const h = new Date().getHours();
+    return h >= 18 && h < 22 && !bedtimeDismissed;
+  }, [bedtimeDismissed]);
+  const dismissBedtimeBanner = () => {
+    setBedtimeDismissed(true);
+    if (typeof sessionStorage !== "undefined") sessionStorage.setItem("fsn_bedtime_dismissed", "1");
+  };
+
+  // --- Feature 10: Age-group → storyLength mapping ---
+  const AGE_GROUPS = [
+    { emoji: "🐣", label: "Toddler", ages: "2–4", pages: 3, desc: "~2 min" },
+    { emoji: "📖", label: "Early Reader", ages: "5–7", pages: 6, desc: "~5 min" },
+    { emoji: "🚀", label: "Chapter Book", ages: "8+", pages: 9, desc: "~8 min" },
+  ];
+
+  // --- Feature 9: Illustration style options ---
+  const ILLUSTRATION_STYLES = [
+    { id: "watercolor", emoji: "🎨", label: "Watercolor" },
+    { id: "storybook", emoji: "📚", label: "Storybook" },
+    { id: "sketch", emoji: "✏️", label: "Sketch" },
+  ];
 
   const namesSpeech = useSpeechRecognition({
     onResult: (text) => setNames(text),
@@ -110,6 +139,21 @@ export default function SetupScreen({
 
   return (
     <div className="relative z-10 w-full max-w-4xl px-4 sm:px-8 md:px-12 py-6 sm:py-8 my-auto overflow-y-auto max-h-[95vh]">
+      {/* Feature 6: Evening bedtime banner */}
+      {showBedtimeBanner && (
+        <div className="flex items-center justify-between gap-3 mb-4 px-4 py-2.5 rounded-xl bg-lamp/15 border border-lamp/30 animate-fade-in">
+          <div className="flex items-center gap-2 font-sans text-sm text-parchment">
+            <span className="text-lg">🌙</span>
+            <span><strong>Good evening!</strong> Time for tonight&apos;s bedtime story.</span>
+          </div>
+          <button
+            type="button"
+            onClick={dismissBedtimeBanner}
+            aria-label="Dismiss"
+            className="text-starlight/60 hover:text-parchment transition-colors text-lg leading-none cursor-pointer"
+          >×</button>
+        </div>
+      )}
       <div className="flex items-center justify-between gap-2 mb-2">
         <div className="flex items-center gap-3">
           <p className="font-sans text-sm sm:text-base md:text-lg text-starlight">Family Story Night</p>
@@ -630,6 +674,64 @@ export default function SetupScreen({
       {error && <p className="mt-6 font-sans text-base text-red-300">{error}</p>}
       {customThemeError && (
         <p className="mt-2 font-sans text-base text-red-300">{customThemeError}</p>
+      )}
+
+      {/* Feature 10: Age-group story length picker */}
+      <div className="mt-6">
+        <p className="font-sans text-xs uppercase tracking-wider text-starlight/60 font-medium mb-2">Story length</p>
+        <div className="grid grid-cols-3 gap-2">
+          {AGE_GROUPS.map(({ emoji, label, ages, pages, desc }) => {
+            const isSelected = storyLength === pages;
+            return (
+              <button
+                key={pages}
+                type="button"
+                onClick={() => setStoryLength && setStoryLength(pages)}
+                style={{ outline: "none" }}
+                aria-pressed={isSelected}
+                aria-label={`${label} (${ages}), ${pages} pages, ${desc}`}
+                className={`flex flex-col items-center gap-0.5 py-2.5 px-2 rounded-xl border transition-all cursor-pointer focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lamp focus-visible:ring-offset-2 focus-visible:ring-offset-dusk ${
+                  isSelected
+                    ? "border-lamp bg-lamp/20 shadow-md shadow-lamp/15 ring-1 ring-lamp/60"
+                    : "border-starlight/20 bg-starlight/5 hover:border-starlight/40 hover:bg-starlight/10"
+                }`}
+              >
+                <span className="text-xl">{emoji}</span>
+                <span className={`font-sans text-xs font-bold ${isSelected ? "text-lamp" : "text-parchment"}`}>{label}</span>
+                <span className="font-sans text-[10px] text-starlight/60">{ages} · {desc}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Feature 9: Illustration style picker */}
+      {category !== "bible" && (
+        <div className="mt-4">
+          <p className="font-sans text-xs uppercase tracking-wider text-starlight/60 font-medium mb-2">Illustration style</p>
+          <div className="flex gap-2">
+            {ILLUSTRATION_STYLES.map(({ id, emoji, label }) => {
+              const isSelected = (illustrationStyle || "watercolor") === id;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setIllustrationStyle && setIllustrationStyle(id)}
+                  style={{ outline: "none" }}
+                  aria-pressed={isSelected}
+                  aria-label={`${label} illustration style`}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border font-sans text-xs font-semibold transition-all cursor-pointer focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lamp focus-visible:ring-offset-2 focus-visible:ring-offset-dusk ${
+                    isSelected
+                      ? "border-lamp bg-lamp/20 text-lamp shadow-sm shadow-lamp/20"
+                      : "border-starlight/20 bg-starlight/5 text-starlight/70 hover:border-starlight/40 hover:text-parchment"
+                  }`}
+                >
+                  <span>{emoji}</span><span>{label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
       )}
 
       <div className="flex flex-col sm:flex-row gap-3 mt-6 sm:mt-8">
