@@ -11,6 +11,7 @@ import { trackEvent } from "./utils/analytics";
 import { blobToDataUrl, compressBlobToDataUrl, createFallbackIllustrationUrl } from "./utils/imageUtils";
 import { playBedtimeLullabyChime } from "./utils/audioChimes";
 import { useAlexaVoiceSync } from "./utils/useAlexaVoiceSync";
+import { moveFocus, focusFirst } from "./utils/spatialNav";
 
 import { THEME_CATEGORIES, DEFAULT_CATEGORY_ID, THEMES } from "./constants/themes";
 import { VOICES } from "./constants/voices";
@@ -894,6 +895,16 @@ export default function App() {
     }
   }, [screen]);
 
+  // Fire TV Spatial Focus: whenever the active screen changes, move focus to the
+  // first focusable element so the d-pad highlight ring is always visible.
+  useEffect(() => {
+    // Small delay to let React finish rendering the new screen's DOM
+    const timer = setTimeout(() => {
+      focusFirst();
+    }, 120);
+    return () => clearTimeout(timer);
+  }, [screen]);
+
   // Global network restoration listener to retry failed narration automatically
   useEffect(() => {
     const handleOnline = () => setNetworkRetryKey((k) => k + 1);
@@ -1186,38 +1197,55 @@ export default function App() {
       }
 
       if (screen === "setup") {
-        if (e.target?.tagName === "INPUT" || e.target?.tagName === "TEXTAREA" || e.target?.tagName === "BUTTON") {
-          if (isSelect && (e.target?.tagName === "INPUT" || e.target?.tagName === "TEXTAREA")) {
+        // If focus is on an interactive element, let spatial nav handle arrows
+        // so the user can navigate between all buttons with the d-pad.
+        const tag = e.target?.tagName;
+        const isFocusedOnInput = tag === "INPUT" || tag === "TEXTAREA";
+        const isFocusedOnButton = tag === "BUTTON" || tag === "A" || tag === "SELECT";
+
+        if (isFocusedOnInput) {
+          // Inside a text field: Enter submits; arrows move the text cursor naturally.
+          if (isSelect) {
             e.preventDefault();
             generateStory();
           }
           return;
         }
-        if (isDown) {
-          e.preventDefault();
-          setThemeIndex((i) => (i + 1) % activeThemes.length);
+
+        // Arrow keys on buttons / no-focus → spatial navigation between elements
+        if (isDown || isUp || isLeft || isRight) {
+          const direction = isDown ? "down" : isUp ? "up" : isLeft ? "left" : "right";
+          const moved = moveFocus(direction);
+          if (moved) {
+            e.preventDefault();
+            return;
+          }
+          // Fallback: theme/category cycling if spatial nav found nothing
+          if (isDown) { e.preventDefault(); setThemeIndex((i) => (i + 1) % activeThemes.length); }
+          if (isUp)   { e.preventDefault(); setThemeIndex((i) => (i - 1 + activeThemes.length) % activeThemes.length); }
+          if (isLeft) {
+            e.preventDefault();
+            const catIdx = THEME_CATEGORIES.findIndex((c) => c.id === category);
+            const prevCat = THEME_CATEGORIES[(catIdx - 1 + THEME_CATEGORIES.length) % THEME_CATEGORIES.length];
+            setCategory(prevCat.id); setThemeIndex(0);
+          }
+          if (isRight) {
+            e.preventDefault();
+            const catIdx = THEME_CATEGORIES.findIndex((c) => c.id === category);
+            const nextCat = THEME_CATEGORIES[(catIdx + 1) % THEME_CATEGORIES.length];
+            setCategory(nextCat.id); setThemeIndex(0);
+          }
+          return;
         }
-        if (isUp) {
-          e.preventDefault();
-          setThemeIndex((i) => (i - 1 + activeThemes.length) % activeThemes.length);
-        }
-        if (isLeft) {
-          e.preventDefault();
-          const catIdx = THEME_CATEGORIES.findIndex((c) => c.id === category);
-          const prevCat = THEME_CATEGORIES[(catIdx - 1 + THEME_CATEGORIES.length) % THEME_CATEGORIES.length];
-          setCategory(prevCat.id);
-          setThemeIndex(0);
-        }
-        if (isRight) {
-          e.preventDefault();
-          const catIdx = THEME_CATEGORIES.findIndex((c) => c.id === category);
-          const nextCat = THEME_CATEGORIES[(catIdx + 1) % THEME_CATEGORIES.length];
-          setCategory(nextCat.id);
-          setThemeIndex(0);
-        }
+
         if (isSelect) {
           e.preventDefault();
-          generateStory();
+          // If focus is on a button/link, click it; otherwise submit the story
+          if (isFocusedOnButton && e.target && typeof e.target.click === "function") {
+            e.target.click();
+          } else {
+            generateStory();
+          }
         }
       } else if (screen === "story") {
         if (isPlayPause) {
@@ -1363,6 +1391,23 @@ export default function App() {
           setScreen("setup");
         }
       } else if (screen === "history" || screen === "settings") {
+        // In history and settings screens, use full spatial navigation for all
+        // arrow keys so the user can reach every button/link with the d-pad.
+        if (isDown || isUp || isLeft || isRight) {
+          const direction = isDown ? "down" : isUp ? "up" : isLeft ? "left" : "right";
+          const moved = moveFocus(direction);
+          if (moved) e.preventDefault();
+          return;
+        }
+        if (isSelect) {
+          // Trigger click on the currently focused element
+          const focused = document.activeElement;
+          if (focused && focused !== document.body && typeof focused.click === "function") {
+            e.preventDefault();
+            focused.click();
+          }
+          return;
+        }
         if (isBack) {
           e.preventDefault();
           setScreen("setup");

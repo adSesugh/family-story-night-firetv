@@ -107,7 +107,7 @@
           "slots": [
             {
               "name": "Code",
-              "type": "AMAZON.FOUR_DIGIT_NUMBER"
+              "type": "AMAZON.Number"
             }
           ],
           "samples": [

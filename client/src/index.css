@@ -43,15 +43,44 @@ body {
   background: #151030;
 }
 
-/* Visible high-contrast focus ring for Fire TV remote and keyboard navigation (excluding input fields) */
-:focus-visible:not(input, textarea) {
-  outline: 2px solid #e8a33d;
-  outline-offset: 3px;
+/* ── Focus Ring ─────────────────────────────────────────────────────────────
+   Fire TV's Silk browser may only support :focus (not :focus-visible).
+   We apply the ring to both so the d-pad highlight always shows up on TV.
+   The ring is amber (#e8a33d) to match the app's lamp colour, thick enough
+   to be visible from sofa distance, with a generous offset so it clears
+   rounded corners on buttons.
+   ─────────────────────────────────────────────────────────────────────────*/
+
+/* Broad :focus for Fire TV Silk compatibility */
+:focus:not(input):not(textarea):not([data-no-focus-ring]) {
+  outline: 3px solid #e8a33d;
+  outline-offset: 2px;
+  border-radius: 25px;
+  /* Glow for TV legibility */
+  box-shadow: 0 0 0 6px rgba(232, 163, 61, 0.25);
 }
 
+/* Modern browsers also get :focus-visible (avoids ring on mouse click) */
+:focus:not(:focus-visible):not(input):not(textarea) {
+  outline: none;
+  box-shadow: none;
+}
+
+:focus-visible:not(input):not(textarea) {
+  outline: 3px solid #e8a33d;
+  outline-offset: 2px;
+  border-radius: 25px;
+  box-shadow: 0 0 0 6px rgba(232, 163, 61, 0.25);
+}
+
+/* Text inputs use a subtle inset ring only */
+input:focus,
+textarea:focus,
 input:focus-visible,
 textarea:focus-visible {
   outline: none;
+  outline-offset: 0;
+  box-shadow: none;
 }
 
 /* Subtle Cinematic Ken Burns Camera Movements (Watercolor Living Picture Book) */

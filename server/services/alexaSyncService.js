@@ -13,7 +13,7 @@ class AlexaSyncService {
     let code;
     let attempts = 0;
     do {
-      code = Math.floor(1000 + Math.random() * 9000).toString();
+      code = Math.floor(100000 + Math.random() * 900000).toString();
       attempts++;
     } while (this.codeToSession.has(code) && attempts < 100);
     return code;

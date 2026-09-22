@@ -131,7 +131,7 @@ export default function HistoryScreen({ onSelect, onBack }) {
   );
 
   return (
-    <div className="relative z-10 flex h-full w-full flex-col px-4 sm:px-8 md:px-12 py-4 sm:py-6 overflow-hidden text-parchment">
+    <div className="relative z-4 flex h-full w-full flex-col px-4 sm:px-8 md:px-12 py-4 sm:py-6 overflow-hidden text-parchment">
       {/* Top Bar */}
       <div className="mb-4 sm:mb-6 flex flex-wrap items-center justify-between gap-3 sm:gap-4 border-b border-starlight/15 pb-4 sm:pb-5">
         {/* Title & Total Badge */}
@@ -169,11 +169,10 @@ export default function HistoryScreen({ onSelect, onBack }) {
                 setFilter("all");
                 setVisibleCount(PAGE_BATCH_SIZE);
               }}
-              className={`rounded-full px-3.5 py-1 text-xs font-sans font-semibold transition-all ${
-                filter === "all"
-                  ? "bg-lamp text-dusk shadow-md font-bold"
-                  : "text-starlight hover:text-parchment hover:bg-starlight/10"
-              }`}
+              className={`rounded-full px-3.5 py-1 text-xs font-sans font-semibold transition-all ${filter === "all"
+                ? "bg-lamp text-dusk shadow-md font-bold"
+                : "text-starlight hover:text-parchment hover:bg-starlight/10"
+                }`}
             >
               All ({history.length})
             </button>
@@ -185,11 +184,10 @@ export default function HistoryScreen({ onSelect, onBack }) {
                 setFilter("adventures");
                 setVisibleCount(PAGE_BATCH_SIZE);
               }}
-              className={`flex items-center gap-1 rounded-full px-3.5 py-1 text-xs font-sans font-semibold transition-all ${
-                filter === "adventures"
-                  ? "bg-lamp text-dusk shadow-md font-bold"
-                  : "text-starlight hover:text-parchment hover:bg-starlight/10"
-              }`}
+              className={`flex items-center gap-1 rounded-full px-3.5 py-1 text-xs font-sans font-semibold transition-all ${filter === "adventures"
+                ? "bg-lamp text-dusk shadow-md font-bold"
+                : "text-starlight hover:text-parchment hover:bg-starlight/10"
+                }`}
             >
               <Sparkles className="h-3 w-3" />
               Adventures ({adventureCount})
@@ -202,11 +200,10 @@ export default function HistoryScreen({ onSelect, onBack }) {
                 setFilter("bible");
                 setVisibleCount(PAGE_BATCH_SIZE);
               }}
-              className={`flex items-center gap-1 rounded-full px-3.5 py-1 text-xs font-sans font-semibold transition-all ${
-                filter === "bible"
-                  ? "bg-lamp text-dusk shadow-md font-bold"
-                  : "text-starlight hover:text-parchment hover:bg-starlight/10"
-              }`}
+              className={`flex items-center gap-1 rounded-full px-3.5 py-1 text-xs font-sans font-semibold transition-all ${filter === "bible"
+                ? "bg-lamp text-dusk shadow-md font-bold"
+                : "text-starlight hover:text-parchment hover:bg-starlight/10"
+                }`}
             >
               <BookOpen className="h-3 w-3" />
               Bible Stories ({bibleCount})
@@ -276,7 +273,7 @@ export default function HistoryScreen({ onSelect, onBack }) {
         <div
           ref={scrollContainerRef}
           onScroll={handleScroll}
-          className="flex-1 overflow-y-auto pr-1 pb-8"
+          className="flex-1 overflow-y-auto px-2 sm:px-4 pb-8 pt-4"
           tabIndex={-1}
         >
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -290,8 +287,8 @@ export default function HistoryScreen({ onSelect, onBack }) {
                 Array.isArray(story.familyMembers) && story.familyMembers.length > 0
                   ? story.familyMembers.join(", ")
                   : isBible
-                  ? "Classic Bible Story"
-                  : "Classic Story";
+                    ? "Classic Bible Story"
+                    : "Classic Story";
               const pageCount = Array.isArray(story.pages) ? story.pages.length : null;
               const excerpt =
                 typeof story.firstPage === "string"

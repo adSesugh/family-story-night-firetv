@@ -89,10 +89,12 @@ export default function SetupScreen({
 
   const settingsBtnRef = React.useRef(null);
   const namesInputRef = React.useRef(null);
+  const namesXBtnRef = React.useRef(null);
   const namesMicBtnRef = React.useRef(null);
   const categoryTabsRef = React.useRef(null);
   const themeControlsRef = React.useRef(null);
   const customThemeRef = React.useRef(null);
+  const themeXBtnRef = React.useRef(null);
   const themeMicBtnRef = React.useRef(null);
   const viewHistoryBtnRef = React.useRef(null);
   const beginStoryBtnRef = React.useRef(null);
@@ -149,7 +151,9 @@ export default function SetupScreen({
       <div className="relative mt-6 sm:mt-10">
         <input
           ref={namesInputRef}
-          className="w-full rounded-sm border-b-2 border-starlight/40 bg-transparent pr-12 px-1 py-2 sm:py-3 font-serif text-xl sm:text-2xl md:text-3xl text-parchment placeholder:text-starlight/50 focus:border-[#e8a33d] focus:outline-none"
+          className={`w-full rounded-sm border-b-2 border-starlight/40 bg-transparent px-1 py-2 sm:py-3 font-serif text-xl sm:text-2xl md:text-3xl text-parchment placeholder:text-starlight/50 focus:border-[#e8a33d] focus:outline-none ${
+            namesSpeech.isSupported ? "pr-20" : names ? "pr-10" : "pr-12"
+          }`}
           value={names}
           onChange={(e) => setNames(e.target.value)}
           onKeyDown={(e) => {
@@ -163,12 +167,17 @@ export default function SetupScreen({
               const activeTab = categoryTabsRef.current?.querySelector('[aria-selected="true"]') ||
                 categoryTabsRef.current?.querySelector('button');
               activeTab?.focus();
-            } else if (e.key === "ArrowRight" && namesSpeech.isSupported) {
+            } else if (e.key === "ArrowRight") {
               const isAtEnd = e.target.selectionEnd === e.target.value.length;
               if (isAtEnd) {
                 e.preventDefault();
                 e.stopPropagation();
-                namesMicBtnRef.current?.focus();
+                // X button first (if present), then mic
+                if (names && namesXBtnRef.current) {
+                  namesXBtnRef.current.focus();
+                } else if (namesSpeech.isSupported) {
+                  namesMicBtnRef.current?.focus();
+                }
               }
             }
           }}
@@ -179,6 +188,42 @@ export default function SetupScreen({
           }
           autoFocus
         />
+        {names && (
+          <button
+            ref={namesXBtnRef}
+            type="button"
+            onClick={() => { setNames(""); namesInputRef.current?.focus(); }}
+            onKeyDown={(e) => {
+              if (e.key === "ArrowLeft") {
+                e.preventDefault();
+                e.stopPropagation();
+                namesInputRef.current?.focus();
+              } else if (e.key === "ArrowRight") {
+                e.preventDefault();
+                e.stopPropagation();
+                namesMicBtnRef.current?.focus();
+              } else if (e.key === "ArrowUp") {
+                e.preventDefault();
+                e.stopPropagation();
+                settingsBtnRef.current?.focus();
+              } else if (e.key === "ArrowDown") {
+                e.preventDefault();
+                e.stopPropagation();
+                const activeTab = categoryTabsRef.current?.querySelector('[aria-selected="true"]') ||
+                  categoryTabsRef.current?.querySelector('button');
+                activeTab?.focus();
+              }
+            }}
+            style={{ outline: "none" }}
+            aria-label="Clear names"
+            title="Clear"
+            className={`absolute top-1/2 -translate-y-1/2 flex items-center justify-center h-6 w-6 rounded-full bg-starlight/10 text-starlight/50 hover:bg-starlight/25 hover:text-parchment transition-all cursor-pointer focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lamp focus-visible:ring-offset-2 focus-visible:ring-offset-dusk ${
+              namesSpeech.isSupported ? "right-12" : "right-2"
+            }`}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        )}
         {namesSpeech.isSupported && (
           <button
             ref={namesMicBtnRef}
@@ -188,7 +233,12 @@ export default function SetupScreen({
               if (e.key === "ArrowLeft") {
                 e.preventDefault();
                 e.stopPropagation();
-                namesInputRef.current?.focus();
+                // Go to X button first (if present), else back to input
+                if (names && namesXBtnRef.current) {
+                  namesXBtnRef.current.focus();
+                } else {
+                  namesInputRef.current?.focus();
+                }
               } else if (e.key === "ArrowUp") {
                 e.preventDefault();
                 e.stopPropagation();
@@ -460,20 +510,61 @@ export default function SetupScreen({
                     e.preventDefault();
                     e.stopPropagation();
                     (viewHistoryBtnRef.current || beginStoryBtnRef.current)?.focus();
-                  } else if (e.key === "ArrowRight" && themeSpeech.isSupported) {
+                  } else if (e.key === "ArrowRight") {
                     const isAtEnd = e.target.selectionEnd === e.target.value.length;
                     if (isAtEnd) {
                       e.preventDefault();
                       e.stopPropagation();
-                      themeMicBtnRef.current?.focus();
+                      // X button first (if present), then mic
+                      if (customTheme && themeXBtnRef.current) {
+                        themeXBtnRef.current.focus();
+                      } else if (themeSpeech.isSupported) {
+                        themeMicBtnRef.current?.focus();
+                      }
                     }
                   }
                 }}
                 placeholder="Describe your custom story theme..."
                 maxLength={maxCustomThemeLength}
-                className="w-full rounded-sm border-b-2 border-starlight/40 bg-transparent pr-12 px-1 py-3 font-serif text-base text-parchment placeholder:text-starlight/50 focus:border-[#e8a33d] focus:outline-none"
+                className={`w-full rounded-sm border-b-2 border-starlight/40 bg-transparent px-1 py-3 font-serif text-base text-parchment placeholder:text-starlight/50 focus:border-[#e8a33d] focus:outline-none ${
+                  themeSpeech.isSupported ? "pr-20" : customTheme ? "pr-10" : "pr-12"
+                }`}
                 rows="2"
               />
+              {customTheme && (
+                <button
+                  ref={themeXBtnRef}
+                  type="button"
+                  onClick={() => { setCustomTheme && setCustomTheme(""); customThemeRef.current?.focus(); }}
+                  onKeyDown={(e) => {
+                    if (e.key === "ArrowLeft") {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      customThemeRef.current?.focus();
+                    } else if (e.key === "ArrowRight") {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      themeMicBtnRef.current?.focus();
+                    } else if (e.key === "ArrowUp") {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      namesInputRef.current?.focus();
+                    } else if (e.key === "ArrowDown") {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      (viewHistoryBtnRef.current || beginStoryBtnRef.current)?.focus();
+                    }
+                  }}
+                  style={{ outline: "none" }}
+                  aria-label="Clear custom theme"
+                  title="Clear"
+                  className={`absolute top-3 flex items-center justify-center h-6 w-6 rounded-full bg-starlight/10 text-starlight/50 hover:bg-starlight/25 hover:text-parchment transition-all cursor-pointer focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lamp focus-visible:ring-offset-2 focus-visible:ring-offset-dusk ${
+                    themeSpeech.isSupported ? "right-12" : "right-2"
+                  }`}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+              )}
               {themeSpeech.isSupported && (
                 <button
                   ref={themeMicBtnRef}
@@ -483,7 +574,12 @@ export default function SetupScreen({
                     if (e.key === "ArrowLeft") {
                       e.preventDefault();
                       e.stopPropagation();
-                      customThemeRef.current?.focus();
+                      // Go to X button first (if present), else back to textarea
+                      if (customTheme && themeXBtnRef.current) {
+                        themeXBtnRef.current.focus();
+                      } else {
+                        customThemeRef.current?.focus();
+                      }
                     } else if (e.key === "ArrowUp") {
                       e.preventDefault();
                       e.stopPropagation();

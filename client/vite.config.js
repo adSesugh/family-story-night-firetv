@@ -7,8 +7,4 @@ export default defineConfig({
     host: true,
     port: 3001,
   },
-  build: {
-    outDir: '../app/assets',
-    emptyOutDir: true,
-  },
 });

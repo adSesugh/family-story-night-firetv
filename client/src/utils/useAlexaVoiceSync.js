@@ -17,6 +17,8 @@ export function useAlexaVoiceSync({
   const [pairingCode, setPairingCode] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
   const [lastVoiceAction, setLastVoiceAction] = useState(null);
+  const [currentInterval, setCurrentInterval] = useState(1500);
+
 
   const onSetNamesRef = useRef(onSetNames);
   onSetNamesRef.current = onSetNames;
@@ -73,11 +75,21 @@ export function useAlexaVoiceSync({
       fetch(`${apiBase}/alexa/events?sessionId=${encodeURIComponent(sessionId)}`)
         .then((res) => (res.ok ? res.json() : null))
         .then((data) => {
-          if (!isMounted || !data?.events?.length) return;
+          if (!isMounted) return;
+
+          if (!data?.events?.length) {
+            // No events: gradually increase interval up to 5 seconds to save battery/server
+            setCurrentInterval((prev) => Math.min(prev + 500, 5000));
+            return;
+          }
+
+          // Reset interval on activity
+          setCurrentInterval(pollIntervalMs);
           setIsConnected(true);
 
           for (const event of data.events) {
             setLastVoiceAction(event);
+
 
             switch (event.type) {
               case "SET_NAMES":
@@ -122,18 +134,18 @@ export function useAlexaVoiceSync({
         })
         .finally(() => {
           if (isMounted && enabled) {
-            pollTimer = setTimeout(pollForEvents, pollIntervalMs);
+            pollTimer = setTimeout(pollForEvents, currentInterval);
           }
         });
     };
 
-    pollTimer = setTimeout(pollForEvents, pollIntervalMs);
+    pollTimer = setTimeout(pollForEvents, currentInterval);
 
     return () => {
       isMounted = false;
       if (pollTimer) clearTimeout(pollTimer);
     };
-  }, [apiBase, enabled, pollIntervalMs]);
+  }, [apiBase, enabled, pollIntervalMs, currentInterval]);
 
   return {
     pairingCode,

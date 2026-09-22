@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { isFireTVDevice } from "./device";
 
 /**
  * Web Speech API speech recognition hook for Fire TV Remote / browser voice input.
@@ -21,7 +22,13 @@ export function useSpeechRecognition({ onResult, onError } = {}) {
       ? window.SpeechRecognition || window.webkitSpeechRecognition
       : null;
 
-  const isSupported = Boolean(SpeechRecognition);
+  // Fire TV Web App Tester exposes the SpeechRecognition API but cannot
+  // access the microphone hardware, so treat it as unsupported to avoid
+  // showing a mic button that always errors.
+  const isFireTV =
+    typeof navigator !== "undefined" && isFireTVDevice(navigator.userAgent);
+
+  const isSupported = Boolean(SpeechRecognition) && !isFireTV;
 
   // Clean up on unmount
   useEffect(() => {

@@ -98,6 +98,58 @@ Enabling family voice input via the Fire TV remote to dictate family member name
 
 ### Actionable Suggestions for Amazon Developer Platform
 1. **Insecure Origin Whitelist in Web App Tester**: Add a setting in the Amazon Web App Tester app to allow developers to whitelist specific local network IP addresses (`http://192.168.x.x:port`) as secure origins, allowing camera, audio, and media APIs to be tested without configuring custom SSL certificates.
-2. **Native Alexa Voice Bridge for Web Apps**: Expose a JavaScript bridge API (e.g., `window.AmazonFireTV.speechRecognizer` or `AmazonVoiceService`) within the Fire TV Web App Runtime and Silk Browser. This would allow web apps to tap into Amazon’s own Alexa cloud speech-to-text engine instead of depending on unavailable Google speech services.
+2. **Native Alexa Voice Bridge for Web Apps**: Expose a JavaScript bridge API (e.g., `window.AmazonFireTV.speechRecognizer` or `AmazonVoiceService`) within the Fire TV Web App Runtime and Silk Browser. This would allow web apps to tap into Amazon's own Alexa cloud speech-to-text engine instead of depending on unavailable Google speech services.
 3. **Local Intent Routing for Web Apps**: Allow Fire TV web apps to register an intent receiver locally with Fire TV OS so that pressing the remote Alexa button while the web app is foregrounded routes voice intents directly to the app without requiring an external AWS Lambda / HTTPS webhook round-trip.
+
+---
+
+## Friction Log Entry 3: D-Pad Focus Navigation Does Not Highlight Buttons on Fire TV Silk Browser
+**Date:** September 21, 2026
+
+### Task Attempted
+Using the Fire TV remote D-pad (directional arrows) to navigate between interactive buttons, links, and inputs displayed in the web application — expecting each focused element to show a visible highlight ring so users can see what is currently selected.
+
+---
+
+### Steps Taken
+1. Connected Fire TV to the dev server running on the local network.
+2. Pressed D-pad arrow keys on the Fire TV remote while the application was open.
+3. Verified that the D-pad keypresses were received correctly (story page-turning worked, theme cycling worked).
+4. Observed that **no focus highlight ring** appeared on any button or link at any time, even though Tab navigation in a desktop browser produced correct highlighting.
+
+---
+
+### Expected Result
+Pressing D-pad arrow keys should move a visible highlight ring (focus indicator) between interactive elements (buttons, links), matching the behaviour of Tab key navigation in a desktop browser.
+
+---
+
+### Actual Result
+No visible focus ring appeared on any button or link when navigating with the D-pad on Fire TV.
+
+The Fire TV Silk browser dispatches standard `keydown` events for D-pad keys (ArrowUp/Down/Left/Right → keyCodes 38/40/37/39), but it does **not** automatically move browser focus between elements in response to arrow keys. Desktop browsers move focus on `Tab`, not on arrow keys, so the platform's native behaviour is fundamentally different. As a result, `document.activeElement` always remained `<body>`, and `:focus`/`:focus-visible` CSS rules never triggered on any button.
+
+Additionally, the existing `:focus-visible` CSS rule is not reliably supported on older Fire TV Silk versions, so even if focus were set programmatically, the ring may not have rendered without a fallback `:focus` rule.
+
+---
+
+### Severity
+**High** — D-pad navigation is the primary input method on Fire TV. Without visible focus indicators, users cannot tell which button is currently selected, making the app effectively unusable with the remote.
+
+---
+
+### Workaround Applied
+1. **Spatial Focus Navigation Engine** (`src/utils/spatialNav.js`): Implemented a custom spatial navigation engine that, on each arrow keypress, queries all visible focusable elements in the DOM, applies a directional cone filter (45° half-angle), scores candidates by weighted primary/secondary axis distance, and calls `.focus()` on the nearest element. This replicates the spatial focus model used by all native TV OS applications (webOS, Tizen, tvOS, Fire OS) for web apps.
+
+2. **Integration in `App.jsx`**: The global `keydown` handler now calls `moveFocus(direction)` before falling back to the existing custom navigation logic. A `useEffect` calls `focusFirst()` with a 120ms delay whenever the active screen changes, ensuring something is always focused after a screen transition.
+
+3. **Robust Focus Ring CSS** (`src/index.css`): Added a broad `:focus:not(input):not(textarea)` rule alongside `:focus-visible` so the amber glow ring appears even on older Silk versions that don't support `:focus-visible`. Ring thickness increased to 3px with a 4px offset and a `box-shadow` glow halo for TV-distance legibility.
+
+---
+
+### Actionable Suggestions for Amazon Developer Platform
+1. **Automatic Spatial Navigation in Silk/Web App Runtime**: Implement automatic spatial D-pad focus management in the Fire TV Web App Runtime (or Amazon's Silk Browser in TV mode) so that web apps receive focus-on-arrow-key behaviour by default, eliminating the need for every developer to build a custom spatial navigation engine. This is a standard feature in WebKit for tvOS and should be available in Silk for Fire TV.
+2. **`:focus-visible` Support Documentation**: Provide clear documentation and testing guidance about which CSS pseudo-classes (`:focus`, `:focus-visible`, `:focus-within`) are supported in each version of the Amazon Silk Browser, along with recommended fallback CSS patterns for TV web apps.
+3. **TV Web App Starter Template**: Provide an official Amazon Fire TV web app starter kit that pre-includes spatial navigation, D-pad event handling, and proper focus ring CSS — reducing the barrier to building accessible, navigable web apps.
+
 
