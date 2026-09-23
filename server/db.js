@@ -23,6 +23,10 @@ export function initDatabase(dbPath = process.env.DB_PATH) {
     db.pragma("journal_mode = WAL");
   }
 
+  if (process.env.NODE_ENV !== "test") {
+    console.log(`[DB] SQLite database initialized at: ${resolvedPath}`);
+  }
+
   // Schema migrations
   db.exec(`
     CREATE TABLE IF NOT EXISTS devices (

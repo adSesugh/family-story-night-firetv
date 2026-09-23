@@ -16,4 +16,17 @@ export const getVoices = (_req, res) => {
   });
 };
 
-export const getHealth = (_req, res) => res.json({ status: "ok" });
+import { db } from "../db.js";
+
+export const getHealth = (_req, res) => {
+  try {
+    const counts = {
+      devices: db.prepare("SELECT COUNT(*) as c FROM devices").get()?.c || 0,
+      stories: db.prepare("SELECT COUNT(*) as c FROM stories").get()?.c || 0,
+      preferences: db.prepare("SELECT COUNT(*) as c FROM preferences").get()?.c || 0,
+    };
+    res.json({ status: "ok", database: { status: "connected", counts } });
+  } catch (err) {
+    res.json({ status: "ok", database: { status: "error", message: err.message } });
+  }
+};
