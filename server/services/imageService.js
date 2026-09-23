@@ -197,7 +197,7 @@ export async function generateIllustration(pageText, theme, seed, retries = 3, s
     `Child-safe, gentle, no text, no words, no letters, no scary elements, no violence, cozy bedtime scene.`
   );
 
-  // 1. If KAGGLE_NGROK_URL or ILLUSTRATION_API_URL is configured, use Kaggle ngrok
+  // 1. If KAGGLE_NGROK_URL or ILLUSTRATION_API_URL is configured, use Kaggle ngrok exclusively (no fallback to Bedrock / Diffusers 3.5)
   const kaggleUrl = process.env.KAGGLE_NGROK_URL || process.env.ILLUSTRATION_API_URL;
   if (kaggleUrl) {
     try {
@@ -205,13 +205,12 @@ export async function generateIllustration(pageText, theme, seed, retries = 3, s
       if (kaggleResult) return kaggleResult;
     } catch (kaggleErr) {
       console.error("[ImageService] Kaggle ngrok illustration failed:", kaggleErr.message);
-      if (process.env.KAGGLE_ONLY === "true") {
-        return null;
-      }
-      console.log("[ImageService] Falling back to AWS Bedrock image generation...");
     }
+    console.warn("[ImageService] Kaggle ngrok failed and KAGGLE_NGROK_URL is configured; skipping AWS Bedrock / Diffusers fallback.");
+    return null;
   }
 
+  // 2. AWS Bedrock is only used when Kaggle ngrok is not configured
   console.log(`[Illustrate] 🎨 Routing illustration to AWS BEDROCK (${IMAGE_MODEL_ID} in ${IMAGE_REGION})`);
   console.log(`[Illustrate] 📝 Prompt: "${illustrationPrompt.slice(0, 150)}${illustrationPrompt.length > 150 ? "..." : ""}"`);
 

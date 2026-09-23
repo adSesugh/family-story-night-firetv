@@ -122,4 +122,21 @@ describe("Kaggle ngrok Illustration Endpoint Integration", () => {
     expect(contentType).toBe("image/png");
     expect(responseBuffer).toBeInstanceOf(Buffer);
   });
+
+  it("does not fallback to Bedrock when KAGGLE_NGROK_URL is configured and fails", async () => {
+    process.env.KAGGLE_NGROK_URL = "https://failing-kaggle.ngrok-free.app/generate";
+
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+      statusText: "Internal Server Error",
+      text: async () => "CUDA out of memory",
+    });
+    globalThis.fetch = mockFetch;
+
+    const result = await generateIllustration("page text", "Theme", 123);
+    // Must be null, indicating no Bedrock fallback was attempted
+    expect(result).toBeNull();
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+  });
 });
