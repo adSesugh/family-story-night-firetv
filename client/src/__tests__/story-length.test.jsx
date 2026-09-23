@@ -13,30 +13,30 @@ describe("Story length selector UI in SettingsScreen (Task 10.2 / Req 4.1, 4.5)"
 
   it("renders all three length options with 6 selected by default", () => {
     render(<SettingsScreen {...defaultProps} storyLength={6} />);
-    const shortBtn = screen.getByRole("button", { name: "Short (4p)" });
-    const standardBtn = screen.getByRole("button", { name: "Standard (6p)" });
-    const longBtn = screen.getByRole("button", { name: "Long (8p)" });
+    const toddlerBtn = screen.getByRole("button", { name: /Toddler/i });
+    const readerBtn = screen.getByRole("button", { name: /Early Reader/i });
+    const chapterBtn = screen.getByRole("button", { name: /Chapter Book/i });
 
-    expect(shortBtn).toBeInTheDocument();
-    expect(standardBtn).toBeInTheDocument();
-    expect(longBtn).toBeInTheDocument();
+    expect(toddlerBtn).toBeInTheDocument();
+    expect(readerBtn).toBeInTheDocument();
+    expect(chapterBtn).toBeInTheDocument();
 
-    expect(standardBtn).toHaveAttribute("aria-pressed", "true");
-    expect(shortBtn).toHaveAttribute("aria-pressed", "false");
-    expect(longBtn).toHaveAttribute("aria-pressed", "false");
+    expect(readerBtn).toHaveAttribute("aria-pressed", "true");
+    expect(toddlerBtn).toHaveAttribute("aria-pressed", "false");
+    expect(chapterBtn).toHaveAttribute("aria-pressed", "false");
   });
 
   it("calls setStoryLength with correct length when buttons are clicked", () => {
     const setStoryLength = jest.fn();
     render(<SettingsScreen {...defaultProps} setStoryLength={setStoryLength} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Short (4p)" }));
-    expect(setStoryLength).toHaveBeenCalledWith(4);
+    fireEvent.click(screen.getByRole("button", { name: /Toddler/i }));
+    expect(setStoryLength).toHaveBeenCalledWith(3);
 
-    fireEvent.click(screen.getByRole("button", { name: "Long (8p)" }));
-    expect(setStoryLength).toHaveBeenCalledWith(8);
+    fireEvent.click(screen.getByRole("button", { name: /Chapter Book/i }));
+    expect(setStoryLength).toHaveBeenCalledWith(9);
 
-    fireEvent.click(screen.getByRole("button", { name: "Standard (6p)" }));
+    fireEvent.click(screen.getByRole("button", { name: /Early Reader/i }));
     expect(setStoryLength).toHaveBeenCalledWith(6);
   });
 });

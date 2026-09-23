@@ -614,17 +614,93 @@ export default function App() {
         const storyLesson = data.lesson || "";
         const storyChoices = data.choices || [];
 
-        const firstRaw = storyPages[0];\n
-        // Open the story screen immediately — no blocking illustration fetch.\n        const initialIllustrations = [];\n        const storedIllustrations = [];\n
-        setPages(storyPages);\n        setLesson(storyLesson);\n        setChoices(storyChoices);\n        setChapter(nextChapter);\n        setPageIndex(0);\n        setTurnKey((k) => k + 1);\n        setIllustrations(initialIllustrations);\n        storyStartTimeRef.current = Date.now();\n        setScreen(\"story\");\n
-        const formattedPages = storyPages.map((p) => {\n          const text = typeof p === \"object\" ? p.text : p;\n          const scene = typeof p === \"object\" ? p.scene : undefined;\n          return { text, scene };\n        });\n
-        const newChapterData = {\n          chapter: nextChapter,\n          pages: formattedPages,\n          illustrations: storedIllustrations,\n          lesson: storyLesson,\n          choices: storyChoices,\n          selectedChoice,\n        };\n
-        const updatedChapters = [...activeStoryChapters, newChapterData];\n        setActiveStoryChapters(updatedChapters);\n        const newChapterIndex = updatedChapters.length - 1;\n        setActiveChapterIndex(newChapterIndex);\n
-        let targetStoryId = currentStoryId;\n        if (currentStoryId) {\n          updateStory(currentStoryId, {\n            chapter: nextChapter,\n            pages: formattedPages,\n            illustrations: storedIllustrations,\n            lesson: storyLesson,\n            choices: storyChoices,\n            chapters: updatedChapters,\n          });\n        } else {\n          const savedStory = saveStory({\n            familyMembers,\n            theme: activeTheme,\n            category: storyCategory,\n            pages: formattedPages,\n            illustrations: storedIllustrations,\n            firstPage: typeof firstRaw === "string" ? firstRaw : firstRaw?.text || "",\n            lesson: storyLesson,\n            choices: storyChoices,\n            chapter: nextChapter,\n            chapters: updatedChapters,\n          });\n          targetStoryId = savedStory?.id || null;\n          setCurrentStoryId(targetStoryId);\n        }\n
-        setHistory(loadHistory());\n
-        trackEvent("story_generated", {\n          familyMembers,\n          theme: activeTheme,\n          storyLength,\n          voice,\n          category: storyCategory,\n          chapter: nextChapter,\n          selectedChoice,\n          generationTime: (Date.now() - startTime) / 1000,\n        });\n
-        // Fetch ALL illustrations (pages 0+) concurrently in the background\n        fetchSubsequentIllustrations({\n          storyPages,\n          activeTheme,\n          seedBase: nextChapter * 500,\n          initialIllustrations,\n          initialStored: storedIllustrations,\n          savedStoryId: targetStoryId,\n          sessionId: currentSessionId,\n          targetChapterIndex: newChapterIndex,\n        });
+        const firstRaw = storyPages[0];
 
+        // Open the story screen immediately — no blocking illustration fetch.
+        const initialIllustrations = [];
+        const storedIllustrations = [];
+
+        setPages(storyPages);
+        setLesson(storyLesson);
+        setChoices(storyChoices);
+        setChapter(nextChapter);
+        setPageIndex(0);
+        setTurnKey((k) => k + 1);
+        setIllustrations(initialIllustrations);
+        storyStartTimeRef.current = Date.now();
+        setScreen("story");
+
+        const formattedPages = storyPages.map((p) => {
+          const text = typeof p === "object" ? p.text : p;
+          const scene = typeof p === "object" ? p.scene : undefined;
+          return { text, scene };
+        });
+
+        const newChapterData = {
+          chapter: nextChapter,
+          pages: formattedPages,
+          illustrations: storedIllustrations,
+          lesson: storyLesson,
+          choices: storyChoices,
+          selectedChoice,
+        };
+
+        const updatedChapters = [...activeStoryChapters, newChapterData];
+        setActiveStoryChapters(updatedChapters);
+        const newChapterIndex = updatedChapters.length - 1;
+        setActiveChapterIndex(newChapterIndex);
+
+        let targetStoryId = currentStoryId;
+        if (currentStoryId) {
+          updateStory(currentStoryId, {
+            chapter: nextChapter,
+            pages: formattedPages,
+            illustrations: storedIllustrations,
+            lesson: storyLesson,
+            choices: storyChoices,
+            chapters: updatedChapters,
+          });
+        } else {
+          const savedStory = saveStory({
+            familyMembers,
+            theme: activeTheme,
+            category: storyCategory,
+            pages: formattedPages,
+            illustrations: storedIllustrations,
+            firstPage: typeof firstRaw === "string" ? firstRaw : firstRaw?.text || "",
+            lesson: storyLesson,
+            choices: storyChoices,
+            chapter: nextChapter,
+            chapters: updatedChapters,
+          });
+          targetStoryId = savedStory?.id || null;
+          setCurrentStoryId(targetStoryId);
+        }
+
+        setHistory(loadHistory());
+
+        trackEvent("story_generated", {
+          familyMembers,
+          theme: activeTheme,
+          storyLength,
+          voice,
+          category: storyCategory,
+          chapter: nextChapter,
+          selectedChoice,
+          generationTime: (Date.now() - startTime) / 1000,
+        });
+
+        // Fetch ALL illustrations (pages 0+) concurrently in the background
+        fetchSubsequentIllustrations({
+          storyPages,
+          activeTheme,
+          seedBase: nextChapter * 500,
+          initialIllustrations,
+          initialStored: storedIllustrations,
+          savedStoryId: targetStoryId,
+          sessionId: currentSessionId,
+          targetChapterIndex: newChapterIndex,
+        });
       } catch (err) {
         console.error(err);
         setError("Couldn't weave the next chapter. Please try again or pick another choice.");

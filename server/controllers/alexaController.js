@@ -213,13 +213,12 @@ export async function handleAlexaWebhook(req, res) {
             getSlotValue(request.intent, "code");
 
           const cleanCode = (rawCode || "").replace(/\D/g, "");
-          if (cleanCode.length === 6) {
+          if (cleanCode.length === 4 || cleanCode.length === 6) {
             sessionAttributes.pairingCode = cleanCode;
             alexaSyncService.queueCommand(cleanCode, {
               type: "ALEXA_LINKED",
               code: cleanCode,
             });
-
 
             return res.json(
               buildAlexaResponse({
@@ -233,8 +232,8 @@ export async function handleAlexaWebhook(req, res) {
 
           return res.json(
             buildAlexaResponse({
-              speechText: "Please say the six digit code shown on your TV screen. For example: link code 1 2 3 4 5 6.",
-              repromptText: "What is the six digit code shown on your Fire TV?",
+              speechText: "Please say the four digit code shown on your TV screen. For example: link code 1 2 3 4.",
+              repromptText: "What is the four digit code shown on your Fire TV?",
               shouldEndSession: false,
               sessionAttributes,
             })

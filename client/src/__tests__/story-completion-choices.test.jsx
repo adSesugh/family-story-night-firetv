@@ -74,7 +74,7 @@ describe("Story Completion: Lesson to Learn & Adventure Choices", () => {
     expect(onReturnHome).toHaveBeenCalled();
 
     // Page indicator displays Chapter completion text
-    expect(screen.getByText(/Chapter 1 • The End/i)).toBeInTheDocument();
+    expect(screen.getByText(/Ch\. 1 • The End/i)).toBeInTheDocument();
   });
 
   test("App flow: generating story, reaching conclusion slide, and selecting next chapter", async () => {

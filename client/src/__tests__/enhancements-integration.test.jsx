@@ -125,8 +125,8 @@ describe("Enhancements Full Integration (Tasks 7.3, 9.1, 11.1, 19.2)", () => {
     const voiceSelect = screen.getByLabelText("Narrator Voice");
     fireEvent.change(voiceSelect, { target: { value: "Matthew" } });
 
-    // Select Long (8p) in Settings
-    const longLengthBtn = screen.getByRole("button", { name: /Long/ });
+    // Select Chapter Book (9p) in Settings
+    const longLengthBtn = screen.getByRole("button", { name: /Chapter Book/ });
     fireEvent.click(longLengthBtn);
 
     // Return to setup screen
@@ -142,7 +142,7 @@ describe("Enhancements Full Integration (Tasks 7.3, 9.1, 11.1, 19.2)", () => {
       expect(generateBody).not.toBeNull();
     });
 
-    expect(generateBody.storyLength).toBe(8);
+    expect(generateBody.storyLength).toBe(9);
     expect(generateBody.isCustomTheme).toBe(false);
 
     // Verify narration included voiceId: "Matthew"
@@ -156,7 +156,7 @@ describe("Enhancements Full Integration (Tasks 7.3, 9.1, 11.1, 19.2)", () => {
     const storyGenEvent = events.find((e) => e.type === "story_generated");
     expect(storyGenEvent).toBeDefined();
     expect(storyGenEvent.data.voice).toBe("Matthew");
-    expect(storyGenEvent.data.storyLength).toBe(8);
+    expect(storyGenEvent.data.storyLength).toBe(9);
     expect(storyGenEvent.data.familyMembers).toEqual(["Maya"]);
   });
 

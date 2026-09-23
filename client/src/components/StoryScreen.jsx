@@ -107,7 +107,7 @@ export default function StoryScreen({
   useEffect(() => {
     if (activeWordRef.current) {
       // Keep the spoken word roughly in the center of the text container
-      activeWordRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+      activeWordRef.current?.scrollIntoView?.({ behavior: "smooth", block: "center" });
     }
   }, [activeSpeechMark]);
   const isBookMode = useBookMode();
