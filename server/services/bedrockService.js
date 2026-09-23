@@ -73,7 +73,7 @@ For each page, provide: \
 2. "scene": A concise 1-2 sentence visual description for the illustrator (characters, specific action, props, environment, and warm bedtime lighting on this exact page; no words or text in image). \
 Include: \
 - "lesson": A fresh, uplifting bedtime moral or virtue learned specifically from Chapter ${currentChapterNum}'s events (1-2 sentences). Do NOT repeat generic morals. \
-- "choices": Exactly 2 brand-new, distinct and creative choices for what could happen next in Chapter ${nextChapterNum}, directly following from the conclusion of Chapter ${currentChapterNum}. \
+- "choices": Exactly 2 short, concise, distinct choices for what happens next in Chapter ${nextChapterNum} (strictly 3-6 words each, under 35 characters, concise action phrases e.g. "Follow the gentle dove", "Rest by the quiet brook"). \
 Return ONLY a valid JSON object with this exact structure:
 {
   "pages": [
@@ -81,7 +81,7 @@ Return ONLY a valid JSON object with this exact structure:
     { "text": "page 2 story text", "scene": "concise visual description of page 2 scene" }
   ],
   "lesson": "Unique moral from Chapter ${currentChapterNum}",
-  "choices": ["Option 1 for Chapter ${nextChapterNum}", "Option 2 for Chapter ${nextChapterNum}"]
+  "choices": ["Follow the gentle dove", "Rest by the quiet brook"]
 }`;
   } else {
     let toneInstruction = "Make it gentle, imaginative, and suitable for all ages.";
@@ -105,7 +105,7 @@ For each page, provide: \
 2. "scene": A concise 1-2 sentence visual description for the illustrator (characters, specific action, props, environment, and warm bedtime lighting on this exact page; no words or text in image). \
 Include: \
 - "lesson": A fresh, heartwarming bedtime moral or takeaway learned specifically from Chapter ${currentChapterNum}'s events (1-2 sentences). Do NOT repeat generic morals. \
-- "choices": Exactly 2 brand-new, distinct and creative choices for what could happen next in Chapter ${nextChapterNum}, directly following from the conclusion of Chapter ${currentChapterNum}. \
+- "choices": Exactly 2 short, concise, distinct choices for what happens next in Chapter ${nextChapterNum} (strictly 3-6 words each, under 35 characters, concise action phrases e.g. "Explore the starlit path", "Rest by the cozy camp"). \
 Return ONLY a valid JSON object with this exact structure:
 {
   "pages": [
@@ -113,7 +113,7 @@ Return ONLY a valid JSON object with this exact structure:
     { "text": "page 2 story text", "scene": "concise visual description of page 2 scene" }
   ],
   "lesson": "Unique moral from Chapter ${currentChapterNum}",
-  "choices": ["Option 1 for Chapter ${nextChapterNum}", "Option 2 for Chapter ${nextChapterNum}"]
+  "choices": ["Explore the starlit path", "Rest by the cozy camp"]
 }`;
   }
 
@@ -135,8 +135,8 @@ Return ONLY a valid JSON object with this exact structure:
   let pages = [];
   let lesson = `Every step of our bedtime journey in ${theme} brings warm memories to cherish.`;
   let choices = [
-    `Explore further along the starlit path into Chapter ${nextChapterNum}`,
-    `Rest by the cozy campsite and discover a quiet surprise in Chapter ${nextChapterNum}`,
+    `Explore the starlit path`,
+    `Rest by the cozy campsite`,
   ];
 
   try {
@@ -161,7 +161,9 @@ Return ONLY a valid JSON object with this exact structure:
         lesson = parsed.lesson.trim();
       }
       if (Array.isArray(parsed.choices) && parsed.choices.length > 0) {
-        choices = parsed.choices.map((c) => String(c).trim()).filter(Boolean);
+        choices = parsed.choices
+          .map((c) => String(c).trim().replace(/^(?:Option|Choice)\s*\d+[:\-.]\s*/i, ""))
+          .filter(Boolean);
       }
     }
   } catch (parseErr) {
