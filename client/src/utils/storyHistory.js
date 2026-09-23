@@ -89,6 +89,7 @@ function safeSaveStories(stories) {
   const textOnlyStories = lightenedStories.map((s) => ({
     ...s,
     illustrations: [],
+    narrations: {},
     pages: Array.isArray(s.pages)
       ? s.pages.map((p) => (typeof p === "object" ? { text: p.text, scene: p.scene } : p))
       : s.pages,

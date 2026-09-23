@@ -981,6 +981,48 @@ export default function App() {
 
     (async () => {
       try {
+        // 1. Instant Playback: Check if currentStory already has stored voice narration for this page
+        if (currentStoryId) {
+          try {
+            const historyList = loadHistory();
+            const targetStory = historyList.find((s) => s.id === currentStoryId);
+            const savedNarration = targetStory?.narrations?.[pageIndex];
+            if (savedNarration?.audio && (savedNarration.voiceId === voice || !savedNarration.voiceId)) {
+              let audioUrl = savedNarration.audio;
+              if (typeof audioUrl === "string" && audioUrl.startsWith("data:") && typeof URL.createObjectURL === "function") {
+                try {
+                  const base64Parts = audioUrl.split(",");
+                  const byteCharacters = atob(base64Parts[1] || base64Parts[0]);
+                  const byteNumbers = new Uint8Array(byteCharacters.length);
+                  for (let i = 0; i < byteCharacters.length; i++) {
+                    byteNumbers[i] = byteCharacters.charCodeAt(i);
+                  }
+                  const audioBlob = new Blob([byteNumbers], { type: "audio/mpeg" });
+                  audioUrl = URL.createObjectURL(audioBlob);
+                } catch (_) {}
+              }
+              if (audioRef.current && !cancelled && audioUrl) {
+                speechMarksRef.current = Array.isArray(savedNarration.speechMarks) ? savedNarration.speechMarks : [];
+                setActiveSpeechMark(null);
+                isPrimingAudioRef.current = false;
+                if (typeof audioRef.current.pause === "function") {
+                  try { audioRef.current.pause(); } catch (e) {}
+                }
+                audioRef.current.src = audioUrl;
+                if (typeof audioRef.current.load === "function") {
+                  try { audioRef.current.load(); } catch (e) {}
+                }
+                if (typeof audioRef.current.play === "function") {
+                  setPendingAudioPlay(pageIndex);
+                }
+                return; // Instant replay without any network request!
+              }
+            }
+          } catch (e) {
+            console.warn("[App] Could not read local narration cache:", e.message);
+          }
+        }
+
         let effectiveBaseVoice = undefined;
         if (voice && voice.startsWith("custom")) {
           const customProfiles = loadCustomVoices();
@@ -992,12 +1034,18 @@ export default function App() {
 
         const res = await fetch(`${API_BASE}/narrate`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            "x-device-id": getDeviceId(),
+          },
           body: JSON.stringify({
             text: textToNarrate,
             voiceId: voice,
             baseVoice: effectiveBaseVoice,
             speechMarks: true,
+            storyId: currentStoryId || undefined,
+            pageIndex: pageIndex,
+            deviceId: getDeviceId(),
           }),
         });
         if (!res.ok || cancelled) return;
@@ -1009,6 +1057,31 @@ export default function App() {
         if (contentType.includes("application/json") || (!res.blob && typeof res.json === "function")) {
           const data = await res.json();
           if (data.audio) {
+            // Save narration onto the story in history and sync to SQLite
+            if (currentStoryId) {
+              try {
+                const historyList = loadHistory();
+                const target = historyList.find((s) => s.id === currentStoryId);
+                if (target) {
+                  const updatedNarrations = {
+                    ...(target.narrations || {}),
+                    [pageIndex]: {
+                      audio: data.audio,
+                      speechMarks: Array.isArray(data.speechMarks) ? data.speechMarks : [],
+                      voiceId: voice,
+                    },
+                  };
+                  updateStory(currentStoryId, { narrations: updatedNarrations });
+                  syncStoryToServer(API_BASE, getDeviceId(), {
+                    ...target,
+                    narrations: updatedNarrations,
+                  });
+                }
+              } catch (e) {
+                console.warn("[App] Could not persist narration to story:", e.message);
+              }
+            }
+
             try {
               if (typeof data.audio === "string" && data.audio.startsWith("data:") && typeof URL.createObjectURL === "function") {
                 const base64Parts = data.audio.split(",");

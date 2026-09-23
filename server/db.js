@@ -66,12 +66,35 @@ export function initDatabase(dbPath = process.env.DB_PATH) {
       pages_json TEXT,
       illustrations_json TEXT,
       chapters_json TEXT,
+      narrations_json TEXT,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
 
     CREATE INDEX IF NOT EXISTS idx_stories_device_updated ON stories(device_id, updated_at DESC);
+
+    CREATE TABLE IF NOT EXISTS narrations (
+      id TEXT PRIMARY KEY,
+      story_id TEXT,
+      device_id TEXT,
+      page_index INTEGER,
+      voice_id TEXT NOT NULL,
+      text_hash TEXT NOT NULL,
+      audio_data TEXT NOT NULL,
+      speech_marks_json TEXT,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_narrations_lookup ON narrations(text_hash, voice_id);
+    CREATE INDEX IF NOT EXISTS idx_narrations_story ON narrations(story_id, page_index);
   `);
+
+  // Migration for existing databases that don't have narrations_json column
+  try {
+    db.exec(`ALTER TABLE stories ADD COLUMN narrations_json TEXT`);
+  } catch (_e) {
+    // Column already exists
+  }
 
   return db;
 }
@@ -187,6 +210,7 @@ export function getStories(deviceId, limit = 50) {
     pages: row.pages_json ? JSON.parse(row.pages_json) : [],
     illustrations: row.illustrations_json ? JSON.parse(row.illustrations_json) : [],
     chapters: row.chapters_json ? JSON.parse(row.chapters_json) : [],
+    narrations: row.narrations_json ? JSON.parse(row.narrations_json) : {},
     generatedAt: row.created_at,
     updatedAt: row.updated_at,
   }));
@@ -213,6 +237,7 @@ export function getStoryById(id, deviceId) {
     pages: row.pages_json ? JSON.parse(row.pages_json) : [],
     illustrations: row.illustrations_json ? JSON.parse(row.illustrations_json) : [],
     chapters: row.chapters_json ? JSON.parse(row.chapters_json) : [],
+    narrations: row.narrations_json ? JSON.parse(row.narrations_json) : {},
     generatedAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -231,14 +256,15 @@ export function saveStory(deviceId, story = {}) {
   const pagesJson = JSON.stringify(story.pages || []);
   const illustrationsJson = JSON.stringify(story.illustrations || []);
   const chaptersJson = JSON.stringify(story.chapters || []);
+  const narrationsJson = JSON.stringify(story.narrations || {});
 
   const stmt = db.prepare(`
     INSERT INTO stories (
       id, device_id, user_id, family_members_json, theme, category,
       chapter, lesson, choices_json, first_page, is_favorite,
-      pages_json, illustrations_json, chapters_json, created_at, updated_at
+      pages_json, illustrations_json, chapters_json, narrations_json, created_at, updated_at
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET
       chapter = excluded.chapter,
       lesson = excluded.lesson,
@@ -246,6 +272,7 @@ export function saveStory(deviceId, story = {}) {
       pages_json = excluded.pages_json,
       illustrations_json = excluded.illustrations_json,
       chapters_json = excluded.chapters_json,
+      narrations_json = COALESCE(excluded.narrations_json, stories.narrations_json),
       is_favorite = COALESCE(excluded.is_favorite, stories.is_favorite),
       updated_at = excluded.updated_at
   `);
@@ -265,6 +292,7 @@ export function saveStory(deviceId, story = {}) {
     pagesJson,
     illustrationsJson,
     chaptersJson,
+    narrationsJson,
     createdAt,
     now
   );
@@ -289,3 +317,96 @@ export function toggleFavorite(id, deviceId) {
   stmt.run(newFav, new Date().toISOString(), id, deviceId);
   return { ...story, isFavorite: Boolean(newFav) };
 }
+
+// --- Narration Cache Helpers ---
+
+/**
+ * Retrieves cached audio and speechMarks for a given text hash and voiceId.
+ * @param {string} textHash - SHA256 of normalized text
+ * @param {string} voiceId - Voice identifier
+ * @returns {{ id: string, audioData: string, speechMarks: Array, voiceId: string } | null}
+ */
+export function getNarration(textHash, voiceId) {
+  if (!textHash || !voiceId) return null;
+  const stmt = db.prepare(`
+    SELECT * FROM narrations 
+    WHERE text_hash = ? AND voice_id = ? 
+    ORDER BY rowid DESC 
+    LIMIT 1
+  `);
+  const row = stmt.get(textHash, voiceId);
+  if (!row) return null;
+  return {
+    id: row.id,
+    storyId: row.story_id,
+    deviceId: row.device_id,
+    pageIndex: row.page_index,
+    voiceId: row.voice_id,
+    textHash: row.text_hash,
+    audioData: row.audio_data,
+    speechMarks: row.speech_marks_json ? JSON.parse(row.speech_marks_json) : [],
+    createdAt: row.created_at,
+  };
+}
+
+/**
+ * Persists synthesized voice audio and speech marks to SQLite.
+ * Also associates with story and device if provided.
+ */
+export function saveNarration({ storyId = null, deviceId = null, pageIndex = null, voiceId, textHash, audioData, speechMarks = [] }) {
+  if (!voiceId || !textHash || !audioData) {
+    throw new Error("voiceId, textHash, and audioData are required");
+  }
+
+  const id = `${textHash}_${voiceId}`;
+  const now = new Date().toISOString();
+  const speechMarksJson = JSON.stringify(speechMarks || []);
+
+  const stmt = db.prepare(`
+    INSERT INTO narrations (
+      id, story_id, device_id, page_index, voice_id, text_hash,
+      audio_data, speech_marks_json, created_at
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET
+      story_id = COALESCE(excluded.story_id, narrations.story_id),
+      device_id = COALESCE(excluded.device_id, narrations.device_id),
+      page_index = COALESCE(excluded.page_index, narrations.page_index),
+      audio_data = excluded.audio_data,
+      speech_marks_json = excluded.speech_marks_json
+  `);
+
+  stmt.run(
+    id,
+    storyId || null,
+    deviceId || null,
+    pageIndex !== null && pageIndex !== undefined ? Number(pageIndex) : null,
+    voiceId,
+    textHash,
+    audioData,
+    speechMarksJson,
+    now
+  );
+
+  // If storyId and deviceId are provided, also update the story's narrations_json dictionary
+  if (storyId && deviceId && pageIndex !== null && pageIndex !== undefined) {
+    try {
+      const story = getStoryById(storyId, deviceId);
+      if (story) {
+        const existingNarrations = story.narrations || {};
+        existingNarrations[pageIndex] = {
+          audio: audioData,
+          speechMarks,
+          voiceId,
+        };
+        const updateStmt = db.prepare(`UPDATE stories SET narrations_json = ?, updated_at = ? WHERE id = ? AND device_id = ?`);
+        updateStmt.run(JSON.stringify(existingNarrations), now, storyId, deviceId);
+      }
+    } catch (e) {
+      console.warn("[db] Could not update story narrations_json:", e.message);
+    }
+  }
+
+  return getNarration(textHash, voiceId);
+}
+
