@@ -8,6 +8,51 @@ import { loadCustomVoices } from "../utils/customVoices";
 import "swiper/css";
 import "swiper/css/navigation";
 
+/**
+ * IllustrationImage — renders the page illustration with a graceful fallback.
+ * If the image URL is broken or the Bedrock call timed out, it shows the
+ * animated "Painting Page…" placeholder instead of a blank or broken image.
+ */
+function IllustrationImage({ src, idx, kenBurnsClass, windDown }) {
+  const [errored, setErrored] = useState(false);
+
+  // Reset error state when the src changes (new illustration arrived)
+  useEffect(() => { setErrored(false); }, [src]);
+
+  if (errored) {
+    return (
+      <div className="relative flex h-full w-full flex-col items-center justify-center bg-gradient-to-b from-dusk/60 via-night/80 to-dusk/90 overflow-hidden p-4">
+        <div className="absolute inset-0 bg-radial-at-c from-lamp/10 via-transparent to-transparent animate-pulse" />
+        <AmbientParticles count={10} windDown={windDown} />
+        <div className="relative z-10 flex flex-col items-center gap-2 sm:gap-3 px-4 text-center">
+          <div className="flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-lamp/15 border border-lamp/30 shadow-lg shadow-lamp/10 text-lamp animate-bounce duration-1000">
+            <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+            </svg>
+          </div>
+          <span className="font-serif text-base sm:text-lg md:text-xl italic text-starlight/80 tracking-wide">Painting scene…</span>
+          <span className="text-[10px] sm:text-xs uppercase font-sans tracking-widest text-lamp/70 font-semibold">Page {idx + 1}</span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      {/* Blurred backdrop fills letterbox gaps on mobile */}
+      <img src={src} alt="" aria-hidden="true"
+        className="absolute inset-0 h-full w-full object-cover scale-110 blur-2xl opacity-60 select-none md:hidden" />
+      {/* Main illustration — object-contain mobile, object-cover desktop */}
+      <img
+        src={src}
+        alt={`Illustration for page ${idx + 1}`}
+        className={`absolute inset-0 h-full w-full object-contain sm:object-cover ${kenBurnsClass} transition-opacity duration-700 select-none`}
+        onError={() => setErrored(true)}
+      />
+    </>
+  );
+}
+
 // Detects "mobile, portrait" (narrower than Tailwind's `sm` breakpoint, taller than wide).
 // The existing card layout below is already responsive for tablet/desktop and for phones
 // held sideways, where there's enough width for an image-beside-text card. On a phone held
@@ -267,33 +312,11 @@ export default function StoryScreen({
 
           const illustrationLayer = illustrationUrl ? (
             <>
-              {/*
-                Fix: `object-cover` fills the box by cropping whatever doesn't fit,
-                and on mobile the box's aspect ratio is much further from the
-                illustration's than on desktop, so far more of the image was getting
-                cut off. This blurred, scaled-up copy fills the box edge-to-edge behind
-                the real image so there's no empty letterbox bar, without cropping the
-                illustration itself.
-              */}
-              <img
+              <IllustrationImage
                 src={illustrationUrl}
-                alt=""
-                aria-hidden="true"
-                className="absolute inset-0 h-full w-full object-cover scale-110 blur-2xl opacity-60 select-none md:hidden"
-              />
-              {/*
-                object-contain on mobile shows the whole illustration with no
-                cropping; object-cover kicks back in from sm: up, where the box is
-                large enough (and closer to the source aspect ratio) that a full
-                edge-to-edge image reads better than letterboxing.
-              */}
-              <img
-                src={illustrationUrl}
-                alt={`Illustration for page ${idx + 1}`}
-                className={`absolute inset-0 h-full w-full object-contain sm:object-cover ${kenBurnsClass} transition-opacity duration-700 select-none`}
-                onError={(e) => {
-                  e.currentTarget.style.display = "none";
-                }}
+                idx={idx}
+                kenBurnsClass={kenBurnsClass}
+                windDown={windDown}
               />
               {/* Ambient floating stardust & firefly motes */}
               <AmbientParticles count={14} windDown={windDown} />

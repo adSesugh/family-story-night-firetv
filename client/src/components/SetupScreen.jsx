@@ -96,7 +96,7 @@ export default function SetupScreen({
 
   // --- Feature 9: Illustration style options ---
   const ILLUSTRATION_STYLES = [
-    { id: "watercolor", emoji: "🎨", label: "Watercolor" },
+    { id: "watercolor", emoji: "🧸", label: "Claymation" },
     { id: "storybook", emoji: "📚", label: "Storybook" },
     { id: "sketch", emoji: "✏️", label: "Sketch" },
   ];

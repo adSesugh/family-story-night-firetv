@@ -102,29 +102,31 @@ export async function generateIllustration(pageText, theme, seed, retries = 3, s
       : extractVisualScene(pageText, theme);
 
   const STYLE_DESCRIPTORS = {
-    storybook:
-      "Children's picture book illustration, bold ink outlines, vibrant flat colors, clean graphic style, bright warm lighting, cozy bedtime palette",
-    sketch:
-      "Pencil sketch illustration with light watercolor washes, hand-drawn cozy feel, soft warm tones, gentle bedtime aesthetic",
+    // Default: Claymation / Pixar-inspired cinematic style
     watercolor:
-      "Children's storybook watercolor painting, soft gentle luminous washes, warm golden starlight illumination, cozy bedtime aesthetic",
+      "claymation style, stop-motion 3D render, soft felt and clay texture, chibi proportions with oversized head and rounded features, warm cinematic lighting, soft rim light, cozy purple and blue night-time color palette, dreamy storybook atmosphere, Pixar-inspired character design, highly detailed, octane render",
+    storybook:
+      "children's picture book illustration, bold clean ink outlines, vibrant flat colors, cheerful character design, bright warm lighting, cozy pastel bedtime palette, professional children's book art, highly detailed",
+    sketch:
+      "hand-drawn pencil sketch, fine crosshatch shading, warm sepia ink wash, cozy storybook feel, soft vignette, children's illustrated journal style, charming and detailed",
   };
 
   const styleDescriptor = isBibleIllustration
-    ? "Children's storybook watercolor painting, radiant golden bedtime lighting, ancient Mediterranean atmosphere, warm luminous washes, serene biblical storybook art"
+    ? "children's storybook watercolor painting, radiant golden biblical lighting, ancient Mediterranean landscape, warm luminous washes, serene reverent atmosphere, master illustrator quality"
     : (STYLE_DESCRIPTORS[illustrationStyle] || STYLE_DESCRIPTORS.watercolor);
 
   // Crucial: Primary visual subject and action MUST come first so the image generation model
   // focuses strictly on the exact actions, characters, and props described on this page.
   const illustrationPrompt =
     `${primaryScene}. ` +
-    `Style: ${styleDescriptor}. ` +
-    `Bedtime storybook, gentle, safe for children, no text, no words, no letters, no scary elements.`;
+    `${styleDescriptor}. ` +
+    `Child-safe, gentle, no text, no words, no letters, no scary elements, no violence, cozy bedtime scene.`;
 
   // Stability AI Payload (e.g. Stable Image Core)
   const requestPayload = {
     prompt: illustrationPrompt,
-    aspect_ratio: "1:1", // 1:1 perfectly maps to 512x512 downscaling
+    negative_prompts: "blurry, deformed, ugly, bad anatomy, extra limbs, disfigured, low quality, pixelated, watermark, text, logo, signature, realistic photo, photograph, hyperrealistic, scary, dark, horror, adult content",
+    aspect_ratio: "1:1",
     seed: Math.abs(seed) % 4294967295,
     output_format: "png",
   };
