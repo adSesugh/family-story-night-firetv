@@ -167,7 +167,7 @@ export function getStories(deviceId, limit = 50) {
   const stmt = db.prepare(`
     SELECT * FROM stories
     WHERE device_id = ?
-    ORDER BY updated_at DESC
+    ORDER BY updated_at DESC, rowid DESC
     LIMIT ?
   `);
   const rows = stmt.all(deviceId, limit);
