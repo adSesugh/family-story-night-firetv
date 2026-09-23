@@ -27,6 +27,7 @@ export const illustrate = async (req, res) => {
 
       res.setHeader("Content-Type", "image/png");
       res.setHeader("Content-Length", imageBuffer.length);
+      res.setHeader("X-Illustration-Engine", illustration.engine || "aws-bedrock");
       return res.end(imageBuffer);
     }
   } catch (err) {

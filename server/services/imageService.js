@@ -92,8 +92,10 @@ export async function generateKaggleIllustration(promptText, pageText = "") {
     ? kaggleUrl
     : `${kaggleUrl.replace(/\/+$/, "")}/generate`;
 
-  console.log(`[ImageService] Calling Kaggle ngrok endpoint: ${endpoint}`);
+  console.log(`[Illustrate] 🎨 Routing illustration to KAGGLE NGROK endpoint: ${endpoint}`);
+  console.log(`[Illustrate] 📝 Prompt: "${promptText.slice(0, 150)}${promptText.length > 150 ? "..." : ""}"`);
 
+  const startTime = Date.now();
   const response = await fetch(endpoint, {
     method: "POST",
     headers: {
@@ -116,9 +118,11 @@ export async function generateKaggleIllustration(promptText, pageText = "") {
     if (raw) {
       base64Image = String(raw).replace(/^data:image\/\w+;base64,/, "");
     } else if (data.url && typeof data.url === "string") {
+      console.log(`[Illustrate] ✅ KAGGLE NGROK generated image URL in ${Date.now() - startTime}ms: ${data.url}`);
       return {
         url: data.url,
         alt: `Illustration for: ${pageText.slice(0, 80)}`,
+        engine: "kaggle-ngrok",
       };
     }
   } else if (contentType.includes("image/")) {
@@ -133,9 +137,12 @@ export async function generateKaggleIllustration(promptText, pageText = "") {
   }
 
   if (base64Image) {
+    const sizeKb = Math.round(base64Image.length * 0.75 / 1024);
+    console.log(`[Illustrate] ✅ KAGGLE NGROK successfully generated illustration in ${Date.now() - startTime}ms (~${sizeKb} KB)`);
     return {
       url: `data:image/png;base64,${base64Image}`,
       alt: `Illustration for: ${pageText.slice(0, 80)}`,
+      engine: "kaggle-ngrok",
     };
   }
 
@@ -204,6 +211,9 @@ export async function generateIllustration(pageText, theme, seed, retries = 3, s
     }
   }
 
+  console.log(`[Illustrate] 🎨 Routing illustration to AWS BEDROCK (${IMAGE_MODEL_ID} in ${IMAGE_REGION})`);
+  console.log(`[Illustrate] 📝 Prompt: "${illustrationPrompt.slice(0, 150)}${illustrationPrompt.length > 150 ? "..." : ""}"`);
+
   // Stability AI Payload (e.g. Stable Image Core)
   const requestPayload = {
     prompt: illustrationPrompt,
@@ -220,14 +230,19 @@ export async function generateIllustration(pageText, theme, seed, retries = 3, s
     body: JSON.stringify(requestPayload),
   });
 
+  const bedrockStartTime = Date.now();
   try {
     const response = await bedrockImage.send(command);
     const responseBody = JSON.parse(new TextDecoder().decode(response.body));
     const base64Image = responseBody.images?.[0];
     if (!base64Image) return null;
+
+    const sizeKb = Math.round(base64Image.length * 0.75 / 1024);
+    console.log(`[Illustrate] ✅ AWS BEDROCK successfully generated illustration in ${Date.now() - bedrockStartTime}ms (~${sizeKb} KB)`);
     return {
       url: `data:image/png;base64,${base64Image}`,
       alt: `Illustration for: ${pageText.slice(0, 80)}`,
+      engine: "aws-bedrock",
     };
   } catch (err) {
     // 1. If Bedrock rejects prompt via ValidationException (e.g. content filter on page words), retry with clean scene prompt
