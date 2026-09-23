@@ -1,9 +1,18 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { BookOpen, ArrowLeft, Trash2, Sparkles, Play, Calendar } from "lucide-react";
-import { loadHistory, deleteStory, clearHistory, isBiblicalStory } from "../utils/storyHistory";
+import {
+  loadHistory,
+  deleteStory,
+  clearHistory,
+  isBiblicalStory,
+  fetchStoriesFromServer,
+  deleteStoryFromServer,
+} from "../utils/storyHistory";
+import { getDeviceId } from "../utils/device";
 import ConfirmModal from "./ConfirmModal";
 import Toast from "./Toast";
 
+const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:4000";
 const PAGE_BATCH_SIZE = 8;
 
 export default function HistoryScreen({ onSelect, onBack }) {
@@ -17,6 +26,11 @@ export default function HistoryScreen({ onSelect, onBack }) {
 
   useEffect(() => {
     setHistory(loadHistory());
+    fetchStoriesFromServer(API_BASE, getDeviceId()).then((serverStories) => {
+      if (Array.isArray(serverStories) && serverStories.length > 0) {
+        setHistory(serverStories);
+      }
+    });
   }, []);
 
   const requestDeleteStory = (id, storyTitle) => {
@@ -47,6 +61,7 @@ export default function HistoryScreen({ onSelect, onBack }) {
 
     if (confirmModal.type === "single" && confirmModal.id) {
       deleteStory(confirmModal.id);
+      deleteStoryFromServer(API_BASE, getDeviceId(), confirmModal.id);
       setHistory(loadHistory());
       setToastMessage("Bedtime story removed from your bookshelf");
     } else if (confirmModal.type === "all") {

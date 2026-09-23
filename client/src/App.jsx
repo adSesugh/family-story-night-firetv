@@ -3,7 +3,13 @@ import SetupScreen from "./components/SetupScreen";
 import StoryScreen from "./components/StoryScreen";
 import HistoryScreen from "./components/HistoryScreen";
 import SettingsScreen from "./components/SettingsScreen";
-import { saveStory, updateStory, loadHistory } from "./utils/storyHistory";
+import {
+  saveStory,
+  updateStory,
+  loadHistory,
+  syncStoryToServer,
+  fetchStoriesFromServer,
+} from "./utils/storyHistory";
 import { StorageService } from "./utils/storage";
 import { loadSettings, saveSettings } from "./utils/parentSettings";
 import { loadCustomVoices } from "./utils/customVoices";
@@ -12,6 +18,8 @@ import { blobToDataUrl, compressBlobToDataUrl, createFallbackIllustrationUrl } f
 import { playBedtimeLullabyChime } from "./utils/audioChimes";
 import { useAlexaVoiceSync } from "./utils/useAlexaVoiceSync";
 import { moveFocus, focusFirst } from "./utils/spatialNav";
+import { getDeviceId } from "./utils/device";
+import { fetchPreferencesFromServer, syncPreferencesToServer } from "./utils/userPreferences";
 
 import { THEME_CATEGORIES, DEFAULT_CATEGORY_ID, THEMES } from "./constants/themes";
 import { VOICES } from "./constants/voices";
@@ -67,9 +75,29 @@ export default function App() {
   const turnTimerRef = useRef(null);
   const isPrimingAudioRef = useRef(false);
 
-  // Load history on mount and fetch server-driven themes & voices
+  // Load history & preferences on mount and fetch server-driven themes & voices
   useEffect(() => {
     setHistory(loadHistory());
+    const deviceId = getDeviceId();
+
+    // Fetch server stories from SQLite database
+    fetchStoriesFromServer(API_BASE, deviceId).then((serverStories) => {
+      if (Array.isArray(serverStories) && serverStories.length > 0) {
+        setHistory(serverStories);
+      }
+    });
+
+    // Fetch user preferences from SQLite database
+    fetchPreferencesFromServer(API_BASE, deviceId).then((prefs) => {
+      if (prefs) {
+        if (prefs.voiceId) setVoice(prefs.voiceId);
+        if (prefs.storyLength) setStoryLength(prefs.storyLength);
+        if (prefs.illustrationStyle) setIllustrationStyle(prefs.illustrationStyle);
+        if (prefs.themeIndex !== undefined) setThemeIndex(prefs.themeIndex);
+        if (prefs.storyCategory) setCategory(prefs.storyCategory);
+        if (prefs.parentSettings) setParentSettings(loadSettings());
+      }
+    });
 
     if (typeof fetch === "function") {
       fetch(`${API_BASE}/themes`)
@@ -95,6 +123,7 @@ export default function App() {
   const handleVoiceChange = useCallback((newVoice) => {
     setVoice(newVoice);
     StorageService.setItem("familyStoryNight_voice", newVoice);
+    syncPreferencesToServer(API_BASE, getDeviceId(), { voiceId: newVoice });
     try {
       const current = loadSettings();
       if (current) {
@@ -242,7 +271,7 @@ export default function App() {
             return ch;
           });
 
-          updateStory(savedStoryId, {
+          const updated = updateStory(savedStoryId, {
             illustrations: currentStoredUrls,
             pages: storyPages.map((p, i) => {
               const text = typeof p === "object" ? p.text : p;
@@ -257,6 +286,9 @@ export default function App() {
             }),
             chapters: updatedChapters.length > 0 ? updatedChapters : undefined,
           });
+          if (updated) {
+            syncStoryToServer(API_BASE, getDeviceId(), updated);
+          }
           setHistory(loadHistory());
         }
       };
@@ -411,6 +443,10 @@ export default function App() {
         chapter: storyChapter,
         chapters: [initialChapterData],
       });
+
+      if (savedStory) {
+        syncStoryToServer(API_BASE, getDeviceId(), savedStory);
+      }
 
       setCurrentStoryId(savedStory?.id || null);
       setActiveStoryMetadata({
@@ -652,7 +688,7 @@ export default function App() {
 
         let targetStoryId = currentStoryId;
         if (currentStoryId) {
-          updateStory(currentStoryId, {
+          const updated = updateStory(currentStoryId, {
             chapter: nextChapter,
             pages: formattedPages,
             illustrations: storedIllustrations,
@@ -660,6 +696,9 @@ export default function App() {
             choices: storyChoices,
             chapters: updatedChapters,
           });
+          if (updated) {
+            syncStoryToServer(API_BASE, getDeviceId(), updated);
+          }
         } else {
           const savedStory = saveStory({
             familyMembers,
@@ -675,6 +714,9 @@ export default function App() {
           });
           targetStoryId = savedStory?.id || null;
           setCurrentStoryId(targetStoryId);
+          if (savedStory) {
+            syncStoryToServer(API_BASE, getDeviceId(), savedStory);
+          }
         }
 
         setHistory(loadHistory());
@@ -753,6 +795,22 @@ export default function App() {
 
   const handleSettingsChange = useCallback((updated) => {
     setParentSettings(updated);
+    syncPreferencesToServer(API_BASE, getDeviceId(), {
+      pinHash: updated?.pinHash,
+      parentSettings: updated?.settings,
+    });
+  }, []);
+
+  const handleStoryLengthChange = useCallback((newLength) => {
+    setStoryLength(newLength);
+    StorageService.setItem("familyStoryNight_storyLength", newLength);
+    syncPreferencesToServer(API_BASE, getDeviceId(), { storyLength: newLength });
+  }, []);
+
+  const handleIllustrationStyleChange = useCallback((newStyle) => {
+    setIllustrationStyle(newStyle);
+    StorageService.setItem("familyStoryNight_illustrationStyle", newStyle);
+    syncPreferencesToServer(API_BASE, getDeviceId(), { illustrationStyle: newStyle });
   }, []);
 
   const [isNarrating, setIsNarrating] = useState(false);
@@ -1401,12 +1459,9 @@ export default function App() {
           voice={voice}
           setVoice={handleVoiceChange}
           storyLength={storyLength}
-          setStoryLength={setStoryLength}
+          setStoryLength={handleStoryLengthChange}
           illustrationStyle={illustrationStyle}
-          setIllustrationStyle={(s) => {
-            setIllustrationStyle(s);
-            StorageService.setItem("familyStoryNight_illustrationStyle", s);
-          }}
+          setIllustrationStyle={handleIllustrationStyleChange}
           parentSettings={parentSettings}
           onOpenSettings={handleOpenSettings}
           alexaPairingCode={alexaPairingCode}
@@ -1424,7 +1479,7 @@ export default function App() {
           setVoice={handleVoiceChange}
           voices={serverVoices}
           storyLength={storyLength}
-          setStoryLength={setStoryLength}
+          setStoryLength={handleStoryLengthChange}
           themeMode={themeMode}
           setThemeMode={setThemeMode}
           customTheme={customTheme}

@@ -12,12 +12,14 @@
   "dependencies": {
     "@aws-sdk/client-bedrock-runtime": "^3.1133.0",
     "@aws-sdk/client-polly": "^3.1133.0",
+    "better-sqlite3": "^13.0.3",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "nodemon": "^3.1.14"
   },
   "devDependencies": {
+    "@rolldown/binding-darwin-x64": "^1.2.9",
     "@vitest/ui": "^5.0.1",
     "happy-dom": "^20.14.5",
     "vitest": "^5.0.1"

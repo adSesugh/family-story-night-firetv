@@ -26,5 +26,8 @@ yarn-debug.log*
 yarn-error.log*
 
 # Database
+data/
 *.db
+*.db-*
 *.sqlite
+*.sqlite3

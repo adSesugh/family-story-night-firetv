@@ -259,3 +259,103 @@ export function deleteStory(id) {
 export function clearHistory() {
   StorageService.removeItem(STORAGE_KEY);
 }
+
+/**
+ * Synchronizes a story (with its full pages, chapters, and illustrations) to the backend SQLite DB.
+ *
+ * @param {string} apiBase
+ * @param {string} deviceId
+ * @param {Story} story
+ * @returns {Promise<boolean>}
+ */
+export async function syncStoryToServer(apiBase, deviceId, story) {
+  if (!apiBase || !deviceId || !story?.id) return false;
+  try {
+    const res = await fetch(`${apiBase}/api/history`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ deviceId, story }),
+    });
+    return res.ok;
+  } catch (err) {
+    console.warn("[storyHistory] Could not sync story to SQLite backend:", err.message);
+    return false;
+  }
+}
+
+/**
+ * Fetches all stories for this Fire TV device from the SQLite backend,
+ * and updates the local storage cache with any missing/updated stories.
+ *
+ * @param {string} apiBase
+ * @param {string} deviceId
+ * @returns {Promise<Story[]>}
+ */
+export async function fetchStoriesFromServer(apiBase, deviceId) {
+  if (!apiBase || !deviceId) return loadHistory();
+  try {
+    const res = await fetch(`${apiBase}/api/history?deviceId=${encodeURIComponent(deviceId)}`);
+    if (!res.ok) return loadHistory();
+    const data = await res.json();
+    if (Array.isArray(data.stories)) {
+      const local = loadHistory();
+      const localMap = new Map(local.map((s) => [s.id, s]));
+      for (const serverStory of data.stories) {
+        // If server story has illustrations or is newer, update local cache
+        localMap.set(serverStory.id, serverStory);
+      }
+      const merged = Array.from(localMap.values()).sort(
+        (a, b) => new Date(b.updatedAt || b.generatedAt || 0) - new Date(a.updatedAt || a.generatedAt || 0)
+      );
+      safeSaveStories(merged);
+      return merged;
+    }
+  } catch (err) {
+    console.warn("[storyHistory] Could not fetch stories from SQLite backend:", err.message);
+  }
+  return loadHistory();
+}
+
+/**
+ * Deletes a story on the backend SQLite DB.
+ *
+ * @param {string} apiBase
+ * @param {string} deviceId
+ * @param {string} id
+ * @returns {Promise<boolean>}
+ */
+export async function deleteStoryFromServer(apiBase, deviceId, id) {
+  deleteStory(id);
+  if (!apiBase || !deviceId || !id) return false;
+  try {
+    const res = await fetch(`${apiBase}/api/history/${encodeURIComponent(id)}?deviceId=${encodeURIComponent(deviceId)}`, {
+      method: "DELETE",
+    });
+    return res.ok;
+  } catch (err) {
+    console.warn("[storyHistory] Could not delete story on SQLite backend:", err.message);
+    return false;
+  }
+}
+
+/**
+ * Toggles favorite on the backend SQLite DB.
+ *
+ * @param {string} apiBase
+ * @param {string} deviceId
+ * @param {string} id
+ * @returns {Promise<boolean>}
+ */
+export async function toggleFavoriteOnServer(apiBase, deviceId, id) {
+  if (!apiBase || !deviceId || !id) return false;
+  try {
+    const res = await fetch(`${apiBase}/api/history/${encodeURIComponent(id)}/favorite?deviceId=${encodeURIComponent(deviceId)}`, {
+      method: "POST",
+    });
+    return res.ok;
+  } catch (err) {
+    console.warn("[storyHistory] Could not toggle favorite on SQLite backend:", err.message);
+    return false;
+  }
+}
+

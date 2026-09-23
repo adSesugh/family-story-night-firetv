@@ -1,3 +1,5 @@
+import { StorageService } from "./storage";
+
 /**
  * Detects if the current user agent corresponds to an Amazon Fire TV device.
  * Based on Amazon Developer Docs: https://developer.amazon.com/docs/fire-tv/identify-fire-tv-devices.html
@@ -17,3 +19,26 @@ export function isFireTVDevice(userAgent = typeof navigator !== "undefined" ? na
     (/Silk/i.test(userAgent) && /Android/i.test(userAgent) && /TV/i.test(userAgent))
   );
 }
+
+/**
+ * Returns a persistent Fire TV device identifier.
+ * Stored in local storage and shared across history, preferences, and Alexa sync.
+ *
+ * @returns {string}
+ */
+export function getDeviceId() {
+  const existingId = StorageService.getItem("familyStoryNight_device_id");
+  if (existingId) return existingId;
+
+  // Check if an Alexa pairing session ID already exists to unify them
+  const alexaSession = StorageService.getItem("familyStoryNight_alexa_session");
+  if (alexaSession) {
+    StorageService.setItem("familyStoryNight_device_id", alexaSession);
+    return alexaSession;
+  }
+
+  const newId = "fsn-tv-" + Math.random().toString(36).slice(2, 10);
+  StorageService.setItem("familyStoryNight_device_id", newId);
+  return newId;
+}
+
