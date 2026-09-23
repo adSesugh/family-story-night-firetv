@@ -82,7 +82,13 @@ describe("Continuous Storybooks & Chapter Continuation", () => {
           blob: () => Promise.resolve(new Blob(["fake-image"], { type: "image/png" })),
         });
       }
-      return Promise.reject(new Error(`Unhandled URL: ${url}`));
+      if (url.includes("/narrate")) {
+        return Promise.resolve({
+          ok: true,
+          blob: () => Promise.resolve(new Blob(["fake-audio"], { type: "audio/mpeg" })),
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
     });
 
     const updateStorySpy = jest.spyOn(storyHistory, "updateStory");
@@ -130,7 +136,13 @@ describe("Continuous Storybooks & Chapter Continuation", () => {
           blob: () => Promise.resolve(new Blob(["fake-image"], { type: "image/png" })),
         });
       }
-      return Promise.reject(new Error(`Unhandled URL: ${url}`));
+      if (url.includes("/narrate")) {
+        return Promise.resolve({
+          ok: true,
+          blob: () => Promise.resolve(new Blob(["fake-audio"], { type: "audio/mpeg" })),
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
     });
 
     // We mocked StoryScreen to render choices directly
@@ -234,7 +246,13 @@ describe("Continuous Storybooks & Chapter Continuation", () => {
           blob: () => Promise.resolve(new Blob(["fake-image"], { type: "image/png" })),
         });
       }
-      return Promise.reject(new Error(`Unhandled URL: ${url}`));
+      if (url.includes("/narrate")) {
+        return Promise.resolve({
+          ok: true,
+          blob: () => Promise.resolve(new Blob(["fake-audio"], { type: "audio/mpeg" })),
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
     });
 
     // Click choice

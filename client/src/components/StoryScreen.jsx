@@ -110,6 +110,14 @@ export default function StoryScreen({
       activeWordRef.current?.scrollIntoView?.({ behavior: "smooth", block: "center" });
     }
   }, [activeSpeechMark]);
+
+  useEffect(() => {
+    // When turnKey or pageIndex changes, ensure scroll containers start at the top
+    const scrollContainers = document.querySelectorAll(".story-page-scroll");
+    scrollContainers.forEach((el) => {
+      el.scrollTop = 0;
+    });
+  }, [turnKey, pageIndex]);
   const isBookMode = useBookMode();
   const totalSlides = pages.length + (hasConclusion ? 1 : 0);
 
@@ -367,11 +375,11 @@ export default function StoryScreen({
                   </div>
 
                   <div className="relative -mt-6 flex flex-1 min-h-0 flex-col rounded-t-[2rem] bg-panel/95 px-5 pt-6 pb-3 shadow-[0_-12px_30px_rgba(0,0,0,0.35)]">
-                    <div className="flex flex-1 min-h-0 items-center justify-center overflow-y-auto">
+                    <div className="story-page-scroll flex flex-1 min-h-0 flex-col overflow-y-auto px-1 py-1">
                       <p
                         key={turnKey}
                         data-testid="page-text"
-                        className={`animate-page-in font-serif text-lg leading-relaxed text-center w-full transition-colors duration-1000 ${windDown ? "text-parchment/85" : "text-parchment"
+                        className={`my-auto animate-page-in font-serif text-lg leading-relaxed text-center w-full transition-colors duration-1000 ${windDown ? "text-parchment/85" : "text-parchment"
                           }`}
                       >
                         {pageTextEl}
@@ -412,15 +420,15 @@ export default function StoryScreen({
                     <div className="pointer-events-none absolute inset-0 z-20 shadow-[inset_0_0_40px_rgba(0,0,0,0.35)]" />
                   </div>
 
-                  {/* Text column — centered vertically and horizontally */}
+                  {/* Text column — centered vertically with my-auto so overflowing text scrolls safely from the top */}
                   <div
-                    className="flex flex-1 h-full w-full max-md:landscape:w-1/2 md:w-full min-h-0
-                      items-center justify-center px-4 py-3 sm:px-8 sm:py-6 md:px-12 md:py-8 lg:px-16 text-center overflow-y-auto"
+                    className="story-page-scroll flex flex-col flex-1 h-full w-full max-md:landscape:w-1/2 md:w-full min-h-0
+                      px-4 py-4 sm:px-8 sm:py-6 md:px-12 md:py-8 lg:px-16 text-center overflow-y-auto"
                   >
                     <p
                       key={turnKey}
                       data-testid="page-text"
-                      className={`animate-page-in font-serif leading-relaxed text-center w-full transition-colors duration-1000
+                      className={`my-auto animate-page-in font-serif leading-relaxed text-center w-full transition-colors duration-1000
                         text-base max-md:landscape:text-sm sm:text-xl md:text-2xl lg:text-3xl
                         ${windDown ? "text-parchment/85" : "text-parchment"}`}
                     >
