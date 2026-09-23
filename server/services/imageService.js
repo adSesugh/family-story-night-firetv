@@ -79,7 +79,71 @@ export function extractVisualScene(pageText, theme) {
 }
 
 /**
- * Generates a child-friendly illustration for a story page using Stability AI.
+ * Generates an illustration using a self-hosted or Kaggle ngrok endpoint.
+ * @param {string} promptText
+ * @param {string} pageText
+ * @returns {Promise<{url: string, alt: string} | null>}
+ */
+export async function generateKaggleIllustration(promptText, pageText = "") {
+  const kaggleUrl = process.env.KAGGLE_NGROK_URL || process.env.ILLUSTRATION_API_URL;
+  if (!kaggleUrl) return null;
+
+  const endpoint = kaggleUrl.endsWith("/generate")
+    ? kaggleUrl
+    : `${kaggleUrl.replace(/\/+$/, "")}/generate`;
+
+  console.log(`[ImageService] Calling Kaggle ngrok endpoint: ${endpoint}`);
+
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "ngrok-skip-browser-warning": "true",
+    },
+    body: JSON.stringify({ prompt: promptText }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Kaggle ngrok error ${response.status}: ${response.statusText}`);
+  }
+
+  const contentType = response.headers.get("content-type") || "";
+  let base64Image = null;
+
+  if (contentType.includes("application/json")) {
+    const data = await response.json();
+    const raw = data.image || data.images?.[0] || data.output || data.b64_json || data.result;
+    if (raw) {
+      base64Image = String(raw).replace(/^data:image\/\w+;base64,/, "");
+    } else if (data.url && typeof data.url === "string") {
+      return {
+        url: data.url,
+        alt: `Illustration for: ${pageText.slice(0, 80)}`,
+      };
+    }
+  } else if (contentType.includes("image/")) {
+    const arrayBuffer = await response.arrayBuffer();
+    base64Image = Buffer.from(arrayBuffer).toString("base64");
+  } else {
+    const textData = await response.text();
+    const clean = textData.trim().replace(/^data:image\/\w+;base64,/, "").replace(/^"|"$/g, "");
+    if (clean.length > 50) {
+      base64Image = clean;
+    }
+  }
+
+  if (base64Image) {
+    return {
+      url: `data:image/png;base64,${base64Image}`,
+      alt: `Illustration for: ${pageText.slice(0, 80)}`,
+    };
+  }
+
+  throw new Error("No image data found in Kaggle ngrok response");
+}
+
+/**
+ * Generates a child-friendly illustration for a story page using Stability AI (or Kaggle ngrok).
  * Returns { url, alt } on success, or null on failure (graceful degradation).
  *
  * @param {string} pageText - The story page text to illustrate
@@ -87,9 +151,11 @@ export function extractVisualScene(pageText, theme) {
  * @param {number} seed - Seed for reproducible generation
  * @param {number} retries - Retry count
  * @param {string} [scenePrompt] - Explicit visual scene description for this page
+ * @param {string} [illustrationStyle] - Visual art style
+ * @param {string} [explicitPrompt] - Raw explicit prompt (e.g. from req.body.prompt)
  * @returns {Promise<{url: string, alt: string} | null>}
  */
-export async function generateIllustration(pageText, theme, seed, retries = 3, scenePrompt = null, illustrationStyle = "watercolor") {
+export async function generateIllustration(pageText, theme, seed, retries = 3, scenePrompt = null, illustrationStyle = "watercolor", explicitPrompt = null) {
   const isBibleIllustration =
     /\b(noah|ark|david|goliath|daniel|lion'?s den|jonah|whale|big fish|samaritan|bethlehem|jesus|moses|creation|eden|bible|scripture|rainbow promise|starry night in bethlehem|shepherd|lost sheep|red sea|ruth|naomi|joseph|coat|five thousand|calms the wind|waves)\b/i.test(
       theme + " " + pageText + " " + (scenePrompt || "")
@@ -117,10 +183,26 @@ export async function generateIllustration(pageText, theme, seed, retries = 3, s
 
   // Crucial: Primary visual subject and action MUST come first so the image generation model
   // focuses strictly on the exact actions, characters, and props described on this page.
-  const illustrationPrompt =
+  const illustrationPrompt = explicitPrompt || (
     `${primaryScene}. ` +
     `${styleDescriptor}. ` +
-    `Child-safe, gentle, no text, no words, no letters, no scary elements, no violence, cozy bedtime scene.`;
+    `Child-safe, gentle, no text, no words, no letters, no scary elements, no violence, cozy bedtime scene.`
+  );
+
+  // 1. If KAGGLE_NGROK_URL or ILLUSTRATION_API_URL is configured, use Kaggle ngrok
+  const kaggleUrl = process.env.KAGGLE_NGROK_URL || process.env.ILLUSTRATION_API_URL;
+  if (kaggleUrl) {
+    try {
+      const kaggleResult = await generateKaggleIllustration(illustrationPrompt, pageText);
+      if (kaggleResult) return kaggleResult;
+    } catch (kaggleErr) {
+      console.error("[ImageService] Kaggle ngrok illustration failed:", kaggleErr.message);
+      if (process.env.KAGGLE_ONLY === "true") {
+        return null;
+      }
+      console.log("[ImageService] Falling back to AWS Bedrock image generation...");
+    }
+  }
 
   // Stability AI Payload (e.g. Stable Image Core)
   const requestPayload = {
