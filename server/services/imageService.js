@@ -106,7 +106,8 @@ export async function generateKaggleIllustration(promptText, pageText = "") {
   });
 
   if (!response.ok) {
-    throw new Error(`Kaggle ngrok error ${response.status}: ${response.statusText}`);
+    const errorDetails = await response.text().catch(() => "");
+    throw new Error(`Kaggle ngrok error ${response.status} (${response.statusText}): ${errorDetails.slice(0, 300)}`);
   }
 
   const contentType = response.headers.get("content-type") || "";
@@ -217,7 +218,7 @@ export async function generateIllustration(pageText, theme, seed, retries = 3, s
   // Stability AI Payload (e.g. Stable Image Core)
   const requestPayload = {
     prompt: illustrationPrompt,
-    negative_prompts: "blurry, deformed, ugly, bad anatomy, extra limbs, disfigured, low quality, pixelated, watermark, text, logo, signature, realistic photo, photograph, hyperrealistic, scary, dark, horror, adult content",
+    negative_prompt: "blurry, deformed, ugly, bad anatomy, extra limbs, disfigured, low quality, pixelated, watermark, text, logo, signature, realistic photo, photograph, hyperrealistic, scary, dark, horror, adult content",
     aspect_ratio: "1:1",
     seed: Math.abs(seed) % 4294967295,
     output_format: "png",
