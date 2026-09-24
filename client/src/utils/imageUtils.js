@@ -33,16 +33,24 @@ export async function blobToDataUrl(blob) {
 }
 
 /**
- * Compresses an image blob to a lightweight JPEG Data URL (max width 480px, quality 0.7)
- * to ensure persistent storage in localStorage without exhausting browser quota limits.
+ * Compresses an image blob to a crisp, high-resolution Data URL (max width 1024px, quality 0.88)
+ * using WebP (with JPEG fallback) to ensure sharp, unblurred illustration display on TV and mobile screens
+ * while maintaining efficient storage in the database and local cache.
  *
  * @param {Blob} blob
- * @param {number} [maxWidth=480]
- * @param {number} [quality=0.7]
+ * @param {number} [maxWidth=1024]
+ * @param {number} [quality=0.88]
  * @returns {Promise<string | null>}
  */
-export async function compressBlobToDataUrl(blob, maxWidth = 480, quality = 0.7) {
+export async function compressBlobToDataUrl(blob, maxWidth = 1024, quality = 0.88) {
   if (!blob) return null;
+
+  // If the blob is already reasonably compact (<= 250KB) and in a web-friendly format, preserve it directly without re-encoding loss
+  if (blob.size && blob.size <= 250 * 1024 && (blob.type === "image/webp" || blob.type === "image/jpeg")) {
+    const rawDataUrl = await blobToDataUrl(blob);
+    if (rawDataUrl) return rawDataUrl;
+  }
+
   // Use canvas compression in real browser environments; fall back to blobToDataUrl in JSDOM/Node
   const isJsdom = typeof navigator !== "undefined" && navigator.userAgent && navigator.userAgent.includes("jsdom");
   if (!isJsdom && typeof document !== "undefined" && typeof Image !== "undefined" && typeof HTMLCanvasElement !== "undefined") {
@@ -53,8 +61,8 @@ export async function compressBlobToDataUrl(blob, maxWidth = 480, quality = 0.7)
         const loaded = await new Promise((resolve) => {
           img.onload = () => resolve(true);
           img.onerror = () => resolve(false);
-          // Safety timeout so it never hangs
-          setTimeout(() => resolve(false), 300);
+          // Generous timeout so high-res images have time to decode
+          setTimeout(() => resolve(false), 2000);
           img.src = objectUrl;
         });
 
@@ -62,18 +70,36 @@ export async function compressBlobToDataUrl(blob, maxWidth = 480, quality = 0.7)
           const canvas = document.createElement("canvas");
           let width = img.width || maxWidth;
           let height = img.height || maxWidth;
+
+          // Only downscale if the image exceeds maxWidth
           if (width > maxWidth) {
             height = Math.round((height * maxWidth) / width);
             width = maxWidth;
           }
+
           canvas.width = width;
           canvas.height = height;
-          const ctx = canvas.getContext("2d");
+          const ctx = canvas.getContext("2d", { alpha: false });
           if (ctx) {
+            // Enable high quality image scaling
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = "high";
             ctx.drawImage(img, 0, 0, width, height);
+
             if (typeof URL.revokeObjectURL === "function") {
               URL.revokeObjectURL(objectUrl);
             }
+
+            // Prefer WebP for crisp sharp details with zero JPEG blockiness; fall back to high quality JPEG
+            try {
+              const webpDataUrl = canvas.toDataURL("image/webp", quality);
+              if (webpDataUrl && webpDataUrl.startsWith("data:image/webp")) {
+                return webpDataUrl;
+              }
+            } catch {
+              // Ignore and use JPEG fallback
+            }
+
             return canvas.toDataURL("image/jpeg", quality);
           }
         }
