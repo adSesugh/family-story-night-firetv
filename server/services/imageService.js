@@ -78,13 +78,17 @@ export function extractVisualScene(pageText, theme) {
   return cleaned.slice(0, 320);
 }
 
+export const DEFAULT_NEGATIVE_PROMPT =
+  "text, words, letters, watermark, signature, logo, blurry, deformed, ugly, bad anatomy, extra limbs, disfigured, low quality, pixelated, scary, dark, horror, adult content, realistic photo, photograph";
+
 /**
  * Generates an illustration using a self-hosted or Kaggle ngrok endpoint.
  * @param {string} promptText
  * @param {string} pageText
+ * @param {string} [negativePrompt]
  * @returns {Promise<{url: string, alt: string} | null>}
  */
-export async function generateKaggleIllustration(promptText, pageText = "") {
+export async function generateKaggleIllustration(promptText, pageText = "", negativePrompt = DEFAULT_NEGATIVE_PROMPT) {
   const kaggleUrl = process.env.KAGGLE_NGROK_URL || process.env.ILLUSTRATION_API_URL;
   if (!kaggleUrl) return null;
 
@@ -102,7 +106,10 @@ export async function generateKaggleIllustration(promptText, pageText = "") {
       "Content-Type": "application/json",
       "ngrok-skip-browser-warning": "true",
     },
-    body: JSON.stringify({ prompt: promptText }),
+    body: JSON.stringify({
+      prompt: promptText,
+      negative_prompt: negativePrompt,
+    }),
   });
 
   if (!response.ok) {
@@ -170,38 +177,40 @@ export async function generateIllustration(pageText, theme, seed, retries = 3, s
     );
 
   // The primary visual subject comes directly from the page's scene description or page text
-  const primaryScene =
+  let primaryScene =
     typeof scenePrompt === "string" && scenePrompt.trim().length > 10
       ? scenePrompt.trim()
       : extractVisualScene(pageText, theme);
 
+  // Cap primary scene length (~25-30 words) so total prompt stays strictly within CLIP's 77 token limit
+  if (primaryScene.length > 180) {
+    primaryScene = primaryScene.slice(0, 180).trim().replace(/[,\s.]+$/, "");
+  }
+
+  // High-density, token-efficient style descriptors (~12-14 words / ~15 tokens each)
   const STYLE_DESCRIPTORS = {
     // Default: Claymation / Pixar-inspired cinematic style
     watercolor:
-      "claymation style, stop-motion 3D render, soft felt and clay texture, chibi proportions with oversized head and rounded features, warm cinematic lighting, soft rim light, cozy purple and blue night-time color palette, dreamy storybook atmosphere, Pixar-inspired character design, highly detailed, octane render",
+      "claymation 3D render, cute chibi proportions, soft felt clay texture, warm cinematic lighting, cozy bedtime storybook, pixar style",
     storybook:
-      "children's picture book illustration, bold clean ink outlines, vibrant flat colors, cheerful character design, bright warm lighting, cozy pastel bedtime palette, professional children's book art, highly detailed",
+      "children's picture book illustration, clean ink outlines, vibrant pastel colors, bright warm lighting, cheerful character, cozy storybook",
     sketch:
-      "hand-drawn pencil sketch, fine crosshatch shading, warm sepia ink wash, cozy storybook feel, soft vignette, children's illustrated journal style, charming and detailed",
+      "hand-drawn pencil sketch, fine crosshatch shading, warm sepia ink wash, soft storybook vignette, charming",
   };
 
   const styleDescriptor = isBibleIllustration
-    ? "children's storybook watercolor painting, radiant golden biblical lighting, ancient Mediterranean landscape, warm luminous washes, serene reverent atmosphere, master illustrator quality"
+    ? "children's storybook watercolor, golden biblical lighting, serene ancient landscape, warm luminous washes, peaceful atmosphere"
     : (STYLE_DESCRIPTORS[illustrationStyle] || STYLE_DESCRIPTORS.watercolor);
 
-  // Crucial: Primary visual subject and action MUST come first so the image generation model
-  // focuses strictly on the exact actions, characters, and props described on this page.
-  const illustrationPrompt = explicitPrompt || (
-    `${primaryScene}. ` +
-    `${styleDescriptor}. ` +
-    `Child-safe, gentle, no text, no words, no letters, no scary elements, no violence, cozy bedtime scene.`
-  );
+  // Crucial: Keep prompt under 55-60 tokens total to guarantee CLIP never truncates.
+  // Exclusions like "no text, no scary elements" belong strictly in negative_prompt.
+  const illustrationPrompt = explicitPrompt || `${primaryScene}. ${styleDescriptor}.`;
 
   // 1. If KAGGLE_NGROK_URL or ILLUSTRATION_API_URL is configured, use Kaggle ngrok exclusively (no fallback to stability.stable-image-core-v1:1)
   const kaggleUrl = process.env.KAGGLE_NGROK_URL || process.env.ILLUSTRATION_API_URL;
   if (kaggleUrl) {
     try {
-      const kaggleResult = await generateKaggleIllustration(illustrationPrompt, pageText);
+      const kaggleResult = await generateKaggleIllustration(illustrationPrompt, pageText, DEFAULT_NEGATIVE_PROMPT);
       if (kaggleResult) return kaggleResult;
     } catch (kaggleErr) {
       console.error("[ImageService] Kaggle ngrok illustration failed:", kaggleErr.message);
@@ -217,7 +226,7 @@ export async function generateIllustration(pageText, theme, seed, retries = 3, s
   // Stability AI Payload (e.g. Stable Image Core)
   const requestPayload = {
     prompt: illustrationPrompt,
-    negative_prompt: "blurry, deformed, ugly, bad anatomy, extra limbs, disfigured, low quality, pixelated, watermark, text, logo, signature, realistic photo, photograph, hyperrealistic, scary, dark, horror, adult content",
+    negative_prompt: DEFAULT_NEGATIVE_PROMPT,
     aspect_ratio: "1:1",
     seed: Math.abs(seed) % 4294967295,
     output_format: "png",
