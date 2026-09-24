@@ -20,6 +20,7 @@ import { useAlexaVoiceSync } from "./utils/useAlexaVoiceSync";
 import { moveFocus, focusFirst } from "./utils/spatialNav";
 import { getDeviceId } from "./utils/device";
 import { fetchPreferencesFromServer, syncPreferencesToServer } from "./utils/userPreferences";
+import { normalizeSpeechMarks, getActiveSpeechMarkAtTime } from "./utils/speechMarks";
 
 import { THEME_CATEGORIES, DEFAULT_CATEGORY_ID, THEMES } from "./constants/themes";
 import { VOICES } from "./constants/voices";
@@ -820,33 +821,50 @@ export default function App() {
   useEffect(() => {
     if (!audioRef.current) return;
     const audio = audioRef.current;
+    let animFrameId = null;
 
-    const onPlay = () => setIsNarrating(true);
-    const onPause = () => {
-      setIsNarrating(false);
-      setActiveSpeechMark(null);
-    };
-    const onEnded = () => {
-      setActiveSpeechMark(null);
-    };
-    const onTimeUpdate = () => {
+    const updateActiveMark = () => {
       const marks = speechMarksRef.current;
-      if (!marks || marks.length === 0 || !audio) {
-        setActiveSpeechMark(null);
+      if (!marks || marks.length === 0 || !audio || audio.paused || audio.ended) {
         return;
       }
       const currentTimeMs = (audio.currentTime || 0) * 1000;
-      let currentMark = null;
-      for (let i = 0; i < marks.length; i++) {
-        const mark = marks[i];
-        if (mark.time <= currentTimeMs) {
-          const nextTime = marks[i + 1] ? marks[i + 1].time : mark.time + 1000;
-          if (currentTimeMs < nextTime) {
-            currentMark = mark;
-            break;
-          }
-        }
+      const currentMark = getActiveSpeechMarkAtTime(marks, currentTimeMs);
+
+      setActiveSpeechMark((prev) => {
+        if (prev === currentMark) return prev;
+        if (prev?.time === currentMark?.time && prev?.value === currentMark?.value) return prev;
+        return currentMark;
+      });
+
+      if (!audio.paused && !audio.ended) {
+        animFrameId = requestAnimationFrame(updateActiveMark);
       }
+    };
+
+    const onPlay = () => {
+      setIsNarrating(true);
+      if (animFrameId) cancelAnimationFrame(animFrameId);
+      animFrameId = requestAnimationFrame(updateActiveMark);
+    };
+
+    const onPause = () => {
+      setIsNarrating(false);
+      if (animFrameId) cancelAnimationFrame(animFrameId);
+      setActiveSpeechMark(null);
+    };
+
+    const onEnded = () => {
+      if (animFrameId) cancelAnimationFrame(animFrameId);
+      setActiveSpeechMark(null);
+    };
+
+    // Backup timeupdate listener (e.g. background tab or environments without requestAnimationFrame)
+    const onTimeUpdate = () => {
+      if (audio.paused || audio.ended) return;
+      const marks = speechMarksRef.current;
+      const currentTimeMs = (audio.currentTime || 0) * 1000;
+      const currentMark = getActiveSpeechMarkAtTime(marks, currentTimeMs);
       setActiveSpeechMark(currentMark);
     };
 
@@ -854,7 +872,9 @@ export default function App() {
     audio.addEventListener("pause", onPause);
     audio.addEventListener("ended", onEnded);
     audio.addEventListener("timeupdate", onTimeUpdate);
+
     return () => {
+      if (animFrameId) cancelAnimationFrame(animFrameId);
       audio.removeEventListener("play", onPlay);
       audio.removeEventListener("pause", onPause);
       audio.removeEventListener("ended", onEnded);
@@ -1003,7 +1023,10 @@ export default function App() {
                 } catch (_) {}
               }
               if (audioRef.current && !cancelled && audioUrl) {
-                speechMarksRef.current = Array.isArray(savedNarration.speechMarks) ? savedNarration.speechMarks : [];
+                speechMarksRef.current = normalizeSpeechMarks(
+                  Array.isArray(savedNarration.speechMarks) ? savedNarration.speechMarks : [],
+                  textToNarrate
+                );
                 setActiveSpeechMark(null);
                 isPrimingAudioRef.current = false;
                 if (typeof audioRef.current.pause === "function") {
@@ -1109,7 +1132,7 @@ export default function App() {
         }
 
         if (audioRef.current && !cancelled && audioUrl) {
-          speechMarksRef.current = marks;
+          speechMarksRef.current = normalizeSpeechMarks(marks, textToNarrate);
           setActiveSpeechMark(null);
           isPrimingAudioRef.current = false;
           if (typeof audioRef.current.pause === "function") {

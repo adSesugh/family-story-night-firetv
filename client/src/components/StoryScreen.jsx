@@ -306,7 +306,7 @@ export default function StoryScreen({
                   <span
                     ref={activeWordRef}
                     data-testid="karaoke-word"
-                    className="text-lamp font-semibold drop-shadow-[0_0_14px_rgba(232,163,61,0.85)] bg-lamp/15 px-1 py-0.5 rounded transition-all duration-150"
+                    className="text-lamp font-semibold drop-shadow-[0_0_14px_rgba(232,163,61,0.85)] bg-lamp/15 px-1 py-0.5 rounded transition-colors duration-75"
                   >
                     {pageText.slice(activeSpeechMark.start, activeSpeechMark.end)}
                   </span>

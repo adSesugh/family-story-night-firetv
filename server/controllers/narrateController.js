@@ -6,6 +6,30 @@ import { getNarration, saveNarration } from "../db.js";
 
 const ALLOWED_VOICES = ["Joanna", "Matthew", "Emma", "Ivy"];
 
+/**
+ * Converts Polly UTF-8 byte offsets to JavaScript character string indices.
+ * In Polly, 'start' and 'end' speech mark offsets are byte positions in UTF-8.
+ * Whenever smart quotes, apostrophes, dashes, or non-ASCII characters appear,
+ * byte offsets drift ahead of string character indices, causing karaoke desync.
+ */
+export function convertPollyMarksToCharIndices(text, marks) {
+  if (!Array.isArray(marks) || marks.length === 0 || !text) return marks || [];
+  const buf = Buffer.from(text, "utf8");
+  return marks.map((m) => {
+    if (typeof m.start !== "number" || typeof m.end !== "number") return m;
+    // If slice directly matches, it was already converted
+    if (text.slice(m.start, m.end) === m.value) return m;
+
+    const charStart = buf.subarray(0, m.start).toString("utf8").length;
+    const charEnd = buf.subarray(0, m.end).toString("utf8").length;
+    return {
+      ...m,
+      start: charStart,
+      end: charEnd,
+    };
+  });
+}
+
 export const narrate = async (req, res) => {
   try {
     const { text, voiceId, baseVoice, speechMarks, storyId, pageIndex, deviceId: bodyDeviceId } = req.body;
@@ -35,9 +59,10 @@ export const narrate = async (req, res) => {
     if (cached && cached.audioData) {
       console.log(`[narrate] ⚡ SQLite Cache HIT: Voice=${selectedVoice} (Page: ${pageIndex ?? "N/A"}) - 0 Polly API calls`);
       if (speechMarks) {
+        const convertedCachedMarks = convertPollyMarksToCharIndices(text, cached.speechMarks || []);
         return res.json({
           audio: cached.audioData,
-          speechMarks: cached.speechMarks || [],
+          speechMarks: convertedCachedMarks,
           cached: true,
         });
       }
@@ -90,6 +115,7 @@ export const narrate = async (req, res) => {
             .filter(Boolean)
             .map((l) => JSON.parse(l))
             .filter((m) => m.type === "word");
+          parsedMarks = convertPollyMarksToCharIndices(text, parsedMarks);
         } catch (mErr) {
           console.warn("Error parsing speech marks lines:", mErr);
         }
