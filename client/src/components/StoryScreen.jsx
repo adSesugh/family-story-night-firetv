@@ -493,7 +493,7 @@ export default function StoryScreen({
                 >
                   <div className="flex items-center justify-center gap-1.5 mb-1 text-lamp font-sans text-xs md:text-sm tracking-wider uppercase font-semibold">
                     <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-lamp animate-pulse" />
-                    <span>Tonight&apos;s Lesson to Learn</span>
+                    <span>{Number(chapter) > 1 ? `Chapter ${chapter} Lesson to Learn` : "Lesson to Learn"}</span>
                   </div>
                   <p className="font-serif italic text-sm sm:text-lg md:text-xl text-parchment leading-relaxed">
                     &ldquo;{lesson}&rdquo;

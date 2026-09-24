@@ -57,6 +57,7 @@ describe("Story Completion: Lesson to Learn & Adventure Choices", () => {
 
     // Bedtime lesson
     expect(screen.getByTestId("story-lesson")).toBeInTheDocument();
+    expect(screen.getByText("Lesson to Learn")).toBeInTheDocument();
     expect(screen.getByText(new RegExp(sampleLesson, "i"))).toBeInTheDocument();
 
     // Choice cards
@@ -75,6 +76,23 @@ describe("Story Completion: Lesson to Learn & Adventure Choices", () => {
 
     // Page indicator displays Chapter completion text
     expect(screen.getByText(/Ch\. 1 • The End/i)).toBeInTheDocument();
+  });
+
+  test("StoryScreen displays 'Chapter 2 Lesson to Learn' when chapter is 2 or higher", () => {
+    render(
+      <StoryScreen
+        pages={samplePages}
+        pageIndex={2}
+        turnKey={1}
+        onTurn={jest.fn()}
+        lesson={sampleLesson}
+        choices={sampleChoices}
+        chapter={2}
+      />
+    );
+
+    expect(screen.getByText("Chapter 2 Lesson to Learn")).toBeInTheDocument();
+    expect(screen.queryByText("Lesson to Learn")).not.toBeInTheDocument();
   });
 
   test("App flow: generating story, reaching conclusion slide, and selecting next chapter", async () => {

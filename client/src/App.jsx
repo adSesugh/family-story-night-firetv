@@ -971,7 +971,8 @@ export default function App() {
       const currentPage = pages[pageIndex];
       textToNarrate = typeof currentPage === "object" ? currentPage.text : currentPage;
     } else if (pageIndex >= pages.length && lesson) {
-      textToNarrate = `The End. Tonight's lesson: ${lesson}`;
+      const lessonPrefix = Number(chapter) > 1 ? `Chapter ${chapter} lesson:` : "Lesson to learn:";
+      textToNarrate = `The End. ${lessonPrefix} ${lesson}`;
     }
 
     if (!textToNarrate) return;
