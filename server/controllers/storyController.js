@@ -1,6 +1,8 @@
+import crypto from "crypto";
 import { generateStoryData } from "../services/bedrockService.js";
+import { saveStory } from "../db.js";
 
-const ALLOWED_STORY_LENGTHS = [4, 6, 8];
+const ALLOWED_STORY_LENGTHS = [3, 4, 6, 8, 9];
 
 export const generateStory = async (req, res) => {
   try {
@@ -9,11 +11,20 @@ export const generateStory = async (req, res) => {
       theme = "a cozy adventure",
       isCustomTheme = false,
       storyLength = 6,
+      ageGuidance = "all",
       selectedChoice,
       chapter = 1,
       previousSummary,
       category = "adventures",
+      deviceId: bodyDeviceId,
+      storyId: incomingStoryId,
     } = req.body;
+
+    const deviceId =
+      bodyDeviceId ||
+      req.headers?.["x-device-id"] ||
+      req.query?.deviceId ||
+      null;
 
     const isBibleStory =
       category === "bible" ||
@@ -31,7 +42,7 @@ export const generateStory = async (req, res) => {
 
     const parsedLength = Number(storyLength);
     if (!ALLOWED_STORY_LENGTHS.includes(parsedLength)) {
-      return res.status(400).json({ error: "storyLength must be 4, 6, or 8" });
+      return res.status(400).json({ error: "storyLength must be 3, 4, 6, 8, or 9" });
     }
 
     const storyData = await generateStoryData({
@@ -39,12 +50,53 @@ export const generateStory = async (req, res) => {
       theme,
       isCustomTheme,
       parsedLength,
+      ageGuidance,
       selectedChoice,
       chapter,
       previousSummary,
       category,
       isBibleStory
     });
+
+    // Ensure story has a consistent UUID
+    const storyId = incomingStoryId || crypto.randomUUID();
+    storyData.id = storyId;
+
+    // Immediately persist to SQLite if deviceId is provided
+    if (deviceId) {
+      try {
+        const formattedPages = (storyData.pages || []).map((p) => {
+          const text = typeof p === "object" ? p.text : p;
+          const scene = typeof p === "object" ? p.scene : undefined;
+          return { text, scene };
+        });
+
+        const initialChapter = {
+          chapter: storyData.chapter || chapter || 1,
+          pages: formattedPages,
+          illustrations: [],
+          lesson: storyData.lesson || "",
+          choices: storyData.choices || [],
+        };
+
+        saveStory(deviceId, {
+          id: storyId,
+          theme,
+          category,
+          familyMembers,
+          chapter: storyData.chapter || chapter || 1,
+          lesson: storyData.lesson || "",
+          choices: storyData.choices || [],
+          pages: formattedPages,
+          illustrations: [],
+          firstPage: typeof formattedPages[0] === "string" ? formattedPages[0] : formattedPages[0]?.text || "",
+          chapters: [initialChapter],
+        });
+        console.log(`[storyController] 💾 Saved generated story ${storyId} to SQLite for device: ${deviceId}`);
+      } catch (dbErr) {
+        console.warn("[storyController] Could not auto-save story to SQLite:", dbErr.message);
+      }
+    }
 
     return res.json(storyData);
   } catch (err) {

@@ -53,7 +53,17 @@ export default function App() {
     const settings = loadSettings();
     return settings?.settings?.defaultVoice || "Joanna";
   });
-  const [storyLength, setStoryLength] = useState(6);
+  const [storyLength, setStoryLength] = useState(() => {
+    const stored = StorageService.getItem("familyStoryNight_storyLength");
+    if (stored && Number(stored)) return Number(stored);
+    const settings = loadSettings();
+    if (settings?.settings?.storyLength && Number(settings.settings.storyLength)) {
+      return Number(settings.settings.storyLength);
+    }
+    if (settings?.settings?.ageRestriction === "3+") return 3;
+    if (settings?.settings?.ageRestriction === "8+") return 9;
+    return 6;
+  });
   const [illustrationStyle, setIllustrationStyle] = useState(() => {
     return StorageService.getItem("familyStoryNight_illustrationStyle") || "watercolor";
   });
@@ -142,6 +152,106 @@ export default function App() {
     }
   }, []);
 
+  const narrationMemoryCacheRef = useRef(new Map());
+  const inFlightNarrationsRef = useRef(new Map());
+
+  // Pre-fetches narration in the background so reading begins instantly on page turns without pauses
+  const prefetchNarration = useCallback(async ({ text, pageIdx, targetVoice, baseVoice, storyId }) => {
+    if (!text || typeof text !== "string" || !text.trim()) return null;
+    const cacheKey = `${storyId || "temp"}_${pageIdx}_${targetVoice}`;
+    if (narrationMemoryCacheRef.current.has(cacheKey)) {
+      return narrationMemoryCacheRef.current.get(cacheKey);
+    }
+    if (inFlightNarrationsRef.current.has(cacheKey)) {
+      return inFlightNarrationsRef.current.get(cacheKey);
+    }
+
+    const fetchPromise = (async () => {
+      try {
+        let effectiveBase = baseVoice;
+        if (!effectiveBase && targetVoice && targetVoice.startsWith("custom")) {
+          const customProfiles = loadCustomVoices();
+          const matched = customProfiles.find((v) => v.id === targetVoice);
+          if (matched?.baseVoice) effectiveBase = matched.baseVoice;
+        }
+
+        const res = await fetch(`${API_BASE}/narrate`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-device-id": getDeviceId(),
+          },
+          body: JSON.stringify({
+            text,
+            voiceId: targetVoice,
+            baseVoice: effectiveBase,
+            speechMarks: true,
+            storyId: storyId || undefined,
+            pageIndex: pageIdx,
+            deviceId: getDeviceId(),
+          }),
+        });
+
+        if (!res.ok) return null;
+
+        let audioUrl = "";
+        let marks = [];
+        let rawAudio = null;
+
+        const contentType = (res.headers && typeof res.headers.get === "function" ? res.headers.get("content-type") : "") || "";
+        if (contentType.includes("application/json") || (!res.blob && typeof res.json === "function")) {
+          const data = await res.json();
+          if (data && data.audio) {
+            rawAudio = data.audio;
+            if (typeof data.audio === "string" && data.audio.startsWith("data:") && typeof URL.createObjectURL === "function") {
+              try {
+                const base64Parts = data.audio.split(",");
+                const byteCharacters = atob(base64Parts[1] || base64Parts[0]);
+                const byteNumbers = new Uint8Array(byteCharacters.length);
+                for (let i = 0; i < byteCharacters.length; i++) {
+                  byteNumbers[i] = byteCharacters.charCodeAt(i);
+                }
+                const isWav = data.audio.startsWith("data:audio/wav");
+                const mimeType = isWav ? "audio/wav" : "audio/mpeg";
+                const audioBlob = new Blob([byteNumbers], { type: mimeType });
+                audioUrl = URL.createObjectURL(audioBlob);
+              } catch (_) {
+                audioUrl = data.audio;
+              }
+            } else {
+              audioUrl = data.audio;
+            }
+          }
+          marks = Array.isArray(data.speechMarks) ? data.speechMarks : [];
+        } else if (typeof res.blob === "function") {
+          const blob = await res.blob();
+          if (typeof URL.createObjectURL === "function") {
+            audioUrl = URL.createObjectURL(blob);
+          }
+        }
+
+        if (audioUrl) {
+          const item = {
+            audioUrl,
+            speechMarks: marks,
+            rawAudio,
+          };
+          narrationMemoryCacheRef.current.set(cacheKey, item);
+          return item;
+        }
+        return null;
+      } catch (err) {
+        console.warn(`[App] Pre-fetch narration for page ${pageIdx} failed:`, err.message);
+        return null;
+      } finally {
+        inFlightNarrationsRef.current.delete(cacheKey);
+      }
+    })();
+
+    inFlightNarrationsRef.current.set(cacheKey, fetchPromise);
+    return fetchPromise;
+  }, []);
+
   // Fast concurrent illustration fetching orchestrator with retries and guaranteed fallback
   const fetchSubsequentIllustrations = useCallback(
     async ({
@@ -181,13 +291,19 @@ export default function App() {
             const pageScene = typeof rawPage === "object" ? rawPage.scene : undefined;
             const res = await fetch(`${API_BASE}/illustrate`, {
               method: "POST",
-              headers: { "Content-Type": "application/json" },
+              headers: {
+                "Content-Type": "application/json",
+                "x-device-id": getDeviceId(),
+              },
               body: JSON.stringify({
                 text: pageText,
                 scene: pageScene,
                 theme: activeTheme,
                 seed: seedBase + idx * 1000,
                 illustrationStyle,
+                storyId: savedStoryId,
+                pageIndex: idx,
+                deviceId: getDeviceId(),
               }),
             });
 
@@ -332,7 +448,7 @@ export default function App() {
               if (
                 audioRef.current &&
                 audioRef.current.src &&
-                (audioRef.current.src === PRIMING_AUDIO_SRC || audioRef.current.src.includes("data:audio/wav"))
+                audioRef.current.src === PRIMING_AUDIO_SRC
               ) {
                 audioRef.current.pause();
                 audioRef.current.removeAttribute("src");
@@ -383,12 +499,17 @@ export default function App() {
       const activeTheme = themeMode === "custom" ? customTheme : (activeThemes[themeIndex] || activeThemes[0]);
       const res = await fetch(`${API_BASE}/generate-story`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-device-id": getDeviceId(),
+        },
         body: JSON.stringify({
+          deviceId: getDeviceId(),
           familyMembers,
           theme: activeTheme,
           isCustomTheme: themeMode === "custom",
           storyLength,
+          ageGuidance: parentSettings?.settings?.ageRestriction || "all",
           chapter: 1,
           category,
         }),
@@ -437,6 +558,7 @@ export default function App() {
 
       // Save story to history (no illustration yet — will be updated as they arrive)
       const savedStory = saveStory({
+        id: data.id,
         familyMembers,
         theme: activeTheme,
         category,
@@ -636,12 +758,18 @@ export default function App() {
 
         const res = await fetch(`${API_BASE}/generate-story`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            "x-device-id": getDeviceId(),
+          },
           body: JSON.stringify({
+            deviceId: getDeviceId(),
+            storyId: currentStoryId,
             familyMembers,
             theme: activeTheme,
             isCustomTheme: !activeStoryMetadata && themeMode === "custom",
             storyLength,
+            ageGuidance: parentSettings?.settings?.ageRestriction || "all",
             selectedChoice,
             chapter: nextChapter,
             previousSummary,
@@ -800,6 +928,11 @@ export default function App() {
 
   const handleSettingsChange = useCallback((updated) => {
     setParentSettings(updated);
+    if (updated?.settings?.storyLength) {
+      const num = Number(updated.settings.storyLength);
+      setStoryLength(num);
+      StorageService.setItem("familyStoryNight_storyLength", num);
+    }
     syncPreferencesToServer(API_BASE, getDeviceId(), {
       pinHash: updated?.pinHash,
       parentSettings: updated?.settings,
@@ -807,9 +940,24 @@ export default function App() {
   }, []);
 
   const handleStoryLengthChange = useCallback((newLength) => {
-    setStoryLength(newLength);
-    StorageService.setItem("familyStoryNight_storyLength", newLength);
-    syncPreferencesToServer(API_BASE, getDeviceId(), { storyLength: newLength });
+    const num = Number(newLength);
+    setStoryLength(num);
+    StorageService.setItem("familyStoryNight_storyLength", num);
+    syncPreferencesToServer(API_BASE, getDeviceId(), { storyLength: num });
+    try {
+      const current = loadSettings();
+      const updated = {
+        ...current,
+        settings: {
+          ...current.settings,
+          storyLength: num,
+        },
+      };
+      saveSettings(updated);
+      setParentSettings(updated);
+    } catch (e) {
+      console.warn("Could not save storyLength to parent settings:", e);
+    }
   }, []);
 
   const handleIllustrationStyleChange = useCallback((newStyle) => {
@@ -1004,9 +1152,46 @@ export default function App() {
     speechMarksRef.current = [];
     setActiveSpeechMark(null);
 
+    const memKey = `${currentStoryId || "temp"}_${pageIndex}_${voice}`;
+
+    const playAudioItem = (audioUrl, marks) => {
+      if (audioRef.current && !cancelled && audioUrl) {
+        speechMarksRef.current = normalizeSpeechMarks(marks || [], textToNarrate);
+        setActiveSpeechMark(null);
+        isPrimingAudioRef.current = false;
+        if (typeof audioRef.current.pause === "function") {
+          try { audioRef.current.pause(); } catch (e) {}
+        }
+        audioRef.current.src = audioUrl;
+        if (typeof audioRef.current.load === "function") {
+          try { audioRef.current.load(); } catch (e) {}
+        }
+        if (typeof audioRef.current.play === "function") {
+          setPendingAudioPlay(pageIndex);
+        }
+      }
+    };
+
     (async () => {
       try {
-        // 1. Instant Playback: Check if currentStory already has stored voice narration for this page
+        // 1. Check In-Memory Cache first (0ms instant playback)
+        const memItem = narrationMemoryCacheRef.current.get(memKey);
+        if (memItem?.audioUrl) {
+          playAudioItem(memItem.audioUrl, memItem.speechMarks);
+          return;
+        }
+
+        // 2. Check In-Flight Request: If already fetching, await existing promise
+        const inFlight = inFlightNarrationsRef.current.get(memKey);
+        if (inFlight) {
+          const resItem = await inFlight;
+          if (resItem?.audioUrl && !cancelled) {
+            playAudioItem(resItem.audioUrl, resItem.speechMarks);
+            return;
+          }
+        }
+
+        // 3. Check Persistent Local Story History Cache
         if (currentStoryId) {
           try {
             const historyList = loadHistory();
@@ -1022,28 +1207,21 @@ export default function App() {
                   for (let i = 0; i < byteCharacters.length; i++) {
                     byteNumbers[i] = byteCharacters.charCodeAt(i);
                   }
-                  const audioBlob = new Blob([byteNumbers], { type: "audio/mpeg" });
+                  const isWav = audioUrl.startsWith("data:audio/wav");
+                  const mimeType = isWav ? "audio/wav" : "audio/mpeg";
+                  const audioBlob = new Blob([byteNumbers], { type: mimeType });
                   audioUrl = URL.createObjectURL(audioBlob);
                 } catch (_) {}
               }
-              if (audioRef.current && !cancelled && audioUrl) {
-                speechMarksRef.current = normalizeSpeechMarks(
-                  Array.isArray(savedNarration.speechMarks) ? savedNarration.speechMarks : [],
-                  textToNarrate
-                );
-                setActiveSpeechMark(null);
-                isPrimingAudioRef.current = false;
-                if (typeof audioRef.current.pause === "function") {
-                  try { audioRef.current.pause(); } catch (e) {}
-                }
-                audioRef.current.src = audioUrl;
-                if (typeof audioRef.current.load === "function") {
-                  try { audioRef.current.load(); } catch (e) {}
-                }
-                if (typeof audioRef.current.play === "function") {
-                  setPendingAudioPlay(pageIndex);
-                }
-                return; // Instant replay without any network request!
+              const marks = Array.isArray(savedNarration.speechMarks) ? savedNarration.speechMarks : [];
+              narrationMemoryCacheRef.current.set(memKey, {
+                audioUrl,
+                speechMarks: marks,
+                rawAudio: savedNarration.audio,
+              });
+              if (!cancelled) {
+                playAudioItem(audioUrl, marks);
+                return;
               }
             }
           } catch (e) {
@@ -1051,6 +1229,7 @@ export default function App() {
           }
         }
 
+        // 4. Fetch via prefetchNarration (handles custom voices, Kokoro, and caching)
         let effectiveBaseVoice = undefined;
         if (voice && voice.startsWith("custom")) {
           const customProfiles = loadCustomVoices();
@@ -1060,95 +1239,40 @@ export default function App() {
           }
         }
 
-        const res = await fetch(`${API_BASE}/narrate`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-device-id": getDeviceId(),
-          },
-          body: JSON.stringify({
-            text: textToNarrate,
-            voiceId: voice,
-            baseVoice: effectiveBaseVoice,
-            speechMarks: true,
-            storyId: currentStoryId || undefined,
-            pageIndex: pageIndex,
-            deviceId: getDeviceId(),
-          }),
+        const narrationResult = await prefetchNarration({
+          text: textToNarrate,
+          pageIdx: pageIndex,
+          targetVoice: voice,
+          baseVoice: effectiveBaseVoice,
+          storyId: currentStoryId,
         });
-        if (!res.ok || cancelled) return;
 
-        const contentType = (res.headers && typeof res.headers.get === "function" ? res.headers.get("content-type") : "") || "";
-        let audioUrl = "";
-        let marks = [];
+        if (narrationResult && !cancelled) {
+          playAudioItem(narrationResult.audioUrl, narrationResult.speechMarks);
 
-        if (contentType.includes("application/json") || (!res.blob && typeof res.json === "function")) {
-          const data = await res.json();
-          if (data.audio) {
-            // Save narration onto the story in history and sync to SQLite
-            if (currentStoryId) {
-              try {
-                const historyList = loadHistory();
-                const target = historyList.find((s) => s.id === currentStoryId);
-                if (target) {
-                  const updatedNarrations = {
-                    ...(target.narrations || {}),
-                    [pageIndex]: {
-                      audio: data.audio,
-                      speechMarks: Array.isArray(data.speechMarks) ? data.speechMarks : [],
-                      voiceId: voice,
-                    },
-                  };
-                  updateStory(currentStoryId, { narrations: updatedNarrations });
-                  syncStoryToServer(API_BASE, getDeviceId(), {
-                    ...target,
-                    narrations: updatedNarrations,
-                  });
-                }
-              } catch (e) {
-                console.warn("[App] Could not persist narration to story:", e.message);
-              }
-            }
-
+          // Save narration onto the story in history and sync to SQLite
+          if (currentStoryId && narrationResult.rawAudio) {
             try {
-              if (typeof data.audio === "string" && data.audio.startsWith("data:") && typeof URL.createObjectURL === "function") {
-                const base64Parts = data.audio.split(",");
-                const byteCharacters = atob(base64Parts[1] || base64Parts[0]);
-                const byteNumbers = new Uint8Array(byteCharacters.length);
-                for (let i = 0; i < byteCharacters.length; i++) {
-                  byteNumbers[i] = byteCharacters.charCodeAt(i);
-                }
-                const audioBlob = new Blob([byteNumbers], { type: "audio/mpeg" });
-                audioUrl = URL.createObjectURL(audioBlob);
-              } else {
-                audioUrl = data.audio;
+              const historyList = loadHistory();
+              const target = historyList.find((s) => s.id === currentStoryId);
+              if (target) {
+                const updatedNarrations = {
+                  ...(target.narrations || {}),
+                  [pageIndex]: {
+                    audio: narrationResult.rawAudio,
+                    speechMarks: narrationResult.speechMarks || [],
+                    voiceId: voice,
+                  },
+                };
+                updateStory(currentStoryId, { narrations: updatedNarrations });
+                syncStoryToServer(API_BASE, getDeviceId(), {
+                  ...target,
+                  narrations: updatedNarrations,
+                });
               }
             } catch (e) {
-              audioUrl = data.audio;
+              console.warn("[App] Could not persist narration to story:", e.message);
             }
-          }
-          marks = Array.isArray(data.speechMarks) ? data.speechMarks : [];
-        } else if (typeof res.blob === "function") {
-          const blob = await res.blob();
-          if (typeof URL.createObjectURL === "function") {
-            audioUrl = URL.createObjectURL(blob);
-          }
-        }
-
-        if (audioRef.current && !cancelled && audioUrl) {
-          speechMarksRef.current = normalizeSpeechMarks(marks, textToNarrate);
-          setActiveSpeechMark(null);
-          isPrimingAudioRef.current = false;
-          if (typeof audioRef.current.pause === "function") {
-            try { audioRef.current.pause(); } catch (e) { }
-          }
-          audioRef.current.src = audioUrl;
-          if (typeof audioRef.current.load === "function") {
-            try { audioRef.current.load(); } catch (e) { }
-          }
-          if (typeof audioRef.current.play === "function") {
-            // Defer audio playback until illustration is loaded
-            setPendingAudioPlay(pageIndex);
           }
         }
       } catch (err) {
@@ -1159,7 +1283,7 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [screen, pageIndex, pages, voice, lesson, networkRetryKey]);
+  }, [screen, pageIndex, pages, voice, lesson, networkRetryKey, currentStoryId, prefetchNarration]);
 
   // Coordinate playback so audio only plays when the illustration for the current page is ready (or immediately if on the conclusion screen)
   useEffect(() => {
@@ -1188,9 +1312,7 @@ export default function App() {
       if (screen !== "story") return;
 
       // CRITICAL: Ignore silent priming audio or uninitialized audio
-      const isPrimingSrc =
-        audio.src === PRIMING_AUDIO_SRC ||
-        audio.src.includes("data:audio/wav");
+      const isPrimingSrc = audio.src === PRIMING_AUDIO_SRC;
 
       if (isPrimingAudioRef.current || !audio.src || isPrimingSrc) {
         return;

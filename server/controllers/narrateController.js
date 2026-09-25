@@ -53,47 +53,69 @@ export const narrate = async (req, res) => {
       console.log(`[narrate] Custom family voice requested (${voiceId}). Synthesizing with baseline: ${selectedVoice}`);
     }
 
-    // 1. Check SQLite database cache first
+    // Determine voice type: custom clone vs standard stock voice
+    const isCustomVoice = Boolean(voiceId && (voiceId.startsWith("custom") || !ALLOWED_VOICES.includes(voiceId)));
+    const isKokoroVoice = Boolean(
+      voiceId && (
+        voiceId.startsWith("af_") ||
+        voiceId.startsWith("am_") ||
+        voiceId.startsWith("bf_") ||
+        voiceId.startsWith("bm_") ||
+        isCustomVoice
+      )
+    );
+    const isKokoroEngine = (process.env.VOICE_ENGINE || "").toLowerCase() === "kokoro";
+    const isMicroserviceVoice = isKokoroVoice || isKokoroEngine;
+
+    // Use specific voiceId for caching so custom clones never collide with Joanna/Matthew
+    const lookupVoice = voiceId || selectedVoice;
+
+    // 1. Check SQLite database cache first (instant 0ms playback for previously synthesized pages)
     const textHash = crypto.createHash("sha256").update(text.trim()).digest("hex");
-    const cached = getNarration(textHash, selectedVoice);
+    const cached = getNarration(textHash, lookupVoice);
 
     if (cached && cached.audioData) {
-      console.log(`[narrate] ⚡ SQLite Cache HIT: Voice=${selectedVoice} (Page: ${pageIndex ?? "N/A"}) - 0 Polly API calls`);
+      console.log(`[narrate] ⚡ SQLite Cache HIT: Voice=${lookupVoice} (Page: ${pageIndex ?? "N/A"}) - 0 API calls`);
       if (speechMarks) {
         const convertedCachedMarks = convertPollyMarksToCharIndices(text, cached.speechMarks || []);
         return res.json({
           audio: cached.audioData,
           speechMarks: convertedCachedMarks,
           cached: true,
+          voiceId: lookupVoice,
         });
       }
 
       const base64Data = cached.audioData.replace(/^data:audio\/\w+;base64,/, "");
       const audioBuffer = Buffer.from(base64Data, "base64");
-      res.setHeader("Content-Type", "audio/mpeg");
+      const mime = cached.audioData.startsWith("data:audio/wav") ? "audio/wav" : "audio/mpeg";
+      res.setHeader("Content-Type", mime);
       res.setHeader("Content-Length", audioBuffer.length);
       res.setHeader("X-Narration-Cached", "true");
       return res.end(audioBuffer);
     }
 
-
-    // 2. Cache MISS: Check if Kokoro-82M Voice Microservice is configured and applicable
+    // 2. Custom voice or Kokoro voice: Route exclusively to Voice Microservice (NEVER call AWS Polly)
     const kokoroUrl = process.env.KOKORO_VOICE_SERVICE_URL || process.env.KOKORO_API_URL;
-    const isKokoroVoice = voiceId && (voiceId.startsWith("af_") || voiceId.startsWith("am_") || voiceId.startsWith("bf_") || voiceId.startsWith("bm_") || voiceId.startsWith("custom"));
-    const isKokoroEngine = (process.env.VOICE_ENGINE || "").toLowerCase() === "kokoro";
-    const useKokoro = Boolean(kokoroUrl && (isKokoroEngine || isKokoroVoice));
 
-    if (useKokoro) {
+    if (isMicroserviceVoice) {
+      if (!kokoroUrl) {
+        console.warn(`[narrate] Custom voice '${lookupVoice}' requested, but KOKORO_VOICE_SERVICE_URL is not set.`);
+        return res.status(503).json({
+          error: `Voice microservice is required for '${lookupVoice}', but KOKORO_VOICE_SERVICE_URL is not configured.`
+        });
+      }
+
       try {
-        const kokoroResult = await synthesizeWithKokoro(text, voiceId || selectedVoice, baseVoice || selectedVoice);
+        const kokoroResult = await synthesizeWithKokoro(text, lookupVoice, baseVoice || selectedVoice);
         if (kokoroResult && kokoroResult.audioData) {
-          // Persist to SQLite cache
+          // Persist to SQLite cache under actual voice ID
           try {
             saveNarration({
               storyId,
               deviceId,
               textHash,
-              voiceId: selectedVoice,
+              voiceId: lookupVoice,
               audioData: kokoroResult.audioData,
               speechMarks: kokoroResult.speechMarks,
               pageIndex,
@@ -108,6 +130,7 @@ export const narrate = async (req, res) => {
               speechMarks: kokoroResult.speechMarks,
               cached: false,
               engine: "kokoro-82m",
+              voiceId: lookupVoice,
             });
           }
 
@@ -119,11 +142,14 @@ export const narrate = async (req, res) => {
           return res.end(audioBuffer);
         }
       } catch (kErr) {
-        console.warn(`[narrate] Kokoro voice synthesis failed (${kErr.message}); falling back to AWS Polly.`);
+        console.error(`[narrate] Kokoro voice microservice failed for '${lookupVoice}': ${kErr.message}. Skipping AWS Polly.`);
+        return res.status(502).json({
+          error: `Kokoro voice synthesis error: ${kErr.message}`,
+        });
       }
     }
 
-    // 3. Fallback to AWS Polly
+    // 3. AWS Polly - ONLY used for standard stock voices (Joanna, Matthew, Emma, Ivy) when not using Kokoro
     console.log(`[narrate] 🎙️ Cache MISS: Synthesizing voice via AWS Polly for voice: ${selectedVoice}`);
     const audioCommand = new SynthesizeSpeechCommand({
       Text: text,

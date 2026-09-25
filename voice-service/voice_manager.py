@@ -42,14 +42,20 @@ POLLY_TO_KOKORO_MAP = {
 
 class KokoroVoiceManager:
     def __init__(self, lang_code: str = "a"):
-        print("[KokoroVoiceManager] Initializing KPipeline (lang_code='a')...")
+        cpu_threads = max(1, os.cpu_count() or 4)
+        try:
+            torch.set_num_threads(cpu_threads)
+            print(f"[KokoroVoiceManager] Initializing KPipeline with {cpu_threads} CPU threads (lang_code='a')...")
+        except Exception:
+            print("[KokoroVoiceManager] Initializing KPipeline (lang_code='a')...")
+
         self.lang_code = lang_code
         self.pipeline = KPipeline(lang_code=lang_code)
         self.cached_voices: Dict[str, torch.Tensor] = {}
         self.sample_rate = 24000
         print("[KokoroVoiceManager] Kokoro pipeline ready.")
 
-    def get_voice_tensor(self, voice_name: str) -> torch.Tensor:
+    def get_voice_tensor(self, voice_name: str, base_voice: Optional[str] = None) -> torch.Tensor:
         """Loads a voice vector from memory, custom directory, or pipeline."""
         voice_key = voice_name.lower().strip()
 
@@ -64,6 +70,27 @@ class KokoroVoiceManager:
             tensor = torch.load(custom_path, map_location="cpu")
             self.cached_voices[voice_key] = tensor
             return tensor
+
+        # If it's a custom cloned voice ID (e.g. custom_mom_... or custom_178977...),
+        # DO NOT query Hugging Face. Resolve to base_voice (or Joanna/af_bella) and persist locally.
+        if voice_key.startswith("custom"):
+            fallback_key = (base_voice or "af_bella").lower().strip()
+            resolved_base = POLLY_TO_KOKORO_MAP.get(fallback_key, fallback_key)
+            if resolved_base not in BUILTIN_VOICES and not re.match(r"^[a-z]{2}_[a-z]+$", resolved_base):
+                resolved_base = "af_bella"
+
+            print(f"[KokoroVoiceManager] Custom voice '{voice_name}' not on disk; generating baseline vector from '{resolved_base}'")
+            try:
+                base_tensor = self.pipeline.load_voice(resolved_base)
+                # Persist locally so next time it loads immediately without re-resolving
+                torch.save(base_tensor, custom_path)
+                self.cached_voices[voice_key] = base_tensor
+                return base_tensor
+            except Exception as err:
+                print(f"[KokoroVoiceManager] Note: Could not load base voice '{resolved_base}': {err}")
+                fallback = self.pipeline.load_voice("af_bella")
+                self.cached_voices[voice_key] = fallback
+                return fallback
 
         # Map Polly voice names if passed
         resolved = POLLY_TO_KOKORO_MAP.get(voice_key, voice_name)
@@ -165,6 +192,7 @@ class KokoroVoiceManager:
         self,
         text: str,
         voice_name: str = "af_bella",
+        base_voice: Optional[str] = None,
         speed: float = 0.95
     ) -> Tuple[np.ndarray, List[Dict[str, Any]], int]:
         """
@@ -175,7 +203,7 @@ class KokoroVoiceManager:
         if not clean_text:
             return np.zeros(0, dtype=np.float32), [], 0
 
-        voice_tensor = self.get_voice_tensor(voice_name)
+        voice_tensor = self.get_voice_tensor(voice_name, base_voice=base_voice)
 
         # Generate audio chunks
         generator = self.pipeline(clean_text, voice=voice_tensor, speed=speed)

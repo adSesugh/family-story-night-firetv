@@ -480,7 +480,10 @@ export default function SettingsScreen({
                       key={length}
                       type="button"
                       aria-label={`${label} (${ages}), ${length} pages, ${desc}`}
-                      onClick={() => setStoryLength && setStoryLength(length)}
+                      onClick={() => {
+                        if (setStoryLength) setStoryLength(length);
+                        handleSelectSetting("storyLength", length);
+                      }}
                       style={{ outline: "none" }}
                       className={`flex flex-col items-center gap-0.5 rounded-xl border p-3 transition-all cursor-pointer focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lamp focus-visible:ring-offset-2 focus-visible:ring-offset-dusk ${
                         storyLength === length
@@ -691,7 +694,13 @@ export default function SettingsScreen({
                     </div>
                     <select
                       value={settingsData.settings?.ageRestriction || "all"}
-                      onChange={(e) => handleSelectSetting("ageRestriction", e.target.value)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        handleSelectSetting("ageRestriction", val);
+                        if (val === "3+" && setStoryLength) setStoryLength(3);
+                        else if (val === "5+" && setStoryLength) setStoryLength(6);
+                        else if (val === "8+" && setStoryLength) setStoryLength(9);
+                      }}
                       className="rounded-sm border border-starlight/30 bg-dusk px-3 py-1 font-sans text-xs text-parchment focus:border-[#e8a33d] focus:outline-none"
                       aria-label="Age Guidance"
                     >

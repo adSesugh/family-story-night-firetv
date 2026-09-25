@@ -76,7 +76,7 @@ describe("Kokoro-82M Voice Microservice Integration", () => {
     let responseJson = null;
     const req = {
       body: {
-        text: "Once upon a bedtime dream",
+        text: `Once upon a bedtime dream ${Date.now()}`,
         voiceId: "custom_mom_456",
         speechMarks: true,
       },
@@ -98,5 +98,80 @@ describe("Kokoro-82M Voice Microservice Integration", () => {
     expect(responseJson).toBeDefined();
     expect(responseJson.engine).toBe("kokoro-82m");
     expect(responseJson.audio).toBe("data:audio/wav;base64,customMomAudio");
+  });
+
+  it("does not call AWS Polly when Kokoro microservice returns an error for a custom voice", async () => {
+    process.env.KOKORO_VOICE_SERVICE_URL = "http://localhost:8880";
+
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: async () => ({ detail: "Kokoro inference failure" }),
+    });
+    globalThis.fetch = mockFetch;
+
+    let responseJson = null;
+    let responseStatus = 200;
+    const req = {
+      body: {
+        text: `Failing custom voice narration test ${Date.now()}`,
+        voiceId: "custom_dad_999",
+        speechMarks: true,
+      },
+      headers: {},
+      query: {},
+    };
+    const res = {
+      status: vi.fn((s) => {
+        responseStatus = s;
+        return res;
+      }),
+      json: (data) => {
+        responseJson = data;
+      },
+      setHeader: vi.fn(),
+      end: vi.fn(),
+    };
+
+    await narrate(req, res);
+
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+    expect(responseStatus).toBe(502);
+    expect(responseJson).toBeDefined();
+    expect(responseJson.error).toContain("Kokoro voice synthesis error");
+  });
+
+  it("does not call AWS Polly when KOKORO_VOICE_SERVICE_URL is missing for a custom voice", async () => {
+    delete process.env.KOKORO_VOICE_SERVICE_URL;
+    delete process.env.KOKORO_API_URL;
+
+    let responseJson = null;
+    let responseStatus = 200;
+    const req = {
+      body: {
+        text: `Missing config custom voice test ${Date.now()}`,
+        voiceId: "custom_grandpa_111",
+        speechMarks: true,
+      },
+      headers: {},
+      query: {},
+    };
+    const res = {
+      status: vi.fn((s) => {
+        responseStatus = s;
+        return res;
+      }),
+      json: (data) => {
+        responseJson = data;
+      },
+      setHeader: vi.fn(),
+      end: vi.fn(),
+    };
+
+    await narrate(req, res);
+
+    expect(responseStatus).toBe(503);
+    expect(responseJson).toBeDefined();
+    expect(responseJson.error).toContain("Voice microservice is required");
   });
 });

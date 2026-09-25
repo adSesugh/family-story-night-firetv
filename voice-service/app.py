@@ -85,6 +85,7 @@ def synthesize(req: SynthesizeRequest, request: Request):
         audio_np, speech_marks, duration_ms = manager.synthesize(
             text=req.text,
             voice_name=target_voice,
+            base_voice=req.base_voice,
             speed=req.speed,
         )
 
@@ -119,5 +120,7 @@ def synthesize(req: SynthesizeRequest, request: Request):
         raise HTTPException(status_code=500, detail=f"Synthesis error: {str(err)}")
 
 if __name__ == "__main__":
+    import os
     import uvicorn
-    uvicorn.run("app:app", host="0.0.0.0", port=8880, reload=False)
+    port = int(os.environ.get("PORT", 8880))
+    uvicorn.run(app, host="0.0.0.0", port=port)

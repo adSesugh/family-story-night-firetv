@@ -144,6 +144,46 @@ describe("SQLite Flat DB: Story History, Illustrations & Preferences", () => {
       expect(result.illustrations[2].url).toContain("mockBase64IllustrationPage3Chapter2");
     });
 
+    it("preserves existing illustrations when client syncs with empty illustrations (localStorage quota guard)", () => {
+      const storyWithPageIllustrations = {
+        ...mockStory,
+        id: "story-with-page-ill",
+        pages: [
+          { text: "Page 1 text", scene: "Scene 1", illustration: { url: "data:image/webp;base64,mockBase64IllustrationPage1..." } },
+          { text: "Page 2 text", scene: "Scene 2", illustration: { url: "data:image/webp;base64,mockBase64IllustrationPage2..." } },
+        ],
+      };
+      saveStory(testDeviceA, storyWithPageIllustrations);
+
+      // Simulate client syncing narrations with empty illustrations array and pages without illustration property
+      const strippedStory = {
+        ...storyWithPageIllustrations,
+        illustrations: [],
+        pages: [
+          { text: "Page 1 text", scene: "Scene 1" },
+          { text: "Page 2 text", scene: "Scene 2" },
+        ],
+      };
+
+      const result = saveStory(testDeviceA, strippedStory);
+      expect(result.illustrations).toHaveLength(2);
+      expect(result.pages[0].illustration).toBeDefined();
+      expect(result.pages[0].illustration.url).toBe("data:image/webp;base64,mockBase64IllustrationPage1...");
+    });
+
+    it("saves and retrieves story illustrations directly via saveStoryIllustration", async () => {
+      const { saveStoryIllustration, getStoryIllustration } = await import("../db.js");
+      saveStory(testDeviceA, mockStory);
+
+      saveStoryIllustration(mockStory.id, 1, "data:image/png;base64,newPage2Illustration...", "Page 2 alt");
+      const cached = getStoryIllustration(mockStory.id, 1);
+      expect(cached).toBe("data:image/png;base64,newPage2Illustration...");
+
+      const updated = getStoryById(mockStory.id, testDeviceA);
+      expect(updated.illustrations[1]).toBe("data:image/png;base64,newPage2Illustration...");
+      expect(updated.pages[1].illustration.url).toBe("data:image/png;base64,newPage2Illustration...");
+    });
+
     it("toggles favorite status in the database", () => {
       saveStory(testDeviceA, mockStory);
 

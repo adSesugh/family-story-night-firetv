@@ -251,11 +251,57 @@ export function saveStory(deviceId, story = {}) {
 
   const now = new Date().toISOString();
   const createdAt = story.generatedAt || story.createdAt || now;
+
+  // Retrieve existing story record if present to guard against client localStorage quota stripping
+  const existingRow = db.prepare("SELECT * FROM stories WHERE id = ?").get(story.id);
+
+  let finalIllustrations = Array.isArray(story.illustrations) ? [...story.illustrations] : [];
+  let finalPages = Array.isArray(story.pages) ? [...story.pages] : [];
+  let finalChapters = Array.isArray(story.chapters) ? [...story.chapters] : [];
+
+  if (existingRow) {
+    // 1. Guard illustrations: if incoming has 0 or fewer illustrations than DB, keep DB's illustrations
+    let existingIllustrations = [];
+    try {
+      existingIllustrations = existingRow.illustrations_json ? JSON.parse(existingRow.illustrations_json) : [];
+    } catch {
+      existingIllustrations = [];
+    }
+
+    if ((!finalIllustrations || finalIllustrations.length === 0) && existingIllustrations.length > 0) {
+      finalIllustrations = existingIllustrations;
+    } else if (Array.isArray(finalIllustrations) && Array.isArray(existingIllustrations)) {
+      const maxLen = Math.max(finalIllustrations.length, existingIllustrations.length);
+      const merged = [];
+      for (let i = 0; i < maxLen; i++) {
+        merged[i] = finalIllustrations[i] || existingIllustrations[i] || null;
+      }
+      finalIllustrations = merged;
+    }
+
+    // 2. Guard pages: restore illustration property on pages if incoming pages were stripped by client
+    if (existingRow.pages_json && Array.isArray(finalPages)) {
+      try {
+        const existingPages = JSON.parse(existingRow.pages_json);
+        finalPages = finalPages.map((page, i) => {
+          if (typeof page === "object" && page !== null) {
+            if (!page.illustration && existingPages[i]?.illustration) {
+              return { ...page, illustration: existingPages[i].illustration };
+            }
+          }
+          return page;
+        });
+      } catch {
+        // Keep finalPages as-is
+      }
+    }
+  }
+
   const familyMembersJson = JSON.stringify(story.familyMembers || []);
   const choicesJson = JSON.stringify(story.choices || []);
-  const pagesJson = JSON.stringify(story.pages || []);
-  const illustrationsJson = JSON.stringify(story.illustrations || []);
-  const chaptersJson = JSON.stringify(story.chapters || []);
+  const pagesJson = JSON.stringify(finalPages);
+  const illustrationsJson = JSON.stringify(finalIllustrations);
+  const chaptersJson = JSON.stringify(finalChapters);
   const narrationsJson = JSON.stringify(story.narrations || {});
 
   const stmt = db.prepare(`
@@ -287,7 +333,7 @@ export function saveStory(deviceId, story = {}) {
     story.chapter || 1,
     story.lesson || "",
     choicesJson,
-    story.firstPage || (typeof story.pages?.[0] === "string" ? story.pages[0] : story.pages?.[0]?.text || ""),
+    story.firstPage || (typeof finalPages[0] === "string" ? finalPages[0] : finalPages[0]?.text || ""),
     story.isFavorite ? 1 : 0,
     pagesJson,
     illustrationsJson,
@@ -298,6 +344,63 @@ export function saveStory(deviceId, story = {}) {
   );
 
   return getStoryById(story.id, deviceId);
+}
+
+/**
+ * Saves an illustration directly into a story in SQLite (persisting even if client localStorage is constrained).
+ */
+export function saveStoryIllustration(storyId, pageIndex, illustrationUrl, alt = "") {
+  if (!storyId || pageIndex === undefined || pageIndex === null || !illustrationUrl) return null;
+  const row = db.prepare("SELECT * FROM stories WHERE id = ?").get(storyId);
+  if (!row) return null;
+
+  let illustrations = [];
+  try {
+    illustrations = row.illustrations_json ? JSON.parse(row.illustrations_json) : [];
+  } catch {
+    illustrations = [];
+  }
+  illustrations[pageIndex] = illustrationUrl;
+
+  let pages = [];
+  try {
+    pages = row.pages_json ? JSON.parse(row.pages_json) : [];
+  } catch {
+    pages = [];
+  }
+  if (pages[pageIndex]) {
+    const text = typeof pages[pageIndex] === "object" ? pages[pageIndex].text : pages[pageIndex];
+    const scene = typeof pages[pageIndex] === "object" ? pages[pageIndex].scene : undefined;
+    pages[pageIndex] = {
+      text,
+      scene,
+      illustration: { url: illustrationUrl, alt: alt || `Illustration for page ${pageIndex + 1}` },
+    };
+  }
+
+  const now = new Date().toISOString();
+  db.prepare(`
+    UPDATE stories
+    SET illustrations_json = ?, pages_json = ?, updated_at = ?
+    WHERE id = ?
+  `).run(JSON.stringify(illustrations), JSON.stringify(pages), now, storyId);
+
+  return getStoryById(storyId, row.device_id);
+}
+
+/**
+ * Retrieves a cached illustration for a story page from SQLite if available.
+ */
+export function getStoryIllustration(storyId, pageIndex) {
+  if (!storyId || pageIndex === undefined || pageIndex === null) return null;
+  const row = db.prepare("SELECT illustrations_json FROM stories WHERE id = ?").get(storyId);
+  if (!row || !row.illustrations_json) return null;
+  try {
+    const illustrations = JSON.parse(row.illustrations_json);
+    return illustrations[pageIndex] || null;
+  } catch {
+    return null;
+  }
 }
 
 export function deleteStory(id, deviceId) {

@@ -99,3 +99,48 @@ In `server/.env`, set:
 KOKORO_VOICE_SERVICE_URL=http://localhost:8880
 ```
 When configured, custom family voice clones and Kokoro voices are synthesized through this service, and cached in the SQLite database (`server/data/family_story_night.db`) for instant replay.
+
+---
+
+## ☁️ Google Cloud Run Deployment
+
+The service includes a production-ready, containerized configuration optimized specifically for Google Cloud Run:
+- **Instant Cold Starts (<2s)**: Model weights (`Kokoro-82M`) and core bedtime voice vectors are pre-cached in the Docker build layer.
+- **Dynamic Port Binding**: Automatically binds to `${PORT}` (default `8080` on Cloud Run, `8880` locally).
+- **Minimal Footprint**: Operates comfortably on **2 vCPU** and **2 GiB RAM** with CPU inference.
+
+### Option A: One-Command Deployment (Cloud Shell or Local CLI)
+
+From `voice-service/`:
+```bash
+./deploy-cloudrun.sh
+```
+Or directly via `gcloud`:
+```bash
+gcloud run deploy family-story-night-voice \
+  --source . \
+  --region us-central1 \
+  --platform managed \
+  --memory 2Gi \
+  --cpu 2 \
+  --concurrency 10 \
+  --min-instances 0 \
+  --max-instances 5 \
+  --allow-unauthenticated
+```
+
+### Option B: Deploy via Google Cloud Console (Web UI)
+1. Go to **Google Cloud Console > Cloud Run > Create Service**.
+2. Select **Continuously deploy from a repository** (or upload from source).
+3. Set the build type to use the included `Dockerfile` inside `voice-service/`.
+4. Under **Container > Variables & Secrets**:
+   - Container port: `8080`
+   - Memory: `2 GiB` (minimum 1 GiB)
+   - CPU: `2`
+5. Click **Create**.
+
+### Connecting to Family Story Night
+Once deployed, copy your Cloud Run HTTPS URL (e.g. `https://family-story-night-voice-xyz.a.run.app`) and update your backend `.env`:
+```env
+KOKORO_VOICE_SERVICE_URL=https://family-story-night-voice-xyz.a.run.app
+```

@@ -150,10 +150,10 @@ export function saveStory(story) {
 
   const saved = {
     ...story,
-    id: generateUUID(),
+    id: story.id || generateUUID(),
     category: resolvedCategory,
     chapters: initialChapters,
-    generatedAt: new Date().toISOString(),
+    generatedAt: story.generatedAt || new Date().toISOString(),
   };
 
   const existing = loadHistory();
