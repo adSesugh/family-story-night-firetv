@@ -174,4 +174,53 @@ describe("Kokoro-82M Voice Microservice Integration", () => {
     expect(responseJson).toBeDefined();
     expect(responseJson.error).toContain("Voice microservice is required");
   });
+
+  it("passes custom audio sample to Kokoro when custom voice has recorded audio sample", async () => {
+    process.env.KOKORO_VOICE_SERVICE_URL = "http://localhost:8880";
+    const { saveCustomVoiceRecord } = await import("../db.js");
+    const testVoiceId = `custom_test_${Date.now()}`;
+    saveCustomVoiceRecord({
+      id: testVoiceId,
+      name: "Test Aunt Voice",
+      role: "Aunt",
+      baseVoice: "Joanna",
+      audioDataUrl: "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=",
+    });
+
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        status: "success",
+        voice_id: testVoiceId,
+        duration_ms: 1200,
+        speech_marks: [{ time: 0, type: "word", start: 0, end: 5, value: "Hello" }],
+        audio_base64: "data:audio/wav;base64,synthesizedSampleAudio",
+      }),
+    });
+    globalThis.fetch = mockFetch;
+
+    const req = {
+      body: {
+        text: `Custom audio sample forwarding test ${Date.now()}`,
+        voiceId: testVoiceId,
+        speechMarks: true,
+      },
+      headers: {},
+      query: {},
+    };
+    const res = {
+      status: vi.fn().mockReturnThis(),
+      json: vi.fn(),
+      setHeader: vi.fn(),
+      end: vi.fn(),
+    };
+
+    await narrate(req, res);
+
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+    const [, calledOptions] = mockFetch.mock.calls[0];
+    const parsedBody = JSON.parse(calledOptions.body);
+    expect(parsedBody.voice_id).toBe(testVoiceId);
+    expect(parsedBody.audio_sample).toContain("UklGRiQAAABXQVZFZm10");
+  });
 });

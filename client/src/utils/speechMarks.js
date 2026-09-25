@@ -65,19 +65,22 @@ export function normalizeSpeechMarks(marks, text) {
  *
  * @param {Array<{time: number, start: number, end: number, value: string}>} marks
  * @param {number} currentTimeMs
+ * @param {number} [offsetMs=0] - Optional latency offset in milliseconds
  * @returns {{time: number, start: number, end: number, value: string} | null}
  */
-export function getActiveSpeechMarkAtTime(marks, currentTimeMs) {
+export function getActiveSpeechMarkAtTime(marks, currentTimeMs, offsetMs = 0) {
   if (!marks || marks.length === 0 || typeof currentTimeMs !== "number") return null;
+
+  const effectiveTimeMs = Math.max(0, currentTimeMs + (typeof offsetMs === "number" ? offsetMs : 0));
 
   for (let i = 0; i < marks.length; i++) {
     const mark = marks[i];
-    if (mark.time <= currentTimeMs) {
+    if (mark.time <= effectiveTimeMs) {
       // Natural word duration: up to next mark, or at most 550ms so highlight cleanly pauses between sentences
       const nextTime = marks[i + 1] ? marks[i + 1].time : mark.time + 550;
       const wordDuration = Math.min(nextTime - mark.time, 550);
 
-      if (currentTimeMs < mark.time + wordDuration) {
+      if (effectiveTimeMs < mark.time + wordDuration) {
         return mark;
       }
     }

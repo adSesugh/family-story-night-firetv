@@ -12,7 +12,7 @@ import {
 } from "./utils/storyHistory";
 import { StorageService } from "./utils/storage";
 import { loadSettings, saveSettings } from "./utils/parentSettings";
-import { loadCustomVoices } from "./utils/customVoices";
+import { loadCustomVoices, syncCustomVoiceToServer } from "./utils/customVoices";
 import { trackEvent } from "./utils/analytics";
 import { blobToDataUrl, compressBlobToDataUrl, createFallbackIllustrationUrl } from "./utils/imageUtils";
 import { playBedtimeLullabyChime } from "./utils/audioChimes";
@@ -27,6 +27,7 @@ import { VOICES } from "./constants/voices";
 import FamilyVoiceStudioModal from "./components/FamilyVoiceStudioModal";
 
 const API_BASE = (import.meta.env.VITE_API_BASE || "http://localhost:4000").trim().replace(/\/+$/, "");
+const AUDIO_PLAYBACK_LEAD_MS = 60; // Offset for audio hardware output buffer latency
 
 export default function App() {
   const [screen, setScreen] = useState("setup"); // setup | loading | story | history | settings
@@ -1004,7 +1005,7 @@ export default function App() {
         return;
       }
       const currentTimeMs = (audio.currentTime || 0) * 1000;
-      const currentMark = getActiveSpeechMarkAtTime(marks, currentTimeMs);
+      const currentMark = getActiveSpeechMarkAtTime(marks, currentTimeMs, AUDIO_PLAYBACK_LEAD_MS);
 
       setActiveSpeechMark((prev) => {
         if (prev === currentMark) return prev;
@@ -1039,7 +1040,7 @@ export default function App() {
       if (audio.paused || audio.ended) return;
       const marks = speechMarksRef.current;
       const currentTimeMs = (audio.currentTime || 0) * 1000;
-      const currentMark = getActiveSpeechMarkAtTime(marks, currentTimeMs);
+      const currentMark = getActiveSpeechMarkAtTime(marks, currentTimeMs, AUDIO_PLAYBACK_LEAD_MS);
       setActiveSpeechMark(currentMark);
     };
 
@@ -1237,7 +1238,7 @@ export default function App() {
             const historyList = loadHistory();
             const targetStory = historyList.find((s) => s.id === currentStoryId);
             const savedNarration = targetStory?.narrations?.[pageIndex];
-            if (savedNarration?.audio && (savedNarration.voiceId === voice || !savedNarration.voiceId)) {
+            if (savedNarration?.audio && (savedNarration.voiceId === voice || (!savedNarration.voiceId && voice === "Joanna"))) {
               let audioUrl = savedNarration.audio;
               if (typeof audioUrl === "string" && audioUrl.startsWith("data:") && typeof URL.createObjectURL === "function") {
                 try {
@@ -1788,6 +1789,7 @@ export default function App() {
         onClose={() => setIsVoiceStudioOpen(false)}
         onVoiceCreated={(newVoice) => {
           handleVoiceChange(newVoice.id);
+          syncCustomVoiceToServer(API_BASE, getDeviceId(), getUserId(), newVoice);
           setIsVoiceStudioOpen(false);
         }}
       />

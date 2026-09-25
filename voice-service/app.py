@@ -45,6 +45,7 @@ class SynthesizeRequest(BaseModel):
     voice_id: str = Field("af_bella", description="Voice ID or custom voice ID")
     base_voice: Optional[str] = Field(None, description="Fallback baseline voice if voice_id is custom")
     speed: float = Field(0.95, description="Speaking speed (0.8 = slow bedtime, 1.0 = normal)")
+    audio_sample: Optional[str] = Field(None, description="Optional audio sample for voice cloning/personalization")
 
 @app.get("/health")
 def health():
@@ -87,6 +88,7 @@ def synthesize(req: SynthesizeRequest, request: Request):
             voice_name=target_voice,
             base_voice=req.base_voice,
             speed=req.speed,
+            audio_sample=req.audio_sample,
         )
 
         # Encode audio as 24kHz WAV

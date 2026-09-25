@@ -3,12 +3,18 @@
  * Connects the Node.js backend to the local Python Kokoro Voice Microservice.
  */
 
-export async function synthesizeWithKokoro(text, voiceId = "af_bella", baseVoice = "Joanna", speed = 0.95) {
+export async function synthesizeWithKokoro(
+  text,
+  voiceId = "af_bella",
+  baseVoice = "Joanna",
+  speed = 0.95,
+  audioSample = null
+) {
   const kokoroUrl = process.env.KOKORO_VOICE_SERVICE_URL || process.env.KOKORO_API_URL;
   if (!kokoroUrl) return null;
 
   const endpoint = `${kokoroUrl.replace(/\/+$/, "")}/synthesize`;
-  console.log(`[narrate] 🎙️ Routing speech to Kokoro-82M Voice Microservice: ${endpoint} (voice=${voiceId})`);
+  console.log(`[narrate] 🎙️ Routing speech to Kokoro-82M Voice Microservice: ${endpoint} (voice=${voiceId}, hasSample=${Boolean(audioSample)})`);
 
   const response = await fetch(endpoint, {
     method: "POST",
@@ -21,6 +27,7 @@ export async function synthesizeWithKokoro(text, voiceId = "af_bella", baseVoice
       voice_id: voiceId,
       base_voice: baseVoice,
       speed,
+      audio_sample: audioSample || null,
     }),
   });
 

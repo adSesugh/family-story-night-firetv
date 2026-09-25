@@ -4,6 +4,7 @@ import {
   getCustomVoices,
   saveCustomVoiceRecord,
   deleteCustomVoiceRecord,
+  clearVoiceNarrations,
 } from "../db.js";
 import { cloneVoiceWithKokoro } from "../services/kokoroVoiceService.js";
 
@@ -121,6 +122,7 @@ export async function saveCustomVoiceHandler(req, res) {
     }
 
     const saved = saveCustomVoiceRecord(voice, deviceId, userId);
+    clearVoiceNarrations(voice.id);
 
     // Register with Kokoro voice microservice
     cloneVoiceWithKokoro({

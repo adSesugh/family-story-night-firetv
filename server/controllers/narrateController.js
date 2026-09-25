@@ -2,7 +2,7 @@ import crypto from "crypto";
 import { SynthesizeSpeechCommand } from "@aws-sdk/client-polly";
 import { polly, streamToBuffer, POLLY_ENGINE } from "../services/pollyService.js";
 import { VOICES } from "../constants/voices.js";
-import { getNarration, saveNarration } from "../db.js";
+import { getNarration, saveNarration, getCustomVoiceById } from "../db.js";
 import { synthesizeWithKokoro } from "../services/kokoroVoiceService.js";
 
 const ALLOWED_VOICES = ["Joanna", "Matthew", "Emma", "Ivy"];
@@ -55,6 +55,25 @@ export const narrate = async (req, res) => {
 
     // Determine voice type: custom clone vs standard stock voice
     const isCustomVoice = Boolean(voiceId && (voiceId.startsWith("custom") || !ALLOWED_VOICES.includes(voiceId)));
+
+    // Retrieve audio sample and metadata if this is a custom voice
+    let customAudioSample = null;
+    let customRole = "Family";
+    if (isCustomVoice) {
+      try {
+        const cvRecord = getCustomVoiceById(voiceId);
+        if (cvRecord) {
+          customAudioSample = cvRecord.audioSample || cvRecord.audioDataUrl || null;
+          customRole = cvRecord.role || customRole;
+          if (cvRecord.baseVoice && ALLOWED_VOICES.includes(cvRecord.baseVoice)) {
+            selectedVoice = cvRecord.baseVoice;
+          }
+        }
+      } catch (cvErr) {
+        console.warn(`[narrate] Could not load custom voice metadata for '${voiceId}':`, cvErr.message);
+      }
+    }
+
     const isKokoroVoice = Boolean(
       voiceId && (
         voiceId.startsWith("af_") ||
@@ -107,7 +126,13 @@ export const narrate = async (req, res) => {
       }
 
       try {
-        const kokoroResult = await synthesizeWithKokoro(text, lookupVoice, baseVoice || selectedVoice);
+        const kokoroResult = await synthesizeWithKokoro(
+          text,
+          lookupVoice,
+          baseVoice || selectedVoice,
+          0.95,
+          customAudioSample
+        );
         if (kokoroResult && kokoroResult.audioData) {
           // Persist to SQLite cache under actual voice ID
           try {

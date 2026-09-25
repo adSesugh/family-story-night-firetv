@@ -152,6 +152,7 @@ function formatCustomVoiceRow(row) {
     tagline: `Recorded Voice • ${row.role || "Family"}`,
     previewSnippet: row.preview_snippet || "The stars are shining softly tonight. Close your eyes and dream of magic.",
     audioDataUrl: row.audio_data || "",
+    audioSample: row.audio_data || "",
     isCustom: true,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -264,7 +265,20 @@ export function deleteCustomVoiceRecord(voiceId) {
   if (!voiceId) return false;
   const stmt = db.prepare("DELETE FROM custom_voices WHERE id = ?");
   const result = stmt.run(voiceId);
+  clearVoiceNarrations(voiceId);
   return result.changes > 0;
+}
+
+export function clearVoiceNarrations(voiceId) {
+  if (!voiceId) return 0;
+  try {
+    const stmt = db.prepare("DELETE FROM narrations WHERE voice_id = ?");
+    const result = stmt.run(voiceId);
+    return result.changes;
+  } catch (err) {
+    console.warn("[db] Could not clear voice narrations:", err.message);
+    return 0;
+  }
 }
 
 // --- Preferences Helpers ---

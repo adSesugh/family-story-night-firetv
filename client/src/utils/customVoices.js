@@ -1,4 +1,5 @@
 const CUSTOM_VOICES_STORAGE_KEY = "family_custom_voices";
+const memoryAudioSamples = new Map();
 
 /**
  * Load all custom voice profiles from localStorage.
@@ -12,7 +13,13 @@ export function loadCustomVoices() {
     const raw = window.localStorage.getItem(CUSTOM_VOICES_STORAGE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
+    const list = Array.isArray(parsed) ? parsed : [];
+    return list.map((item) => {
+      if (!item.audioDataUrl && memoryAudioSamples.has(item.id)) {
+        return { ...item, audioDataUrl: memoryAudioSamples.get(item.id) };
+      }
+      return item;
+    });
   } catch (err) {
     console.warn("Failed to load custom voices:", err);
     return [];
@@ -50,20 +57,25 @@ export function saveCustomVoice({ name, role = "Family", baseVoice = "Joanna", a
     createdAt: new Date().toISOString(),
   };
 
+  if (audioDataUrl) {
+    memoryAudioSamples.set(id, audioDataUrl);
+  }
+
   try {
     const updated = [newProfile, ...existing];
     window.localStorage.setItem(CUSTOM_VOICES_STORAGE_KEY, JSON.stringify(updated));
     return newProfile;
   } catch (err) {
-    console.warn("Primary save failed, trying fallback without sample if quota exceeded:", err);
+    console.warn("Primary save failed, storing sample in memory and metadata in storage:", err);
     try {
       const fallbackProfile = { ...newProfile, audioDataUrl: "" };
       const updatedFallback = [fallbackProfile, ...existing];
       window.localStorage.setItem(CUSTOM_VOICES_STORAGE_KEY, JSON.stringify(updatedFallback));
-      return fallbackProfile;
+      // Return full profile so server sync receives the complete audioDataUrl
+      return newProfile;
     } catch (fallbackErr) {
       console.error("Failed to save custom voice even with fallback:", fallbackErr);
-      return null;
+      return newProfile;
     }
   }
 }
@@ -76,7 +88,11 @@ export function saveCustomVoice({ name, role = "Family", baseVoice = "Joanna", a
 export function getCustomVoice(voiceId) {
   if (!voiceId || !voiceId.startsWith("custom")) return null;
   const list = loadCustomVoices();
-  return list.find((v) => v.id === voiceId) || null;
+  const found = list.find((v) => v.id === voiceId) || null;
+  if (found && !found.audioDataUrl && memoryAudioSamples.has(voiceId)) {
+    return { ...found, audioDataUrl: memoryAudioSamples.get(voiceId) };
+  }
+  return found;
 }
 
 /**
