@@ -733,55 +733,83 @@ export default function SettingsScreen({
                     />
                   </label>
 
-                  {/* Age Restriction */}
-                  <div className="flex items-center justify-between pt-1">
+                  {/* Age Guidance Chips */}
+                  <div className="pt-2 border-t border-starlight/10">
                     <div>
-                      <span className="font-sans text-sm text-parchment">Age Guidance</span>
-                      <p className="text-xs text-starlight/70">
-                        Adjusts vocabulary and themes for young readers.
+                      <span className="font-sans text-sm text-parchment font-medium">Age Guidance</span>
+                      <p className="text-xs text-starlight/70 mt-0.5">
+                        Adjusts vocabulary, sentence length, and themes for young readers.
                       </p>
                     </div>
-                    <select
-                      value={settingsData.settings?.ageRestriction || "all"}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        handleSelectSetting("ageRestriction", val);
-                        if (val === "3+" && setStoryLength) setStoryLength(3);
-                        else if (val === "5+" && setStoryLength) setStoryLength(6);
-                        else if (val === "8+" && setStoryLength) setStoryLength(9);
-                      }}
-                      className="rounded-sm border border-starlight/30 bg-dusk px-3 py-1 font-sans text-xs text-parchment focus:border-[#e8a33d] focus:outline-none"
-                      aria-label="Age Guidance"
-                    >
-                      <option value="all">All Ages (Gentle)</option>
-                      <option value="3+">Preschool (3+)</option>
-                      <option value="5+">Early Readers (5+)</option>
-                      <option value="8+">Independent (8+)</option>
-                    </select>
+                    <div className="mt-2.5 flex flex-wrap gap-2">
+                      {[
+                        { id: "all", label: "All Ages", emoji: "🌟" },
+                        { id: "3+", label: "Preschool (3+)", emoji: "🐣" },
+                        { id: "5+", label: "Early Readers (5+)", emoji: "📖" },
+                        { id: "8+", label: "Independent (8+)", emoji: "🚀" },
+                      ].map(({ id, label, emoji }) => {
+                        const currentAge = settingsData.settings?.ageRestriction || "all";
+                        const isSelected = currentAge === id;
+                        return (
+                          <button
+                            key={id}
+                            type="button"
+                            onClick={() => {
+                              handleSelectSetting("ageRestriction", id);
+                              if (id === "3+" && setStoryLength) setStoryLength(3);
+                              else if (id === "5+" && setStoryLength) setStoryLength(6);
+                              else if (id === "8+" && setStoryLength) setStoryLength(9);
+                            }}
+                            aria-pressed={isSelected}
+                            aria-label={`Age Guidance: ${label}`}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border font-sans text-xs font-semibold transition-all cursor-pointer focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lamp focus-visible:ring-offset-2 focus-visible:ring-offset-dusk ${
+                              isSelected
+                                ? "border-lamp bg-lamp/20 text-lamp shadow-sm shadow-lamp/20 ring-1 ring-lamp/50"
+                                : "border-starlight/20 bg-starlight/5 text-starlight/70 hover:border-starlight/40 hover:text-parchment"
+                            }`}
+                          >
+                            <span>{emoji}</span>
+                            <span>{label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
 
-                  {/* Illustration Art Style */}
-                  <div className="flex items-center justify-between pt-1">
+                  {/* Illustration Art Style Chips */}
+                  <div className="pt-2 border-t border-starlight/10">
                     <div>
-                      <span className="font-sans text-sm text-parchment">Illustration Style</span>
-                      <p className="text-xs text-starlight/70">
+                      <span className="font-sans text-sm text-parchment font-medium">Illustration Style</span>
+                      <p className="text-xs text-starlight/70 mt-0.5">
                         Default visual art style for generated bedtime illustrations.
                       </p>
                     </div>
-                    <select
-                      value={settingsData.settings?.illustrationStyle || illustrationStyle || "watercolor"}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        if (setIllustrationStyle) setIllustrationStyle(val);
-                        handleSelectSetting("illustrationStyle", val);
-                      }}
-                      className="rounded-sm border border-starlight/30 bg-dusk px-3 py-1 font-sans text-xs text-parchment focus:border-[#e8a33d] focus:outline-none"
-                      aria-label="Parent Illustration Style"
-                    >
-                      <option value="watercolor">🧸 Claymation (3D Felt & Warm Light)</option>
-                      <option value="storybook">📚 Storybook (Classic Painted Picture Book)</option>
-                      <option value="sketch">✏️ Sketch (Hand-Drawn Colored Pencil)</option>
-                    </select>
+                    <div className="mt-2.5 flex flex-wrap gap-2">
+                      {ILLUSTRATION_STYLES.map(({ id, emoji, label }) => {
+                        const currentStyle = settingsData?.settings?.illustrationStyle || illustrationStyle || "watercolor";
+                        const isSelected = currentStyle === id;
+                        return (
+                          <button
+                            key={id}
+                            type="button"
+                            onClick={() => {
+                              if (setIllustrationStyle) setIllustrationStyle(id);
+                              handleSelectSetting("illustrationStyle", id);
+                            }}
+                            aria-pressed={isSelected}
+                            aria-label={`Illustration Style: ${label}`}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border font-sans text-xs font-semibold transition-all cursor-pointer focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lamp focus-visible:ring-offset-2 focus-visible:ring-offset-dusk ${
+                              isSelected
+                                ? "border-lamp bg-lamp/20 text-lamp shadow-sm shadow-lamp/20 ring-1 ring-lamp/50"
+                                : "border-starlight/20 bg-starlight/5 text-starlight/70 hover:border-starlight/40 hover:text-parchment"
+                            }`}
+                          >
+                            <span>{emoji}</span>
+                            <span>{label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
               </div>
