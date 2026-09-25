@@ -167,6 +167,7 @@ class KokoroVoiceManager:
             final_tensor = self.get_voice_tensor(resolved_base).clone()
 
         # Save voice vector (.pt)
+        os.makedirs(VOICES_DIR, exist_ok=True)
         pt_path = os.path.join(VOICES_DIR, f"{clean_id}.pt")
         torch.save(final_tensor, pt_path)
         self.cached_voices[clean_id] = final_tensor

@@ -13,6 +13,7 @@ import {
   Sparkles,
   BookOpen,
   Compass,
+  Share2,
 } from "lucide-react";
 import {
   loadSettings,
@@ -26,6 +27,10 @@ import VoiceSelector from "./VoiceSelector";
 import ConfirmModal from "./ConfirmModal";
 import Toast from "./Toast";
 import DpadController from "./DpadController";
+import { getDeviceId, getUserId, setUserId } from "../utils/device";
+import { syncPreferencesToServer } from "../utils/userPreferences";
+
+const API_BASE = (import.meta.env.VITE_API_BASE || "http://localhost:4000").trim().replace(/\/+$/, "");
 
 const MAX_CUSTOM_THEME_LENGTH = 100;
 
@@ -284,6 +289,28 @@ export default function SettingsScreen({
     setStats(summarize());
     setConfirmClearAnalytics(false);
     setToastMessage("Story analytics data cleared");
+  };
+
+  const [familyUserId, setFamilyUserId] = useState(() => getUserId());
+  const [isEditingUserId, setIsEditingUserId] = useState(false);
+  const [newUserIdInput, setNewUserIdInput] = useState("");
+
+  const handleSaveUserId = (e) => {
+    e?.preventDefault();
+    if (newUserIdInput.trim()) {
+      const updated = setUserId(newUserIdInput.trim());
+      setFamilyUserId(updated);
+      setIsEditingUserId(false);
+      setToastMessage("Family Sync ID updated. Voices and preferences will now sync with this family.");
+      syncPreferencesToServer(API_BASE, getDeviceId(), { userId: updated });
+    }
+  };
+
+  const handleCopyUserId = () => {
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText(familyUserId);
+    }
+    setToastMessage("Family ID copied to clipboard! Enter it on other devices to sync voices.");
   };
 
   return (
@@ -842,6 +869,63 @@ export default function SettingsScreen({
                     </p>
                   </div>
                 </div>
+              </div>
+
+              {/* Family Device Sync & Custom Voices */}
+              <div className="rounded-sm bg-panel/60 p-6 shadow-lg">
+                <div className="flex items-center gap-2 border-b border-starlight/20 pb-3">
+                  <Share2 className="h-5 w-5 text-[#E8A33D]" />
+                  <h2 className="font-serif text-2xl text-parchment">
+                    Family Sync &amp; Custom Voices
+                  </h2>
+                </div>
+                <p className="mt-3 text-xs text-starlight/80">
+                  Recorded family voices (Mom, Dad, Grandparents) and bedtime stories sync across all your children&apos;s devices using this Family ID.
+                </p>
+
+                <div className="mt-4 rounded-sm bg-starlight/10 p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <span className="text-[11px] uppercase tracking-wider text-starlight/60 font-mono">Family Account ID</span>
+                    <p className="font-mono text-base font-bold text-lamp select-all">{familyUserId}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleCopyUserId}
+                      className="rounded-sm bg-starlight/20 px-3 py-1.5 font-sans text-xs text-parchment hover:bg-starlight/30 transition-colors cursor-pointer"
+                    >
+                      Copy ID
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsEditingUserId(!isEditingUserId);
+                        setNewUserIdInput(familyUserId);
+                      }}
+                      className="rounded-sm bg-lamp/20 px-3 py-1.5 font-sans text-xs text-lamp hover:bg-lamp/30 transition-colors cursor-pointer"
+                    >
+                      {isEditingUserId ? "Cancel" : "Change ID"}
+                    </button>
+                  </div>
+                </div>
+
+                {isEditingUserId && (
+                  <form onSubmit={handleSaveUserId} className="mt-3 flex gap-2">
+                    <input
+                      type="text"
+                      value={newUserIdInput}
+                      onChange={(e) => setNewUserIdInput(e.target.value)}
+                      placeholder="Enter family ID (e.g. family-smith)"
+                      className="flex-1 rounded-sm border border-starlight/30 bg-dusk/60 px-3 py-1.5 font-mono text-xs text-parchment focus:border-lamp focus:outline-none"
+                    />
+                    <button
+                      type="submit"
+                      className="rounded-sm bg-lamp px-4 py-1.5 font-sans text-xs font-medium text-dusk hover:scale-[1.02] cursor-pointer"
+                    >
+                      Save ID
+                    </button>
+                  </form>
+                )}
               </div>
             </div>
           )}

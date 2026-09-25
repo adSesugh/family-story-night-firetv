@@ -18,7 +18,7 @@ import { blobToDataUrl, compressBlobToDataUrl, createFallbackIllustrationUrl } f
 import { playBedtimeLullabyChime } from "./utils/audioChimes";
 import { useAlexaVoiceSync } from "./utils/useAlexaVoiceSync";
 import { moveFocus, focusFirst } from "./utils/spatialNav";
-import { getDeviceId } from "./utils/device";
+import { getDeviceId, getUserId } from "./utils/device";
 import { fetchPreferencesFromServer, syncPreferencesToServer } from "./utils/userPreferences";
 import { normalizeSpeechMarks, getActiveSpeechMarkAtTime } from "./utils/speechMarks";
 
@@ -98,8 +98,8 @@ export default function App() {
       }
     });
 
-    // Fetch user preferences from SQLite database
-    fetchPreferencesFromServer(API_BASE, deviceId).then((prefs) => {
+    // Fetch user preferences from SQLite database (syncs cross-device by userId)
+    fetchPreferencesFromServer(API_BASE, deviceId, getUserId()).then((prefs) => {
       if (prefs) {
         if (prefs.voiceId) setVoice(prefs.voiceId);
         if (prefs.storyLength) setStoryLength(prefs.storyLength);

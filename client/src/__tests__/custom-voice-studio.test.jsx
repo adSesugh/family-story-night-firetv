@@ -188,4 +188,56 @@ describe("Personalized Voice Clones (Family Voice Studio)", () => {
       expect(screen.getByText("👩")).toBeInTheDocument();
     });
   });
+
+  describe("Cross-Device Family User ID Sync", () => {
+    it("generates and updates persistent user_id for the family", async () => {
+      const { getUserId, setUserId } = await import("../utils/device");
+      const initialId = getUserId();
+      expect(initialId).toBeTruthy();
+
+      const customFamilyId = "family-anderson-42";
+      setUserId(customFamilyId);
+      expect(getUserId()).toBe(customFamilyId);
+    });
+
+    it("hydrates custom voices from server preferences into other children's devices with the same user_id", async () => {
+      const { fetchPreferencesFromServer } = await import("../utils/userPreferences");
+      const { loadCustomVoices } = await import("../utils/customVoices");
+
+      const mockCustomVoiceFromServer = {
+        id: "custom_dad_9999",
+        name: "Dad's Voice",
+        role: "Dad",
+        baseVoice: "Matthew",
+        audioDataUrl: "data:audio/wav;base64,mockDadWav",
+        isCustom: true,
+      };
+
+      // Mock server response returning custom voice for this family
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          preferences: {
+            deviceId: "child-firetv-2",
+            userId: "family-anderson-42",
+            voiceId: "custom_dad_9999",
+            storyLength: 6,
+            customVoices: [mockCustomVoiceFromServer],
+          },
+        }),
+      });
+
+      const prefs = await fetchPreferencesFromServer("http://localhost:4000", "child-firetv-2", "family-anderson-42");
+
+      expect(prefs).toBeTruthy();
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining("userId=family-anderson-42"),
+        expect.any(Object)
+      );
+
+      // Verify custom voice is now hydrated in localStorage for this child's device
+      const localVoices = loadCustomVoices();
+      expect(localVoices.some((v) => v.id === "custom_dad_9999")).toBe(true);
+    });
+  });
 });

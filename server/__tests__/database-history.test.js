@@ -293,6 +293,76 @@ describe("SQLite Flat DB: Story History, Illustrations & Preferences", () => {
       expect(getRes.statusCode).toBe(200);
       expect(getRes.body.preferences.voiceId).toBe("Emma");
     });
+
+    it("shares custom voices recorded on parent device with children devices sharing user_id", async () => {
+      const {
+        savePreferencesHandler,
+        getPreferencesHandler,
+        getCustomVoicesHandler,
+        deleteCustomVoiceHandler,
+      } = await import("../controllers/preferencesController.js");
+
+      const sharedFamilyUserId = "family-smith-101";
+      const parentDevice = "device-parent-firetv";
+      const childDevice1 = "device-child1-tablet";
+
+      // 1. Parent records custom voice on parent device
+      const parentSaveReq = {
+        body: {
+          deviceId: parentDevice,
+          userId: sharedFamilyUserId,
+          preferences: {
+            userId: sharedFamilyUserId,
+            voiceId: "custom_dad_123",
+            customVoices: [
+              {
+                id: "custom_dad_123",
+                name: "Dad's Bedtime Voice",
+                role: "Dad",
+                baseVoice: "Matthew",
+                audioDataUrl: "data:audio/wav;base64,dadVoiceSample123",
+              },
+            ],
+          },
+        },
+      };
+      const parentSaveRes = createMockRes();
+      savePreferencesHandler(parentSaveReq, parentSaveRes);
+
+      expect(parentSaveRes.statusCode).toBe(200);
+      expect(parentSaveRes.body.preferences.customVoices).toHaveLength(1);
+      expect(parentSaveRes.body.preferences.customVoices[0].name).toBe("Dad's Bedtime Voice");
+
+      // 2. Child device 1 fetches preferences with the shared family user_id
+      const childGetReq = {
+        query: {
+          deviceId: childDevice1,
+          userId: sharedFamilyUserId,
+        },
+      };
+      const childGetRes = createMockRes();
+      getPreferencesHandler(childGetReq, childGetRes);
+
+      expect(childGetRes.statusCode).toBe(200);
+      // Even though childDevice1 is a distinct device, it receives the shared custom voice!
+      const childVoices = childGetRes.body.preferences.customVoices;
+      expect(childVoices).toBeDefined();
+      expect(childVoices.some((v) => v.id === "custom_dad_123")).toBe(true);
+
+      // 3. Verify getCustomVoicesHandler directly by userId
+      const voiceListReq = { query: { userId: sharedFamilyUserId } };
+      const voiceListRes = createMockRes();
+      getCustomVoicesHandler(voiceListReq, voiceListRes);
+
+      expect(voiceListRes.statusCode).toBe(200);
+      expect(voiceListRes.body.voices.some((v) => v.id === "custom_dad_123")).toBe(true);
+
+      // 4. Delete custom voice
+      const delVoiceReq = { params: { id: "custom_dad_123" } };
+      const delVoiceRes = createMockRes();
+      deleteCustomVoiceHandler(delVoiceReq, delVoiceRes);
+      expect(delVoiceRes.body.success).toBe(true);
+    });
   });
 });
 

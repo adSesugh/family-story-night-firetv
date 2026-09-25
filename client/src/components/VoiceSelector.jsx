@@ -1,7 +1,13 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Play, Square, Check, Volume2, Moon, Compass, Sparkles, Sun, Plus, Trash2, Heart, ChevronLeft, ChevronRight } from "lucide-react";
 import { VOICES } from "../constants/voices";
-import { loadCustomVoices, deleteCustomVoice } from "../utils/customVoices";
+import {
+  loadCustomVoices,
+  deleteCustomVoice,
+  syncCustomVoiceToServer,
+  deleteCustomVoiceFromServer,
+} from "../utils/customVoices";
+import { getDeviceId, getUserId } from "../utils/device";
 import FamilyVoiceStudioModal from "./FamilyVoiceStudioModal";
 
 const API_BASE = (import.meta.env.VITE_API_BASE || "http://localhost:4000").trim().replace(/\/+$/, "");
@@ -175,6 +181,7 @@ export default function VoiceSelector({
   const handleDeleteCustomVoice = (e, voiceId) => {
     e.stopPropagation();
     deleteCustomVoice(voiceId);
+    deleteCustomVoiceFromServer(API_BASE, voiceId, getDeviceId(), getUserId());
     refreshVoices();
     if (value === voiceId) {
       handleSelect("Joanna");
@@ -184,6 +191,7 @@ export default function VoiceSelector({
   const handleVoiceCreated = (newVoice) => {
     refreshVoices();
     if (newVoice?.id) {
+      syncCustomVoiceToServer(API_BASE, getDeviceId(), getUserId(), newVoice);
       handleSelect(newVoice.id);
     }
   };

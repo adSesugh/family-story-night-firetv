@@ -19,7 +19,8 @@ router.use("/history", historyRoutes);
 router.use("/api/history", historyRoutes);
 router.use("/preferences", preferencesRoutes);
 router.use("/api/preferences", preferencesRoutes);
-// Meta routes handles /themes, /voices, /health
+// Meta routes handles /themes, /voices, /health, /voices/custom
 router.use("/", metaRoutes);
+router.use("/api", metaRoutes);
 
 export default router;

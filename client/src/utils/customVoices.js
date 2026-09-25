@@ -98,3 +98,60 @@ export function deleteCustomVoice(voiceId) {
     return false;
   }
 }
+
+/**
+ * Sync a custom voice directly to the server database for family-wide sharing.
+ * @param {string} apiBase
+ * @param {string} deviceId
+ * @param {string} userId
+ * @param {Object} voiceProfile
+ * @returns {Promise<boolean>}
+ */
+export async function syncCustomVoiceToServer(apiBase, deviceId, userId, voiceProfile) {
+  if (!apiBase || !voiceProfile?.id) return false;
+  try {
+    const res = await fetch(`${apiBase}/api/preferences/custom-voices`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-device-id": deviceId || "",
+        "x-user-id": userId || "",
+      },
+      body: JSON.stringify({
+        deviceId,
+        userId,
+        voice: voiceProfile,
+      }),
+    });
+    return res.ok;
+  } catch (err) {
+    console.warn("[customVoices] Failed to sync custom voice to server:", err.message);
+    return false;
+  }
+}
+
+/**
+ * Delete a custom voice from the server database.
+ * @param {string} apiBase
+ * @param {string} voiceId
+ * @param {string} [deviceId]
+ * @param {string} [userId]
+ * @returns {Promise<boolean>}
+ */
+export async function deleteCustomVoiceFromServer(apiBase, voiceId, deviceId, userId) {
+  if (!apiBase || !voiceId) return false;
+  try {
+    const res = await fetch(`${apiBase}/api/preferences/custom-voices/${encodeURIComponent(voiceId)}`, {
+      method: "DELETE",
+      headers: {
+        "x-device-id": deviceId || "",
+        "x-user-id": userId || "",
+      },
+    });
+    return res.ok;
+  } catch (err) {
+    console.warn("[customVoices] Failed to delete custom voice from server:", err.message);
+    return false;
+  }
+}
+

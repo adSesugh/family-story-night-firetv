@@ -42,3 +42,47 @@ export function getDeviceId() {
   return newId;
 }
 
+/**
+ * Returns a persistent User / Family account identifier.
+ * Stored in local storage and shared across all children's devices
+ * so custom voices and preferences sync across the family.
+ *
+ * @returns {string}
+ */
+export function getUserId() {
+  const existingUserId = StorageService.getItem("familyStoryNight_user_id");
+  if (existingUserId) return existingUserId;
+
+  // Check URL query parameters (e.g. ?userId=family_123 or ?familyId=...)
+  if (typeof window !== "undefined" && window.location?.search) {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const urlUserId = params.get("userId") || params.get("familyId") || params.get("user_id");
+      if (urlUserId) {
+        StorageService.setItem("familyStoryNight_user_id", urlUserId.trim());
+        return urlUserId.trim();
+      }
+    } catch (_) {}
+  }
+
+  // Derive initial user id from device or generate a family account id
+  const deviceId = getDeviceId();
+  const defaultUserId = "family-" + (deviceId.replace(/^fsn-tv-/, "") || Math.random().toString(36).slice(2, 10));
+  StorageService.setItem("familyStoryNight_user_id", defaultUserId);
+  return defaultUserId;
+}
+
+/**
+ * Sets or updates the User / Family account identifier.
+ *
+ * @param {string} userId
+ * @returns {string}
+ */
+export function setUserId(userId) {
+  if (!userId) return getUserId();
+  const cleanId = String(userId).trim();
+  StorageService.setItem("familyStoryNight_user_id", cleanId);
+  return cleanId;
+}
+
+

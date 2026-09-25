@@ -87,6 +87,26 @@ export function initDatabase(dbPath = process.env.DB_PATH) {
 
     CREATE INDEX IF NOT EXISTS idx_narrations_lookup ON narrations(text_hash, voice_id);
     CREATE INDEX IF NOT EXISTS idx_narrations_story ON narrations(story_id, page_index);
+
+    CREATE TABLE IF NOT EXISTS custom_voices (
+      id TEXT PRIMARY KEY,
+      user_id TEXT,
+      device_id TEXT,
+      name TEXT NOT NULL,
+      role TEXT,
+      base_voice TEXT,
+      pitch TEXT,
+      avatar TEXT,
+      audio_data TEXT,
+      preview_snippet TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_custom_voices_user ON custom_voices(user_id);
+    CREATE INDEX IF NOT EXISTS idx_custom_voices_device ON custom_voices(device_id);
+    CREATE INDEX IF NOT EXISTS idx_preferences_user ON preferences(user_id);
+    CREATE INDEX IF NOT EXISTS idx_stories_user ON stories(user_id);
   `);
 
   // Migration for existing databases that don't have narrations_json column
@@ -117,16 +137,180 @@ export function upsertDevice(deviceId, userId = null) {
   return { deviceId, userId };
 }
 
+// --- Custom Voices Helpers ---
+function formatCustomVoiceRow(row) {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    deviceId: row.device_id,
+    name: row.name,
+    displayName: row.name,
+    role: row.role || "Family",
+    baseVoice: row.base_voice || "Joanna",
+    pitch: row.pitch || (row.base_voice === "Matthew" ? "Deep baritone" : "Warm storyteller"),
+    avatar: row.avatar || "🎙️",
+    tagline: `Recorded Voice • ${row.role || "Family"}`,
+    previewSnippet: row.preview_snippet || "The stars are shining softly tonight. Close your eyes and dream of magic.",
+    audioDataUrl: row.audio_data || "",
+    isCustom: true,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+export function saveCustomVoiceRecord(voice, deviceId = null, userId = null) {
+  if (!voice || !voice.id) return null;
+  const now = new Date().toISOString();
+
+  // If userId not provided, try to resolve from device
+  let effectiveUserId = userId || voice.userId || null;
+  if (!effectiveUserId && deviceId) {
+    try {
+      const dev = db.prepare("SELECT user_id FROM devices WHERE device_id = ?").get(deviceId);
+      if (dev?.user_id) effectiveUserId = dev.user_id;
+    } catch (_) {}
+  }
+
+  const stmt = db.prepare(`
+    INSERT INTO custom_voices (
+      id, user_id, device_id, name, role,
+      base_voice, pitch, avatar, audio_data,
+      preview_snippet, created_at, updated_at
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET
+      user_id = COALESCE(excluded.user_id, custom_voices.user_id),
+      device_id = COALESCE(excluded.device_id, custom_voices.device_id),
+      name = excluded.name,
+      role = excluded.role,
+      base_voice = excluded.base_voice,
+      pitch = excluded.pitch,
+      avatar = excluded.avatar,
+      audio_data = CASE WHEN excluded.audio_data IS NOT NULL AND excluded.audio_data != '' THEN excluded.audio_data ELSE custom_voices.audio_data END,
+      preview_snippet = excluded.preview_snippet,
+      updated_at = excluded.updated_at
+  `);
+
+  stmt.run(
+    voice.id,
+    effectiveUserId,
+    deviceId || voice.deviceId || null,
+    voice.name || voice.displayName || "Family Voice",
+    voice.role || "Family",
+    voice.baseVoice || "Joanna",
+    voice.pitch || null,
+    voice.avatar || "🎙️",
+    voice.audioDataUrl || voice.audioData || null,
+    voice.previewSnippet || "The stars are shining softly tonight. Close your eyes and dream of magic.",
+    voice.createdAt || now,
+    now
+  );
+
+  return getCustomVoiceById(voice.id);
+}
+
+export function getCustomVoiceById(voiceId) {
+  if (!voiceId) return null;
+  const stmt = db.prepare("SELECT * FROM custom_voices WHERE id = ?");
+  const row = stmt.get(voiceId);
+  if (!row) return null;
+  return formatCustomVoiceRow(row);
+}
+
+export function getCustomVoices({ userId = null, deviceId = null } = {}) {
+  let resolvedUserId = userId;
+  if (!resolvedUserId && deviceId) {
+    try {
+      const dev = db.prepare("SELECT user_id FROM devices WHERE device_id = ?").get(deviceId);
+      if (dev?.user_id) resolvedUserId = dev.user_id;
+    } catch (_) {}
+  }
+
+  let rows = [];
+  if (resolvedUserId && deviceId) {
+    const stmt = db.prepare(`
+      SELECT * FROM custom_voices
+      WHERE user_id = ? OR device_id = ?
+      ORDER BY updated_at DESC, created_at DESC
+    `);
+    rows = stmt.all(resolvedUserId, deviceId);
+  } else if (resolvedUserId) {
+    const stmt = db.prepare(`
+      SELECT * FROM custom_voices
+      WHERE user_id = ?
+      ORDER BY updated_at DESC, created_at DESC
+    `);
+    rows = stmt.all(resolvedUserId);
+  } else if (deviceId) {
+    const stmt = db.prepare(`
+      SELECT * FROM custom_voices
+      WHERE device_id = ?
+      ORDER BY updated_at DESC, created_at DESC
+    `);
+    rows = stmt.all(deviceId);
+  } else {
+    const stmt = db.prepare(`
+      SELECT * FROM custom_voices
+      ORDER BY updated_at DESC, created_at DESC
+      LIMIT 100
+    `);
+    rows = stmt.all();
+  }
+
+  return rows.map(formatCustomVoiceRow);
+}
+
+export function deleteCustomVoiceRecord(voiceId) {
+  if (!voiceId) return false;
+  const stmt = db.prepare("DELETE FROM custom_voices WHERE id = ?");
+  const result = stmt.run(voiceId);
+  return result.changes > 0;
+}
+
 // --- Preferences Helpers ---
-export function getPreferences(deviceId) {
+export function getPreferences(deviceId, userId = null) {
   if (!deviceId) return null;
   const stmt = db.prepare(`SELECT * FROM preferences WHERE device_id = ?`);
   const row = stmt.get(deviceId);
-  if (!row) return null;
+
+  const effectiveUserId = userId || row?.user_id || null;
+  const dbCustomVoices = getCustomVoices({ userId: effectiveUserId, deviceId });
+
+  if (!row) {
+    if (effectiveUserId && dbCustomVoices.length > 0) {
+      return {
+        deviceId,
+        userId: effectiveUserId,
+        pinHash: null,
+        parentSettings: null,
+        voiceId: dbCustomVoices[0]?.id || "Joanna",
+        storyLength: 6,
+        themeIndex: 0,
+        storyCategory: "all",
+        illustrationStyle: "watercolor",
+        customVoices: dbCustomVoices,
+        updatedAt: new Date().toISOString(),
+      };
+    }
+    return null;
+  }
+
+  let customVoices = dbCustomVoices;
+  if (customVoices.length === 0 && row.custom_voices_json) {
+    try {
+      const parsed = JSON.parse(row.custom_voices_json);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        customVoices = parsed;
+        for (const cv of parsed) {
+          saveCustomVoiceRecord(cv, deviceId, effectiveUserId);
+        }
+      }
+    } catch (_) {}
+  }
 
   return {
     deviceId: row.device_id,
-    userId: row.user_id,
+    userId: effectiveUserId,
     pinHash: row.pin_hash,
     parentSettings: row.parent_settings_json ? JSON.parse(row.parent_settings_json) : null,
     voiceId: row.voice_id,
@@ -134,18 +318,30 @@ export function getPreferences(deviceId) {
     themeIndex: row.theme_index,
     storyCategory: row.story_category,
     illustrationStyle: row.illustration_style,
-    customVoices: row.custom_voices_json ? JSON.parse(row.custom_voices_json) : [],
+    customVoices: customVoices || [],
     updatedAt: row.updated_at,
   };
 }
 
 export function savePreferences(deviceId, prefs = {}) {
   if (!deviceId) throw new Error("deviceId is required");
-  upsertDevice(deviceId, prefs.userId);
+  const effectiveUserId = prefs.userId || null;
+  upsertDevice(deviceId, effectiveUserId);
+
+  // If custom voices are included, save each to custom_voices table with user_id
+  if (Array.isArray(prefs.customVoices) && prefs.customVoices.length > 0) {
+    for (const v of prefs.customVoices) {
+      saveCustomVoiceRecord(v, deviceId, effectiveUserId);
+    }
+  }
+
+  const allVoices = getCustomVoices({ userId: effectiveUserId, deviceId });
+  const customVoicesJson = allVoices.length > 0
+    ? JSON.stringify(allVoices)
+    : (prefs.customVoices ? JSON.stringify(prefs.customVoices) : null);
 
   const now = new Date().toISOString();
   const parentSettingsJson = prefs.parentSettings ? JSON.stringify(prefs.parentSettings) : null;
-  const customVoicesJson = prefs.customVoices ? JSON.stringify(prefs.customVoices) : null;
 
   const stmt = db.prepare(`
     INSERT INTO preferences (
@@ -169,7 +365,7 @@ export function savePreferences(deviceId, prefs = {}) {
 
   stmt.run(
     deviceId,
-    prefs.userId || null,
+    effectiveUserId,
     prefs.pinHash !== undefined ? prefs.pinHash : null,
     parentSettingsJson,
     prefs.voiceId || "Joanna",
@@ -181,7 +377,7 @@ export function savePreferences(deviceId, prefs = {}) {
     now
   );
 
-  return getPreferences(deviceId);
+  return getPreferences(deviceId, effectiveUserId);
 }
 
 // --- Stories Helpers ---

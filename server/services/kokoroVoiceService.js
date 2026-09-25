@@ -37,3 +37,44 @@ export async function synthesizeWithKokoro(text, voiceId = "af_bella", baseVoice
     engine: "kokoro-82m",
   };
 }
+
+export async function cloneVoiceWithKokoro({
+  voiceId,
+  name,
+  role = "Family",
+  baseVoice = "Joanna",
+  audioSample = null,
+  blendWeights = null,
+}) {
+  const kokoroUrl = process.env.KOKORO_VOICE_SERVICE_URL || process.env.KOKORO_API_URL;
+  if (!kokoroUrl) return null;
+
+  const endpoint = `${kokoroUrl.replace(/\/+$/, "")}/clone`;
+  try {
+    console.log(`[narrate] 🧬 Cloning/registering custom voice on Kokoro microservice: ${endpoint} (voice=${voiceId})`);
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        voice_id: voiceId,
+        name: name || `${role}'s Voice`,
+        role,
+        base_voice: baseVoice,
+        blend_weights: blendWeights,
+        audio_sample: audioSample || null,
+      }),
+    });
+
+    if (!response.ok) {
+      const errText = await response.text().catch(() => "");
+      console.warn(`[kokoroVoiceService] Clone failed (${response.status}): ${errText.slice(0, 200)}`);
+      return null;
+    }
+
+    return await response.json();
+  } catch (err) {
+    console.warn(`[kokoroVoiceService] Failed to contact Kokoro clone endpoint:`, err.message);
+    return null;
+  }
+}
+
