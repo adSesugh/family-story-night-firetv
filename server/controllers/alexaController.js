@@ -240,6 +240,60 @@ export async function handleAlexaWebhook(req, res) {
           );
         }
 
+        case "RecordVoiceIntent":
+        case "OpenVoiceStudioIntent": {
+          const rawRole =
+            getSlotValue(request.intent, "Role") ||
+            getSlotValue(request.intent, "role") ||
+            "Family";
+
+          alexaSyncService.queueCommand(pairingCode, {
+            type: "OPEN_VOICE_STUDIO",
+            role: rawRole,
+          });
+
+          return res.json(
+            buildAlexaResponse({
+              speechText: `Opening Family Voice Studio for ${rawRole} on your Fire TV. When the studio opens on screen, read the bedtime script into your remote or microphone to record!`,
+              repromptText: "Press record on your screen when you are ready to read the bedtime prompt.",
+              shouldEndSession: true,
+              sessionAttributes,
+            })
+          );
+        }
+
+        case "SetVoiceIntent":
+        case "ChooseVoiceIntent": {
+          const rawVoice =
+            getSlotValue(request.intent, "Voice") ||
+            getSlotValue(request.intent, "voice");
+
+          if (!rawVoice) {
+            return res.json(
+              buildAlexaResponse({
+                speechText: "Which voice would you like? You can say Mom, Dad, Joanna, Matthew, Emma, or Ivy.",
+                repromptText: "Which storyteller voice would you like for tonight's story?",
+                shouldEndSession: false,
+                sessionAttributes,
+              })
+            );
+          }
+
+          alexaSyncService.queueCommand(pairingCode, {
+            type: "SET_VOICE",
+            voice: rawVoice,
+          });
+
+          return res.json(
+            buildAlexaResponse({
+              speechText: `Set bedtime storyteller voice to ${rawVoice} on your Fire TV.`,
+              repromptText: "Say start the story when you're ready to begin reading.",
+              shouldEndSession: false,
+              sessionAttributes,
+            })
+          );
+        }
+
         case "AMAZON.HelpIntent": {
           const speechText =
             "You can say: the heroes are Leo and Maya, or choose a theme like Space Odyssey, or say start story.";

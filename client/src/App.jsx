@@ -24,6 +24,7 @@ import { normalizeSpeechMarks, getActiveSpeechMarkAtTime } from "./utils/speechM
 
 import { THEME_CATEGORIES, DEFAULT_CATEGORY_ID, THEMES } from "./constants/themes";
 import { VOICES } from "./constants/voices";
+import FamilyVoiceStudioModal from "./components/FamilyVoiceStudioModal";
 
 const API_BASE = (import.meta.env.VITE_API_BASE || "http://localhost:4000").trim().replace(/\/+$/, "");
 
@@ -33,6 +34,8 @@ export default function App() {
   const [categories, setCategories] = useState(THEME_CATEGORIES);
   const [serverVoices, setServerVoices] = useState(VOICES);
   const [category, setCategory] = useState(DEFAULT_CATEGORY_ID);
+  const [isVoiceStudioOpen, setIsVoiceStudioOpen] = useState(false);
+  const [voiceStudioRole, setVoiceStudioRole] = useState("Mom");
   const [themeIndex, setThemeIndex] = useState(0);
   const [themeMode, setThemeMode] = useState("preset"); // preset | custom
   const [customTheme, setCustomTheme] = useState("");
@@ -1151,6 +1154,23 @@ export default function App() {
     },
     onNavigatePage: handleAlexaNavigatePage,
     onToggleNarration: handleToggleNarration,
+    onOpenVoiceStudio: ({ role }) => {
+      setVoiceStudioRole(role || "Mom");
+      setIsVoiceStudioOpen(true);
+    },
+    onSetVoice: (spokenVoice) => {
+      if (!spokenVoice) return;
+      const allVoices = [...VOICES, ...loadCustomVoices()];
+      const match = allVoices.find(
+        (v) =>
+          v.id.toLowerCase() === spokenVoice.toLowerCase() ||
+          v.name.toLowerCase().includes(spokenVoice.toLowerCase()) ||
+          (v.role && v.role.toLowerCase() === spokenVoice.toLowerCase())
+      );
+      if (match) {
+        handleVoiceChange(match.id);
+      }
+    },
     enabled: true,
   });
 
@@ -1760,6 +1780,17 @@ export default function App() {
           }
         />
       )}
+
+      {/* Alexa Voice Triggered / Hands-Free Voice Studio */}
+      <FamilyVoiceStudioModal
+        isOpen={isVoiceStudioOpen}
+        defaultRole={voiceStudioRole}
+        onClose={() => setIsVoiceStudioOpen(false)}
+        onVoiceCreated={(newVoice) => {
+          handleVoiceChange(newVoice.id);
+          setIsVoiceStudioOpen(false);
+        }}
+      />
     </div>
   );
 }

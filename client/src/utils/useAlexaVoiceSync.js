@@ -11,6 +11,8 @@ export function useAlexaVoiceSync({
   onStartStory,
   onNavigatePage,
   onToggleNarration,
+  onOpenVoiceStudio,
+  onSetVoice,
   enabled = true,
   pollIntervalMs = 1500,
 } = {}) {
@@ -36,6 +38,12 @@ export function useAlexaVoiceSync({
 
   const onToggleNarrationRef = useRef(onToggleNarration);
   onToggleNarrationRef.current = onToggleNarration;
+
+  const onOpenVoiceStudioRef = useRef(onOpenVoiceStudio);
+  onOpenVoiceStudioRef.current = onOpenVoiceStudio;
+
+  const onSetVoiceRef = useRef(onSetVoice);
+  onSetVoiceRef.current = onSetVoice;
 
   const sessionIdRef = useRef(null);
   if (!sessionIdRef.current) {
@@ -120,6 +128,18 @@ export function useAlexaVoiceSync({
               case "TOGGLE_NARRATION":
                 if (onToggleNarrationRef.current) {
                   onToggleNarrationRef.current();
+                }
+                break;
+
+              case "OPEN_VOICE_STUDIO":
+                if (onOpenVoiceStudioRef.current) {
+                  onOpenVoiceStudioRef.current({ role: event.role });
+                }
+                break;
+
+              case "SET_VOICE":
+                if (onSetVoiceRef.current && event.voice) {
+                  onSetVoiceRef.current(event.voice);
                 }
                 break;
 

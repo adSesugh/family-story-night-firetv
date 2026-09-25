@@ -14,10 +14,14 @@ const BASELINE_VOICE_OPTIONS = [
   { id: "Ivy", label: "Bright Cadence (Sweet & Youthful)", desc: "Best for lighter, cheerful bedtime pacing" },
 ];
 
-export default function FamilyVoiceStudioModal({ isOpen, onClose, onVoiceCreated }) {
-  const [role, setRole] = useState("Mom");
-  const [voiceName, setVoiceName] = useState("Mom's Bedtime Voice");
-  const [baseVoice, setBaseVoice] = useState("Joanna");
+export default function FamilyVoiceStudioModal({ isOpen, onClose, onVoiceCreated, defaultRole = "Mom" }) {
+  const [role, setRole] = useState(defaultRole);
+  const [voiceName, setVoiceName] = useState(`${defaultRole}'s Bedtime Voice`);
+  const [baseVoice, setBaseVoice] = useState(
+    defaultRole.toLowerCase().includes("dad") || defaultRole.toLowerCase().includes("grandpa") || defaultRole.toLowerCase().includes("uncle")
+      ? "Matthew"
+      : "Joanna"
+  );
   const [isRecording, setIsRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [audioUrl, setAudioUrl] = useState(null);
@@ -43,6 +47,12 @@ export default function FamilyVoiceStudioModal({ isOpen, onClose, onVoiceCreated
       setBaseVoice("Joanna");
     }
   };
+
+  useEffect(() => {
+    if (isOpen && defaultRole) {
+      handleRoleChange(defaultRole);
+    }
+  }, [isOpen, defaultRole]);
 
   useEffect(() => {
     return () => {
