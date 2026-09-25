@@ -933,9 +933,15 @@ export default function App() {
       setStoryLength(num);
       StorageService.setItem("familyStoryNight_storyLength", num);
     }
+    if (updated?.settings?.illustrationStyle) {
+      setIllustrationStyle(updated.settings.illustrationStyle);
+      StorageService.setItem("familyStoryNight_illustrationStyle", updated.settings.illustrationStyle);
+    }
     syncPreferencesToServer(API_BASE, getDeviceId(), {
       pinHash: updated?.pinHash,
       parentSettings: updated?.settings,
+      storyLength: updated?.settings?.storyLength,
+      illustrationStyle: updated?.settings?.illustrationStyle,
     });
   }, []);
 
@@ -964,6 +970,20 @@ export default function App() {
     setIllustrationStyle(newStyle);
     StorageService.setItem("familyStoryNight_illustrationStyle", newStyle);
     syncPreferencesToServer(API_BASE, getDeviceId(), { illustrationStyle: newStyle });
+    try {
+      const current = loadSettings();
+      const updated = {
+        ...current,
+        settings: {
+          ...current.settings,
+          illustrationStyle: newStyle,
+        },
+      };
+      saveSettings(updated);
+      setParentSettings(updated);
+    } catch (e) {
+      console.warn("Could not save illustrationStyle to parent settings:", e);
+    }
   }, []);
 
   const [isNarrating, setIsNarrating] = useState(false);
@@ -1703,6 +1723,8 @@ export default function App() {
           voices={serverVoices}
           storyLength={storyLength}
           setStoryLength={handleStoryLengthChange}
+          illustrationStyle={illustrationStyle}
+          setIllustrationStyle={handleIllustrationStyleChange}
           themeMode={themeMode}
           setThemeMode={setThemeMode}
           customTheme={customTheme}

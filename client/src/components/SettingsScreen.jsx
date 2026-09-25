@@ -34,6 +34,12 @@ const TABS = [
   { id: "parent", label: "Parent Controls", shortLabel: "Parent", icon: Lock },
 ];
 
+const ILLUSTRATION_STYLES = [
+  { id: "watercolor", emoji: "🧸", label: "Claymation", desc: "Cute 3D chibi figures, soft felt textures & warm lighting" },
+  { id: "storybook", emoji: "📚", label: "Storybook", desc: "Classic painted storybook picture illustration" },
+  { id: "sketch", emoji: "✏️", label: "Sketch", desc: "Hand-drawn colored pencil drawings with warm outlines" },
+];
+
 export default function SettingsScreen({
   onBack,
   onSettingsChange,
@@ -42,6 +48,8 @@ export default function SettingsScreen({
   voices = VOICES,
   storyLength = 6,
   setStoryLength,
+  illustrationStyle = "watercolor",
+  setIllustrationStyle,
   themeMode = "preset",
   setThemeMode,
   customTheme = "",
@@ -501,6 +509,47 @@ export default function SettingsScreen({
                   ))}
                 </div>
               </div>
+
+              {/* Feature: Illustration Art Style */}
+              <div className="mt-6 border-t border-starlight/10 pt-5">
+                <div className="flex items-center gap-2">
+                  <Palette className="h-5 w-5 text-lamp" />
+                  <h3 className="font-serif text-lg text-parchment">Illustration Style</h3>
+                </div>
+                <p className="text-xs text-starlight/70 mt-1">
+                  Choose the default artistic style for bedtime story illustrations.
+                </p>
+                <div className="mt-3 grid grid-cols-3 gap-2.5">
+                  {ILLUSTRATION_STYLES.map(({ id, emoji, label, desc }) => {
+                    const currentStyle = settingsData?.settings?.illustrationStyle || illustrationStyle || "watercolor";
+                    const isSelected = currentStyle === id;
+                    return (
+                      <button
+                        key={id}
+                        type="button"
+                        aria-label={`${label} illustration style`}
+                        onClick={() => {
+                          if (setIllustrationStyle) setIllustrationStyle(id);
+                          handleSelectSetting("illustrationStyle", id);
+                        }}
+                        style={{ outline: "none" }}
+                        className={`flex flex-col items-center gap-0.5 rounded-xl border p-3 transition-all cursor-pointer focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lamp focus-visible:ring-offset-2 focus-visible:ring-offset-dusk ${
+                          isSelected
+                            ? "border-lamp bg-lamp/20 shadow-md shadow-lamp/15 ring-1 ring-lamp/60"
+                            : "border-starlight/20 bg-dusk/70 text-starlight hover:border-starlight/40 hover:text-parchment"
+                        }`}
+                        aria-pressed={isSelected}
+                      >
+                        <span className="text-2xl">{emoji}</span>
+                        <div className={`font-sans text-sm font-bold mt-0.5 ${isSelected ? "text-lamp" : "text-parchment"}`}>
+                          {label}
+                        </div>
+                        <div className="text-[11px] text-starlight/60 mt-0.5 text-center">{desc}</div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -708,6 +757,30 @@ export default function SettingsScreen({
                       <option value="3+">Preschool (3+)</option>
                       <option value="5+">Early Readers (5+)</option>
                       <option value="8+">Independent (8+)</option>
+                    </select>
+                  </div>
+
+                  {/* Illustration Art Style */}
+                  <div className="flex items-center justify-between pt-1">
+                    <div>
+                      <span className="font-sans text-sm text-parchment">Illustration Style</span>
+                      <p className="text-xs text-starlight/70">
+                        Default visual art style for generated bedtime illustrations.
+                      </p>
+                    </div>
+                    <select
+                      value={settingsData.settings?.illustrationStyle || illustrationStyle || "watercolor"}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (setIllustrationStyle) setIllustrationStyle(val);
+                        handleSelectSetting("illustrationStyle", val);
+                      }}
+                      className="rounded-sm border border-starlight/30 bg-dusk px-3 py-1 font-sans text-xs text-parchment focus:border-[#e8a33d] focus:outline-none"
+                      aria-label="Parent Illustration Style"
+                    >
+                      <option value="watercolor">🧸 Claymation (3D Felt & Warm Light)</option>
+                      <option value="storybook">📚 Storybook (Classic Painted Picture Book)</option>
+                      <option value="sketch">✏️ Sketch (Hand-Drawn Colored Pencil)</option>
                     </select>
                   </div>
                 </div>

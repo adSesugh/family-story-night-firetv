@@ -88,12 +88,6 @@ export default function SetupScreen({
   };
 
 
-  // --- Feature 9: Illustration style options ---
-  const ILLUSTRATION_STYLES = [
-    { id: "watercolor", emoji: "🧸", label: "Claymation" },
-    { id: "storybook", emoji: "📚", label: "Storybook" },
-    { id: "sketch", emoji: "✏️", label: "Sketch" },
-  ];
 
   const namesSpeech = useSpeechRecognition({
     onResult: (text) => setNames(text),
@@ -669,33 +663,6 @@ export default function SetupScreen({
       )}
 
 
-      {/* Feature 9: Illustration style picker */}
-      {category !== "bible" && (
-        <div className="mt-4">
-          <p className="font-sans text-xs uppercase tracking-wider text-starlight/60 font-medium mb-2">Illustration style</p>
-          <div className="flex gap-2">
-            {ILLUSTRATION_STYLES.map(({ id, emoji, label }) => {
-              const isSelected = (illustrationStyle || "watercolor") === id;
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => setIllustrationStyle && setIllustrationStyle(id)}
-                  style={{ outline: "none" }}
-                  aria-pressed={isSelected}
-                  aria-label={`${label} illustration style`}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border font-sans text-xs font-semibold transition-all cursor-pointer focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lamp focus-visible:ring-offset-2 focus-visible:ring-offset-dusk ${isSelected
-                    ? "border-lamp bg-lamp/20 text-lamp shadow-sm shadow-lamp/20"
-                    : "border-starlight/20 bg-starlight/5 text-starlight/70 hover:border-starlight/40 hover:text-parchment"
-                    }`}
-                >
-                  <span>{emoji}</span><span>{label}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
 
 
       <div className="flex flex-col sm:flex-row gap-3 mt-6 sm:mt-8">
