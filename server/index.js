@@ -3,6 +3,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 
 import apiRoutes from "./routes/index.js";
+import { getActiveIllustrationEngine } from "./services/imageService.js";
 
 dotenv.config();
 
@@ -18,8 +19,11 @@ app.use("/", apiRoutes);
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
   console.log(`Family Story Night server running on port ${PORT}`);
-  const kaggleUrl = process.env.KAGGLE_NGROK_URL || process.env.ILLUSTRATION_API_URL;
-  if (kaggleUrl) {
+  const engine = getActiveIllustrationEngine();
+  if (engine === "stability") {
+    console.log(`[Illustrations] Engine: ⚡ Stability AI Direct API (v2beta/stable-image/generate/core)`);
+  } else if (engine === "kaggle") {
+    const kaggleUrl = process.env.KAGGLE_NGROK_URL || process.env.ILLUSTRATION_API_URL;
     console.log(`[Illustrations] Engine: 🚀 Kaggle ngrok tunnel -> ${kaggleUrl}`);
   } else {
     console.log(`[Illustrations] Engine: ☁️ AWS Bedrock (${process.env.BEDROCK_IMAGE_MODEL_ID || "stability.stable-image-core-v1:1"})`);

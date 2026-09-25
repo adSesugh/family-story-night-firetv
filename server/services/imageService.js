@@ -162,6 +162,105 @@ export async function generateKaggleIllustration(promptText, pageText = "", nega
 }
 
 /**
+ * Determines which illustration engine to use based on env variables.
+ * Priority:
+ * 1. Explicit ILLUSTRATION_ENGINE ("stability" | "kaggle" | "bedrock")
+ * 2. If STABILITY_API_KEY is configured -> "stability"
+ * 3. If KAGGLE_NGROK_URL / ILLUSTRATION_API_URL is configured -> "kaggle"
+ * 4. Fallback -> "bedrock"
+ * @returns {"stability" | "kaggle" | "bedrock"}
+ */
+export function getActiveIllustrationEngine() {
+  const explicitEngine = (process.env.ILLUSTRATION_ENGINE || "").trim().toLowerCase();
+  if (explicitEngine === "stability") return "stability";
+  if (explicitEngine === "kaggle") return "kaggle";
+  if (explicitEngine === "bedrock") return "bedrock";
+
+  if (process.env.STABILITY_API_KEY && process.env.STABILITY_API_KEY.trim()) {
+    return "stability";
+  }
+  if (process.env.KAGGLE_NGROK_URL || process.env.ILLUSTRATION_API_URL) {
+    return "kaggle";
+  }
+  return "bedrock";
+}
+
+/**
+ * Generates an illustration using Stability AI's Direct REST API (v2beta Stable Image Core).
+ * @see https://platform.stability.ai/docs/api-reference#tag/Generate/paths/~1v2beta~1stable-image~1generate~1core/post
+ * @param {string} promptText
+ * @param {string} pageText
+ * @param {string} [negativePrompt]
+ * @param {number} [seed]
+ * @returns {Promise<{url: string, alt: string, engine: string, contentType: string} | null>}
+ */
+export async function generateStabilityIllustration(
+  promptText,
+  pageText = "",
+  negativePrompt = DEFAULT_NEGATIVE_PROMPT,
+  seed = 0
+) {
+  const apiKey = (process.env.STABILITY_API_KEY || "").trim();
+  if (!apiKey) {
+    throw new Error("STABILITY_API_KEY is not configured in .env");
+  }
+
+  const endpoint = "https://api.stability.ai/v2beta/stable-image/generate/core";
+  console.log(`[Illustrate] ⚡ Routing illustration to STABILITY AI DIRECT API: ${endpoint}`);
+  console.log(`[Illustrate] 📝 Prompt: "${promptText.slice(0, 150)}${promptText.length > 150 ? "..." : ""}"`);
+
+  const formData = new FormData();
+  formData.append("prompt", promptText);
+  if (negativePrompt) {
+    formData.append("negative_prompt", negativePrompt);
+  }
+  formData.append("aspect_ratio", "1:1");
+  formData.append("output_format", "jpeg");
+  if (seed) {
+    formData.append("seed", String(Math.abs(seed) % 4294967295));
+  }
+
+  const startTime = Date.now();
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      Accept: "application/json",
+    },
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const errorDetails = await response.text().catch(() => "");
+    throw new Error(`Stability AI API error ${response.status} (${response.statusText}): ${errorDetails.slice(0, 300)}`);
+  }
+
+  const contentType = response.headers.get("content-type") || "";
+  let base64Image = null;
+
+  if (contentType.includes("application/json")) {
+    const data = await response.json();
+    base64Image = data.image || data.images?.[0];
+  } else if (contentType.includes("image/")) {
+    const arrayBuffer = await response.arrayBuffer();
+    base64Image = Buffer.from(arrayBuffer).toString("base64");
+  }
+
+  if (base64Image) {
+    const sizeKb = Math.round((base64Image.length * 0.75) / 1024);
+    console.log(`[Illustrate] ✅ STABILITY AI successfully generated illustration in ${Date.now() - startTime}ms (~${sizeKb} KB)`);
+    return {
+      url: `data:image/jpeg;base64,${base64Image}`,
+      alt: `Illustration for: ${pageText.slice(0, 80)}`,
+      engine: "stability-api",
+      contentType: "image/jpeg",
+    };
+  }
+
+  throw new Error("No image data found in Stability AI API response");
+}
+
+/**
  * Generates a child-friendly illustration for a story page using Stability AI (or Kaggle ngrok).
  * Returns { url, alt } on success, or null on failure (graceful degradation).
  *
@@ -210,20 +309,42 @@ export async function generateIllustration(pageText, theme, seed, retries = 3, s
   // Exclusions like "no text, no scary elements" belong strictly in negative_prompt.
   const illustrationPrompt = explicitPrompt || `${primaryScene}. ${styleDescriptor}.`;
 
-  // 1. If KAGGLE_NGROK_URL or ILLUSTRATION_API_URL is configured, use Kaggle ngrok exclusively (no fallback to stability.stable-image-core-v1:1)
-  const kaggleUrl = process.env.KAGGLE_NGROK_URL || process.env.ILLUSTRATION_API_URL;
-  if (kaggleUrl) {
+  const engine = getActiveIllustrationEngine();
+
+  // 1. Stability AI Direct REST API (v2beta Stable Image Core)
+  if (engine === "stability") {
     try {
-      const kaggleResult = await generateKaggleIllustration(illustrationPrompt, pageText, DEFAULT_NEGATIVE_PROMPT);
+      const stabilityResult = await generateStabilityIllustration(
+        illustrationPrompt,
+        pageText,
+        DEFAULT_NEGATIVE_PROMPT,
+        seed
+      );
+      if (stabilityResult) return stabilityResult;
+    } catch (stabErr) {
+      console.error("[ImageService] Stability AI illustration failed:", stabErr.message);
+    }
+    console.warn(`[ImageService] Stability AI failed and engine is stability; skipping fallback to ${IMAGE_MODEL_ID}.`);
+    return null;
+  }
+
+  // 2. Kaggle ngrok tunnel
+  if (engine === "kaggle") {
+    try {
+      const kaggleResult = await generateKaggleIllustration(
+        illustrationPrompt,
+        pageText,
+        DEFAULT_NEGATIVE_PROMPT
+      );
       if (kaggleResult) return kaggleResult;
     } catch (kaggleErr) {
       console.error("[ImageService] Kaggle ngrok illustration failed:", kaggleErr.message);
     }
-    console.warn(`[ImageService] Kaggle ngrok failed and KAGGLE_NGROK_URL is configured; skipping fallback to ${IMAGE_MODEL_ID}.`);
+    console.warn(`[ImageService] Kaggle ngrok failed and engine is kaggle; skipping fallback to ${IMAGE_MODEL_ID}.`);
     return null;
   }
 
-  // 2. AWS Bedrock is only used when Kaggle ngrok is not configured
+  // 3. AWS Bedrock
   console.log(`[Illustrate] 🎨 Routing illustration to AWS BEDROCK (${IMAGE_MODEL_ID} in ${IMAGE_REGION})`);
   console.log(`[Illustrate] 📝 Prompt: "${illustrationPrompt.slice(0, 150)}${illustrationPrompt.length > 150 ? "..." : ""}"`);
 
