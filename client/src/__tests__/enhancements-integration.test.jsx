@@ -125,7 +125,20 @@ describe("Enhancements Full Integration (Tasks 7.3, 9.1, 11.1, 19.2)", () => {
     const voiceSelect = screen.getByLabelText("Narrator Voice");
     fireEvent.change(voiceSelect, { target: { value: "Matthew" } });
 
-    // Select Chapter Book (9p) in Settings
+    // Switch to Parent Controls to select Chapter Book (9p) under PIN protection
+    const parentTab = screen.getByRole("tab", { name: /Parent/i });
+    fireEvent.click(parentTab);
+
+    // Create 4-digit PIN to unlock parent controls
+    const pinInputs = screen.getAllByPlaceholderText("••••");
+    fireEvent.change(pinInputs[0], { target: { value: "1234" } });
+    if (pinInputs[1]) {
+      fireEvent.change(pinInputs[1], { target: { value: "1234" } });
+    }
+    const savePinBtn = screen.getByRole("button", { name: /Save PIN|Unlock Controls/i });
+    fireEvent.click(savePinBtn);
+
+    // Select Chapter Book (9p) in Parent Controls
     const longLengthBtn = screen.getByRole("button", { name: /Chapter Book/ });
     fireEvent.click(longLengthBtn);
 

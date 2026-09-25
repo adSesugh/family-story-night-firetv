@@ -58,9 +58,10 @@ export default function SettingsScreen({
   themeIndex = 0,
   setThemeIndex,
   initialTab = "story",
+  initialUnlocked = false,
 }) {
   const [settingsData, setSettingsData] = useState(() => loadSettings());
-  const [isUnlocked, setIsUnlocked] = useState(false);
+  const [isUnlocked, setIsUnlocked] = useState(initialUnlocked);
   const [activeTab, setActiveTab] = useState(initialTab);
   const tabRefs = useRef({});
   const screenRef = useRef(null);
@@ -467,89 +468,22 @@ export default function SettingsScreen({
               </div>
             </div>
 
-            {/* Story Length */}
-            <div className="rounded-sm bg-panel/60 p-4 sm:p-6 shadow-lg">
-              <div className="flex items-center gap-2.5 border-b border-starlight/20 pb-3">
-                <BookOpen className="h-5 w-5 text-[#E8A33D]" />
-                <h2 className="font-serif text-2xl text-parchment">Story Length</h2>
+            {/* Parental Controls Notice */}
+            <div className="rounded-sm bg-panel/40 p-5 shadow-lg border border-starlight/10 flex flex-col gap-3">
+              <div className="flex items-center gap-2.5">
+                <Lock className="h-5 w-5 text-lamp" />
+                <h3 className="font-serif text-lg text-parchment">Parental Controls Protected</h3>
               </div>
-
-              <div className="mt-4">
-                <p className="text-xs text-starlight/70">
-                  Choose the default reading length for bedtime stories.
-                </p>
-                <div className="mt-3 grid grid-cols-3 gap-2.5">
-                  {[
-                    { emoji: "🐣", label: "Toddler", ages: "2–4", length: 3, desc: "~2 min" },
-                    { emoji: "📖", label: "Early Reader", ages: "5–7", length: 6, desc: "~5 min" },
-                    { emoji: "🚀", label: "Chapter Book", ages: "8+", length: 9, desc: "~8 min" },
-                  ].map(({ emoji, label, ages, length, desc }) => (
-                    <button
-                      key={length}
-                      type="button"
-                      aria-label={`${label} (${ages}), ${length} pages, ${desc}`}
-                      onClick={() => {
-                        if (setStoryLength) setStoryLength(length);
-                        handleSelectSetting("storyLength", length);
-                      }}
-                      style={{ outline: "none" }}
-                      className={`flex flex-col items-center gap-0.5 rounded-xl border p-3 transition-all cursor-pointer focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lamp focus-visible:ring-offset-2 focus-visible:ring-offset-dusk ${
-                        storyLength === length
-                          ? "border-lamp bg-lamp/20 shadow-md shadow-lamp/15 ring-1 ring-lamp/60"
-                          : "border-starlight/20 bg-dusk/70 text-starlight hover:border-starlight/40 hover:text-parchment"
-                      }`}
-                      aria-pressed={storyLength === length}
-                    >
-                      <span className="text-2xl">{emoji}</span>
-                      <div className={`font-sans text-sm font-bold mt-0.5 ${storyLength === length ? "text-lamp" : "text-parchment"}`}>
-                        {label}
-                      </div>
-                      <div className="text-[11px] text-starlight/60 mt-0.5">{ages} · {desc}</div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Feature: Illustration Art Style */}
-              <div className="mt-6 border-t border-starlight/10 pt-5">
-                <div className="flex items-center gap-2">
-                  <Palette className="h-5 w-5 text-lamp" />
-                  <h3 className="font-serif text-lg text-parchment">Illustration Style</h3>
-                </div>
-                <p className="text-xs text-starlight/70 mt-1">
-                  Choose the default artistic style for bedtime story illustrations.
-                </p>
-                <div className="mt-3 grid grid-cols-3 gap-2.5">
-                  {ILLUSTRATION_STYLES.map(({ id, emoji, label, desc }) => {
-                    const currentStyle = settingsData?.settings?.illustrationStyle || illustrationStyle || "watercolor";
-                    const isSelected = currentStyle === id;
-                    return (
-                      <button
-                        key={id}
-                        type="button"
-                        aria-label={`${label} illustration style`}
-                        onClick={() => {
-                          if (setIllustrationStyle) setIllustrationStyle(id);
-                          handleSelectSetting("illustrationStyle", id);
-                        }}
-                        style={{ outline: "none" }}
-                        className={`flex flex-col items-center gap-0.5 rounded-xl border p-3 transition-all cursor-pointer focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lamp focus-visible:ring-offset-2 focus-visible:ring-offset-dusk ${
-                          isSelected
-                            ? "border-lamp bg-lamp/20 shadow-md shadow-lamp/15 ring-1 ring-lamp/60"
-                            : "border-starlight/20 bg-dusk/70 text-starlight hover:border-starlight/40 hover:text-parchment"
-                        }`}
-                        aria-pressed={isSelected}
-                      >
-                        <span className="text-2xl">{emoji}</span>
-                        <div className={`font-sans text-sm font-bold mt-0.5 ${isSelected ? "text-lamp" : "text-parchment"}`}>
-                          {label}
-                        </div>
-                        <div className="text-[11px] text-starlight/60 mt-0.5 text-center">{desc}</div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
+              <p className="text-xs text-starlight/70 leading-relaxed">
+                Story length, reading level (age guidance), and illustration art style are protected by your parent PIN to prevent bedtime disruptions.
+              </p>
+              <button
+                type="button"
+                onClick={() => setActiveTab("parent")}
+                className="self-start rounded-full border border-lamp/40 bg-lamp/15 px-4 py-1.5 font-sans text-xs font-semibold text-lamp hover:bg-lamp/25 transition-colors cursor-pointer"
+              >
+                {hasPin && isUnlocked ? "Open Parent Controls" : hasPin ? "Enter PIN to Manage" : "Set PIN to Manage"} &rarr;
+              </button>
             </div>
           </div>
         </div>
@@ -563,7 +497,7 @@ export default function SettingsScreen({
           aria-labelledby="settings-tab-parent"
         >
           {/* PIN Setup (no PIN set or user opted to change PIN) */}
-          {(!hasPin || isChangingPin) && (
+          {!isUnlocked && (!hasPin || isChangingPin) && (
             <div className="mx-auto w-full max-w-md rounded-sm bg-panel/70 p-6 shadow-lg backdrop-blur-sm">
               <div className="flex items-center gap-2">
                 <KeyRound className="h-5 w-5 text-[#E8A33D]" />
@@ -675,7 +609,7 @@ export default function SettingsScreen({
           )}
 
           {/* Unlocked Parent Controls & Analytics */}
-          {hasPin && isUnlocked && !isChangingPin && (
+          {isUnlocked && !isChangingPin && (
             <div className="grid grid-cols-1 items-start gap-6 md:grid-cols-2">
               {/* Content & Feature Preferences */}
               <div className="rounded-sm bg-panel/60 p-6 shadow-lg">
@@ -770,6 +704,47 @@ export default function SettingsScreen({
                           >
                             <span>{emoji}</span>
                             <span>{label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Story Length Chips */}
+                  <div className="pt-2 border-t border-starlight/10">
+                    <div>
+                      <span className="font-sans text-sm text-parchment font-medium">Story Length</span>
+                      <p className="text-xs text-starlight/70 mt-0.5">
+                        Default bedtime story length and page count.
+                      </p>
+                    </div>
+                    <div className="mt-2.5 flex flex-wrap gap-2">
+                      {[
+                        { emoji: "🐣", label: "Toddler", ages: "2–4", length: 3, desc: "~2 min" },
+                        { emoji: "📖", label: "Early Reader", ages: "5–7", length: 6, desc: "~5 min" },
+                        { emoji: "🚀", label: "Chapter Book", ages: "8+", length: 9, desc: "~8 min" },
+                      ].map(({ emoji, label, ages, length, desc }) => {
+                        const currentLength = Number(settingsData.settings?.storyLength || storyLength || 6);
+                        const isSelected = currentLength === length;
+                        return (
+                          <button
+                            key={length}
+                            type="button"
+                            onClick={() => {
+                              if (setStoryLength) setStoryLength(length);
+                              handleSelectSetting("storyLength", length);
+                            }}
+                            aria-pressed={isSelected}
+                            aria-label={`Story Length: ${label} (${ages}), ${length} pages, ${desc}`}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border font-sans text-xs font-semibold transition-all cursor-pointer focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lamp focus-visible:ring-offset-2 focus-visible:ring-offset-dusk ${
+                              isSelected
+                                ? "border-lamp bg-lamp/20 text-lamp shadow-sm shadow-lamp/20 ring-1 ring-lamp/50"
+                                : "border-starlight/20 bg-starlight/5 text-starlight/70 hover:border-starlight/40 hover:text-parchment"
+                            }`}
+                          >
+                            <span>{emoji}</span>
+                            <span>{label}</span>
+                            <span className="text-[10px] opacity-75 font-normal">({length}p · {ages})</span>
                           </button>
                         );
                       })}

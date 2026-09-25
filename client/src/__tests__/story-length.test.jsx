@@ -9,13 +9,22 @@ describe("Story length selector UI in SettingsScreen (Task 10.2 / Req 4.1, 4.5)"
     onSettingsChange: jest.fn(),
     storyLength: 6,
     setStoryLength: jest.fn(),
+    initialTab: "parent",
+    initialUnlocked: true,
   };
+
+  it("does not render story length buttons in Tab 1 (Story Preferences) without parent unlock", () => {
+    render(<SettingsScreen {...defaultProps} initialTab="story" initialUnlocked={false} />);
+    expect(screen.queryByRole("button", { name: /Toddler/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Chapter Book/i })).not.toBeInTheDocument();
+    expect(screen.getByText(/Parental Controls Protected/i)).toBeInTheDocument();
+  });
 
   it("renders all three length options with 6 selected by default", () => {
     render(<SettingsScreen {...defaultProps} storyLength={6} />);
-    const toddlerBtn = screen.getByRole("button", { name: /Toddler/i });
-    const readerBtn = screen.getByRole("button", { name: /Early Reader/i });
-    const chapterBtn = screen.getByRole("button", { name: /Chapter Book/i });
+    const toddlerBtn = screen.getByRole("button", { name: /Story Length: Toddler/i });
+    const readerBtn = screen.getByRole("button", { name: /Story Length: Early Reader/i });
+    const chapterBtn = screen.getByRole("button", { name: /Story Length: Chapter Book/i });
 
     expect(toddlerBtn).toBeInTheDocument();
     expect(readerBtn).toBeInTheDocument();
@@ -30,13 +39,13 @@ describe("Story length selector UI in SettingsScreen (Task 10.2 / Req 4.1, 4.5)"
     const setStoryLength = jest.fn();
     render(<SettingsScreen {...defaultProps} setStoryLength={setStoryLength} />);
 
-    fireEvent.click(screen.getByRole("button", { name: /Toddler/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Story Length: Toddler/i }));
     expect(setStoryLength).toHaveBeenCalledWith(3);
 
-    fireEvent.click(screen.getByRole("button", { name: /Chapter Book/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Story Length: Chapter Book/i }));
     expect(setStoryLength).toHaveBeenCalledWith(9);
 
-    fireEvent.click(screen.getByRole("button", { name: /Early Reader/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Story Length: Early Reader/i }));
     expect(setStoryLength).toHaveBeenCalledWith(6);
   });
 });
