@@ -8,6 +8,8 @@ describe("Kaggle ngrok Illustration Endpoint Integration", () => {
   beforeEach(() => {
     vi.resetModules();
     process.env = { ...originalEnv };
+    delete process.env.STABILITY_API_KEY;
+    delete process.env.ILLUSTRATION_ENGINE;
   });
 
   afterEach(() => {

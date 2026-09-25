@@ -3,6 +3,7 @@ import { SynthesizeSpeechCommand } from "@aws-sdk/client-polly";
 import { polly, streamToBuffer, POLLY_ENGINE } from "../services/pollyService.js";
 import { VOICES } from "../constants/voices.js";
 import { getNarration, saveNarration } from "../db.js";
+import { synthesizeWithKokoro } from "../services/kokoroVoiceService.js";
 
 const ALLOWED_VOICES = ["Joanna", "Matthew", "Emma", "Ivy"];
 
@@ -75,7 +76,54 @@ export const narrate = async (req, res) => {
       return res.end(audioBuffer);
     }
 
-    // 2. Cache MISS: Synthesize speech via AWS Polly
+
+    // 2. Cache MISS: Check if Kokoro-82M Voice Microservice is configured and applicable
+    const kokoroUrl = process.env.KOKORO_VOICE_SERVICE_URL || process.env.KOKORO_API_URL;
+    const isKokoroVoice = voiceId && (voiceId.startsWith("af_") || voiceId.startsWith("am_") || voiceId.startsWith("bf_") || voiceId.startsWith("bm_") || voiceId.startsWith("custom"));
+    const isKokoroEngine = (process.env.VOICE_ENGINE || "").toLowerCase() === "kokoro";
+    const useKokoro = Boolean(kokoroUrl && (isKokoroEngine || isKokoroVoice));
+
+    if (useKokoro) {
+      try {
+        const kokoroResult = await synthesizeWithKokoro(text, voiceId || selectedVoice, baseVoice || selectedVoice);
+        if (kokoroResult && kokoroResult.audioData) {
+          // Persist to SQLite cache
+          try {
+            saveNarration({
+              storyId,
+              deviceId,
+              textHash,
+              voiceId: selectedVoice,
+              audioData: kokoroResult.audioData,
+              speechMarks: kokoroResult.speechMarks,
+              pageIndex,
+            });
+          } catch (dbErr) {
+            console.warn("Could not cache Kokoro narration in DB:", dbErr.message);
+          }
+
+          if (speechMarks) {
+            return res.json({
+              audio: kokoroResult.audioData,
+              speechMarks: kokoroResult.speechMarks,
+              cached: false,
+              engine: "kokoro-82m",
+            });
+          }
+
+          const base64Data = kokoroResult.audioData.replace(/^data:audio\/\w+;base64,/, "");
+          const audioBuffer = Buffer.from(base64Data, "base64");
+          res.setHeader("Content-Type", "audio/wav");
+          res.setHeader("Content-Length", audioBuffer.length);
+          res.setHeader("X-Voice-Engine", "kokoro-82m");
+          return res.end(audioBuffer);
+        }
+      } catch (kErr) {
+        console.warn(`[narrate] Kokoro voice synthesis failed (${kErr.message}); falling back to AWS Polly.`);
+      }
+    }
+
+    // 3. Fallback to AWS Polly
     console.log(`[narrate] 🎙️ Cache MISS: Synthesizing voice via AWS Polly for voice: ${selectedVoice}`);
     const audioCommand = new SynthesizeSpeechCommand({
       Text: text,

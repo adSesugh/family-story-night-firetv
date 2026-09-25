@@ -7,4 +7,6 @@ submission.md
 DEMO_SCRIPT.md
 PHASE_1_PIN_COMPLETION.md
 docs/
-
+voice-service/.venv/
+voice-service/__pycache__/
+voice-service/voices/*.pt
