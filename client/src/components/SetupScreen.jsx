@@ -87,12 +87,6 @@ export default function SetupScreen({
     if (typeof sessionStorage !== "undefined") sessionStorage.setItem("fsn_bedtime_dismissed", "1");
   };
 
-  // --- Feature 10: Age-group → storyLength mapping ---
-  const AGE_GROUPS = [
-    { emoji: "🐣", label: "Toddler", ages: "2–4", pages: 3, desc: "~2 min" },
-    { emoji: "📖", label: "Early Reader", ages: "5–7", pages: 6, desc: "~5 min" },
-    { emoji: "🚀", label: "Chapter Book", ages: "8+", pages: 9, desc: "~8 min" },
-  ];
 
   // --- Feature 9: Illustration style options ---
   const ILLUSTRATION_STYLES = [
@@ -703,31 +697,6 @@ export default function SetupScreen({
         </div>
       )}
 
-      {/* Feature 10: Reading level & story length */}
-      <div className="mt-4">
-        <p className="font-sans text-xs uppercase tracking-wider text-starlight/60 font-medium mb-2">Reading level &amp; story length</p>
-        <div className="flex flex-wrap gap-2">
-          {AGE_GROUPS.map(({ emoji, label, ages, pages, desc }) => {
-            const isSelected = (Number(storyLength) || 6) === pages;
-            return (
-              <button
-                key={pages}
-                type="button"
-                onClick={() => setStoryLength && setStoryLength(pages)}
-                style={{ outline: "none" }}
-                aria-pressed={isSelected}
-                aria-label={`${label} (${ages}), ${pages} pages, ${desc}`}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border font-sans text-xs font-semibold transition-all cursor-pointer focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lamp focus-visible:ring-offset-2 focus-visible:ring-offset-dusk ${isSelected
-                  ? "border-lamp bg-lamp/20 text-lamp shadow-sm shadow-lamp/20"
-                  : "border-starlight/20 bg-starlight/5 text-starlight/70 hover:border-starlight/40 hover:text-parchment"
-                }`}
-              >
-                <span>{emoji}</span><span>{label}</span><span className="text-[10px] opacity-75 font-normal">({pages}p · {ages})</span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
 
       <div className="flex flex-col sm:flex-row gap-3 mt-6 sm:mt-8">
         {allowHistory && hasHistory && (
