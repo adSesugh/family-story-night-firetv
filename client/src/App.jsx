@@ -158,7 +158,11 @@ export default function App() {
       const currentStoredUrls = [...initialStored];
 
       const pendingIndices = [];
-      for (let i = 0; i < storyPages.length; i++) {  // start from 0 — no blocking pre-fetch
+      for (let i = 0; i < storyPages.length; i++) {
+        const existing = currentStoredUrls[i] || currentDisplayUrls[i];
+        if (existing && typeof existing === "string" && !existing.startsWith("data:image/svg+xml")) {
+          continue;
+        }
         pendingIndices.push(i);
       }
       if (pendingIndices.length === 0) return;
@@ -294,8 +298,8 @@ export default function App() {
         }
       };
 
-      // Concurrent worker pool: 2 requests in parallel for rapid generation without blocking
-      const CONCURRENCY = 2;
+      // Concurrent worker pool: 3 requests in parallel for rapid generation without blocking
+      const CONCURRENCY = 3;
       let nextQueueIndex = 0;
 
       const worker = async () => {

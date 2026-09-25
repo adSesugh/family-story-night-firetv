@@ -105,6 +105,7 @@ export async function generateKaggleIllustration(promptText, pageText = "", nega
     headers: {
       "Content-Type": "application/json",
       "ngrok-skip-browser-warning": "true",
+      "User-Agent": "FamilyStoryNight-Backend/1.0",
     },
     body: JSON.stringify({
       prompt: promptText,
@@ -145,12 +146,15 @@ export async function generateKaggleIllustration(promptText, pageText = "", nega
   }
 
   if (base64Image) {
-    const sizeKb = Math.round(base64Image.length * 0.75 / 1024);
+    const sizeKb = Math.round((base64Image.length * 0.75) / 1024);
     console.log(`[Illustrate] ✅ KAGGLE NGROK successfully generated illustration in ${Date.now() - startTime}ms (~${sizeKb} KB)`);
+    const isJpeg = base64Image.startsWith("/9j/") || (contentType && contentType.includes("jpeg"));
+    const mime = isJpeg ? "image/jpeg" : "image/png";
     return {
-      url: `data:image/png;base64,${base64Image}`,
+      url: `data:${mime};base64,${base64Image}`,
       alt: `Illustration for: ${pageText.slice(0, 80)}`,
       engine: "kaggle-ngrok",
+      contentType: mime,
     };
   }
 
@@ -229,7 +233,7 @@ export async function generateIllustration(pageText, theme, seed, retries = 3, s
     negative_prompt: DEFAULT_NEGATIVE_PROMPT,
     aspect_ratio: "1:1",
     seed: Math.abs(seed) % 4294967295,
-    output_format: "png",
+    output_format: "jpeg",
   };
 
   const command = new InvokeModelCommand({
@@ -247,11 +251,12 @@ export async function generateIllustration(pageText, theme, seed, retries = 3, s
     if (!base64Image) return null;
 
     const sizeKb = Math.round(base64Image.length * 0.75 / 1024);
-    console.log(`[Illustrate] ✅ AWS BEDROCK successfully generated illustration in ${Date.now() - bedrockStartTime}ms (~${sizeKb} KB)`);
+    console.log(`[Illustrate] AWS BEDROCK successfully generated illustration in ${Date.now() - bedrockStartTime}ms (~${sizeKb} KB)`);
     return {
-      url: `data:image/png;base64,${base64Image}`,
+      url: `data:image/jpeg;base64,${base64Image}`,
       alt: `Illustration for: ${pageText.slice(0, 80)}`,
       engine: "aws-bedrock",
+      contentType: "image/jpeg",
     };
   } catch (err) {
     // 1. If Bedrock rejects prompt via ValidationException (e.g. content filter on page words), retry with clean scene prompt

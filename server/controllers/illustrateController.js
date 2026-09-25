@@ -22,10 +22,12 @@ export const illustrate = async (req, res) => {
       prompt
     );
     if (illustration && illustration.url) {
-      const base64Data = illustration.url.replace(/^data:image\/png;base64,/, "");
+      const isJpeg = illustration.url.startsWith("data:image/jpeg") || illustration.contentType === "image/jpeg";
+      const mime = isJpeg ? "image/jpeg" : "image/png";
+      const base64Data = illustration.url.replace(/^data:image\/\w+;base64,/, "");
       const imageBuffer = Buffer.from(base64Data, "base64");
 
-      res.setHeader("Content-Type", "image/png");
+      res.setHeader("Content-Type", mime);
       res.setHeader("Content-Length", imageBuffer.length);
       res.setHeader("X-Illustration-Engine", illustration.engine || "aws-bedrock");
       return res.end(imageBuffer);
