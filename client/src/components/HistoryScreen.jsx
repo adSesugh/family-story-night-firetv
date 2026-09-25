@@ -12,7 +12,7 @@ import { getDeviceId } from "../utils/device";
 import ConfirmModal from "./ConfirmModal";
 import Toast from "./Toast";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:4000";
+const API_BASE = (import.meta.env.VITE_API_BASE || "http://localhost:4000").trim().replace(/\/+$/, "");
 const PAGE_BATCH_SIZE = 8;
 
 export default function HistoryScreen({ onSelect, onBack }) {

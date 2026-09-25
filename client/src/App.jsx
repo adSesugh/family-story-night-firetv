@@ -25,7 +25,7 @@ import { normalizeSpeechMarks, getActiveSpeechMarkAtTime } from "./utils/speechM
 import { THEME_CATEGORIES, DEFAULT_CATEGORY_ID, THEMES } from "./constants/themes";
 import { VOICES } from "./constants/voices";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:4000";
+const API_BASE = (import.meta.env.VITE_API_BASE || "http://localhost:4000").trim().replace(/\/+$/, "");
 
 export default function App() {
   const [screen, setScreen] = useState("setup"); // setup | loading | story | history | settings

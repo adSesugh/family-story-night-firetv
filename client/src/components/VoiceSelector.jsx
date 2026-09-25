@@ -4,7 +4,7 @@ import { VOICES } from "../constants/voices";
 import { loadCustomVoices, deleteCustomVoice } from "../utils/customVoices";
 import FamilyVoiceStudioModal from "./FamilyVoiceStudioModal";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:4000";
+const API_BASE = (import.meta.env.VITE_API_BASE || "http://localhost:4000").trim().replace(/\/+$/, "");
 
 const VOICE_ICONS = {
   Joanna: Moon,
