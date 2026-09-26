@@ -297,7 +297,19 @@ class KokoroVoiceManager:
                 if decoded:
                     samples, sr = decoded
                     profile = extract_acoustic_profile(samples, sr)
-                    print(f"[KokoroVoiceManager] Extracted acoustic profile: F0={profile['mean_pitch_hz']}Hz, Timbre={profile['mean_centroid_hz']}Hz")
+                    print(f"[KokoroVoiceManager] Extracted acoustic profile from request: F0={profile['mean_pitch_hz']}Hz, Timbre={profile['mean_centroid_hz']}Hz")
+            else:
+                disk_wav = os.path.join(VOICES_DIR, f"{voice_key}.wav")
+                if os.path.exists(disk_wav):
+                    try:
+                        samples, sr = sf.read(disk_wav)
+                        if samples.ndim > 1:
+                            samples = np.mean(samples, axis=1)
+                        samples = samples.astype(np.float32)
+                        profile = extract_acoustic_profile(samples, sr)
+                        print(f"[KokoroVoiceManager] Extracted acoustic profile from disk WAV ({disk_wav}): F0={profile['mean_pitch_hz']}Hz, Timbre={profile['mean_centroid_hz']}Hz")
+                    except Exception as r_err:
+                        print(f"[KokoroVoiceManager] Error reading disk WAV: {r_err}")
 
             # Generate personalized voice tensor
             pers_tensor = self.generate_personalized_tensor(
