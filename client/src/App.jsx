@@ -22,7 +22,7 @@ import { getDeviceId, getUserId } from "./utils/device";
 import { fetchPreferencesFromServer, syncPreferencesToServer } from "./utils/userPreferences";
 import { normalizeSpeechMarks, getActiveSpeechMarkAtTime } from "./utils/speechMarks";
 
-import { THEME_CATEGORIES, DEFAULT_CATEGORY_ID, THEMES } from "./constants/themes";
+import { THEME_CATEGORIES, DEFAULT_CATEGORY_ID, THEMES, normalizeCategory } from "./constants/themes";
 import { VOICES } from "./constants/voices";
 import FamilyVoiceStudioModal from "./components/FamilyVoiceStudioModal";
 
@@ -81,7 +81,7 @@ export default function App() {
   const [currentStoryId, setCurrentStoryId] = useState(null);
   const [activeStoryMetadata, setActiveStoryMetadata] = useState(null); // { theme, familyMembers, category }
 
-  const currentCategory = categories.find((c) => c.id === category) || categories[0] || THEME_CATEGORIES[0];
+  const currentCategory = categories.find((c) => c.id === normalizeCategory(category)) || categories[0] || THEME_CATEGORIES[0];
   const activeThemes = currentCategory?.themes || THEMES;
 
   const audioRef = useRef(null);
@@ -109,7 +109,7 @@ export default function App() {
         if (prefs.storyLength) setStoryLength(prefs.storyLength);
         if (prefs.illustrationStyle) setIllustrationStyle(prefs.illustrationStyle);
         if (prefs.themeIndex !== undefined) setThemeIndex(prefs.themeIndex);
-        if (prefs.storyCategory) setCategory(prefs.storyCategory);
+        if (prefs.storyCategory) setCategory(normalizeCategory(prefs.storyCategory));
         if (prefs.parentSettings) setParentSettings(loadSettings());
       }
     });
@@ -479,7 +479,7 @@ export default function App() {
       .map((n) => n.trim())
       .filter(Boolean);
 
-    const isBibleCategory = category === "bible";
+    const isBibleCategory = normalizeCategory(category) === "bible";
 
     // Validate that at least one family member was provided (optional for Bible stories)
     if (familyMembers.length === 0 && !isBibleCategory) {
@@ -515,7 +515,7 @@ export default function App() {
           storyLength,
           ageGuidance: parentSettings?.settings?.ageRestriction || "all",
           chapter: 1,
-          category,
+          category: normalizeCategory(category),
         }),
       });
       if (!res.ok) throw new Error("Story generation failed");
@@ -565,7 +565,7 @@ export default function App() {
         id: data.id,
         familyMembers,
         theme: activeTheme,
-        category,
+        category: normalizeCategory(category),
         pages: formattedPages,
         illustrations: storedIllustrations,
         firstPage: typeof firstRaw === "string" ? firstRaw : firstRaw?.text || "",
@@ -583,7 +583,7 @@ export default function App() {
       setActiveStoryMetadata({
         theme: activeTheme,
         familyMembers,
-        category,
+        category: normalizeCategory(category),
       });
 
       // Reload history
@@ -595,7 +595,7 @@ export default function App() {
         theme: activeTheme,
         storyLength,
         voice,
-        category,
+        category: normalizeCategory(category),
         generationTime: genDuration,
       });
 
@@ -661,7 +661,7 @@ export default function App() {
     setActiveStoryMetadata({
       theme: story.theme,
       familyMembers: story.familyMembers || [],
-      category: story.category || "adventures",
+      category: normalizeCategory(story.category),
     });
 
     const storyChapters =
@@ -754,7 +754,7 @@ export default function App() {
             .split(",")
             .map((n) => n.trim())
             .filter(Boolean);
-        const storyCategory = activeStoryMetadata?.category || category;
+        const storyCategory = normalizeCategory(activeStoryMetadata?.category || category);
 
         const lastPage = pages[pages.length - 1];
         const lastPageText = typeof lastPage === "object" ? lastPage?.text : lastPage;
@@ -1109,6 +1109,16 @@ export default function App() {
     if (!themeText) return;
     const lower = themeText.toLowerCase().trim();
     for (const cat of categories) {
+      if (
+        cat.id.toLowerCase() === lower ||
+        cat.label.toLowerCase() === lower ||
+        ((lower.includes("bedtime") || lower.includes("adventure")) && cat.id === "adventures")
+      ) {
+        setCategory(cat.id);
+        setThemeIndex(0);
+        setThemeMode("preset");
+        return;
+      }
       const foundIdx = (cat.themes || []).findIndex(
         (t) => t.toLowerCase().includes(lower) || lower.includes(t.toLowerCase())
       );
@@ -1485,13 +1495,15 @@ export default function App() {
           if (isUp)   { e.preventDefault(); setThemeIndex((i) => (i - 1 + activeThemes.length) % activeThemes.length); }
           if (isLeft) {
             e.preventDefault();
-            const catIdx = THEME_CATEGORIES.findIndex((c) => c.id === category);
+            const currentCatId = normalizeCategory(category);
+            const catIdx = THEME_CATEGORIES.findIndex((c) => c.id === currentCatId);
             const prevCat = THEME_CATEGORIES[(catIdx - 1 + THEME_CATEGORIES.length) % THEME_CATEGORIES.length];
             setCategory(prevCat.id); setThemeIndex(0);
           }
           if (isRight) {
             e.preventDefault();
-            const catIdx = THEME_CATEGORIES.findIndex((c) => c.id === category);
+            const currentCatId = normalizeCategory(category);
+            const catIdx = THEME_CATEGORIES.findIndex((c) => c.id === currentCatId);
             const nextCat = THEME_CATEGORIES[(catIdx + 1) % THEME_CATEGORIES.length];
             setCategory(nextCat.id); setThemeIndex(0);
           }

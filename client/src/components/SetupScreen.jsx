@@ -2,7 +2,7 @@ import React from "react";
 import { ArrowLeft, CogIcon, History, BookOpen, Sparkles, Mic, MicOff, Feather, Trees, Rocket, Moon, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { useSpeechRecognition } from "../utils/useSpeechRecognition";
 import { isFireTVDevice } from "../utils/device";
-import { CANONICAL_BIBLE_STORIES } from "../constants/themes";
+import { CANONICAL_BIBLE_STORIES, normalizeCategory } from "../constants/themes";
 
 const CATEGORY_ICONS = {
   adventures: Sparkles,
@@ -310,7 +310,7 @@ export default function SetupScreen({
           {formatSpeechError(namesSpeech.error)}
         </p>
       )}
-      {category === "bible" && (
+      {normalizeCategory(category) === "bible" && (
         <p className="mt-2 font-sans text-xs text-starlight/60">
           Names are optional for Bible stories &mdash; leave blank for the classic story, or enter names to weave family in.
         </p>
@@ -345,7 +345,8 @@ export default function SetupScreen({
                     aria-label="Story Categories"
                   >
                     {categories.map((cat, idx) => {
-                      const isSelected = (category || "adventures") === cat.id;
+                      const activeCatId = normalizeCategory(category);
+                      const isSelected = activeCatId === cat.id;
                       const IconComponent = CATEGORY_ICONS[cat.id] || Sparkles;
                       return (
                         <button
@@ -361,7 +362,7 @@ export default function SetupScreen({
                             }
                           }}
                           onFocus={(e) => {
-                            if (setCategory && category !== cat.id) {
+                            if (setCategory && activeCatId !== cat.id) {
                               setCategory(cat.id);
                               setThemeIndex(0);
                             }

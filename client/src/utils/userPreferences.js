@@ -2,6 +2,7 @@ import { StorageService } from "./storage";
 import { loadSettings, saveSettings } from "./parentSettings";
 import { getUserId } from "./device";
 import { loadCustomVoices } from "./customVoices";
+import { normalizeCategory } from "../constants/themes";
 
 const PREFERENCES_KEY = "familyStoryNight_userPreferences";
 const CUSTOM_VOICES_STORAGE_KEY = "family_custom_voices";
@@ -83,7 +84,7 @@ export async function syncPreferencesToServer(apiBase, deviceId, prefs = {}) {
         voiceId: prefs.voiceId || prefs.voice || "Joanna",
         storyLength: prefs.storyLength || 6,
         themeIndex: prefs.themeIndex ?? 0,
-        storyCategory: prefs.storyCategory || "all",
+        storyCategory: normalizeCategory(prefs.storyCategory),
         illustrationStyle: prefs.illustrationStyle || "watercolor",
         customVoices,
         ...prefs,

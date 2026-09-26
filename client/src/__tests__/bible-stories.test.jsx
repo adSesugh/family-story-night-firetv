@@ -15,7 +15,7 @@ jest.mock("swiper/css/navigation", () => ({}));
 
 import App from "../App";
 import SetupScreen from "../components/SetupScreen";
-import { THEME_CATEGORIES } from "../constants/themes";
+import { THEME_CATEGORIES, DEFAULT_CATEGORY_ID, normalizeCategory } from "../constants/themes";
 
 describe("Bible Stories Integration & Category Selection", () => {
   describe("SetupScreen Category Switcher", () => {
@@ -273,5 +273,48 @@ describe("Bible Stories Integration & Category Selection", () => {
       expect(screen.getByTestId("category-tab-adventures")).toHaveAttribute("aria-selected", "true");
       expect(screen.getByText(/a cozy adventure/i)).toBeInTheDocument();
     });
+
+    it("defaults to 'adventures' (Bedtime Adventures) when category is 'bedtime adventure', 'all', or empty", () => {
+      expect(DEFAULT_CATEGORY_ID).toBe("adventures");
+      expect(normalizeCategory("bedtime adventure")).toBe("adventures");
+      expect(normalizeCategory("bedtime adventures")).toBe("adventures");
+      expect(normalizeCategory("all")).toBe("adventures");
+      expect(normalizeCategory("")).toBe("adventures");
+      expect(normalizeCategory(null)).toBe("adventures");
+      expect(normalizeCategory(undefined)).toBe("adventures");
+
+      // Render SetupScreen with category='bedtime adventure' and ensure adventures tab is selected
+      const { rerender } = render(
+        <SetupScreen
+          names="Leo"
+          setNames={jest.fn()}
+          themeIndex={0}
+          setThemeIndex={jest.fn()}
+          category="bedtime adventure"
+          setCategory={jest.fn()}
+          categories={THEME_CATEGORIES}
+          themes={THEME_CATEGORIES[0].themes}
+          onSubmit={jest.fn()}
+        />
+      );
+      expect(screen.getByTestId("category-tab-adventures")).toHaveAttribute("aria-selected", "true");
+
+      // Rerender with category='all' and ensure it safely defaults to adventures
+      rerender(
+        <SetupScreen
+          names="Leo"
+          setNames={jest.fn()}
+          themeIndex={0}
+          setThemeIndex={jest.fn()}
+          category="all"
+          setCategory={jest.fn()}
+          categories={THEME_CATEGORIES}
+          themes={THEME_CATEGORIES[0].themes}
+          onSubmit={jest.fn()}
+        />
+      );
+      expect(screen.getByTestId("category-tab-adventures")).toHaveAttribute("aria-selected", "true");
+    });
   });
 });
+

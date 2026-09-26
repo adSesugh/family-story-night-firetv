@@ -87,4 +87,22 @@ export const THEME_CATEGORIES = [
 
 export const DEFAULT_CATEGORY_ID = "adventures";
 
+// Normalize category id, ensuring default of "bedtime adventure" (adventures)
+export function normalizeCategory(cat) {
+  if (!cat) return DEFAULT_CATEGORY_ID;
+  const lower = String(cat).trim().toLowerCase();
+  if (
+    lower === "all" ||
+    lower === "adventures" ||
+    lower === "bedtime adventure" ||
+    lower === "bedtime adventures"
+  ) {
+    return "adventures";
+  }
+  const matched = THEME_CATEGORIES.find(
+    (c) => c.id.toLowerCase() === lower || c.label.toLowerCase() === lower
+  );
+  return matched ? matched.id : cat;
+}
+
 export const THEMES = THEME_CATEGORIES[0].themes;

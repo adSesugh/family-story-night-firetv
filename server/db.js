@@ -3,6 +3,8 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 
+import { normalizeCategory } from "./constants/themes.js";
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -45,7 +47,7 @@ export function initDatabase(dbPath = process.env.DB_PATH) {
       voice_id TEXT DEFAULT 'Joanna',
       story_length INTEGER DEFAULT 6,
       theme_index INTEGER DEFAULT 0,
-      story_category TEXT DEFAULT 'all',
+      story_category TEXT DEFAULT 'adventures',
       illustration_style TEXT DEFAULT 'watercolor',
       custom_voices_json TEXT,
       updated_at TEXT NOT NULL
@@ -114,6 +116,13 @@ export function initDatabase(dbPath = process.env.DB_PATH) {
     db.exec(`ALTER TABLE stories ADD COLUMN narrations_json TEXT`);
   } catch (_e) {
     // Column already exists
+  }
+
+  // Migration for existing preferences defaulting to 'all' instead of 'adventures'
+  try {
+    db.exec(`UPDATE preferences SET story_category = 'adventures' WHERE story_category = 'all' OR story_category IS NULL OR story_category = ''`);
+  } catch (_e) {
+    // Ignore migration error
   }
 
   return db;
@@ -300,7 +309,7 @@ export function getPreferences(deviceId, userId = null) {
         voiceId: dbCustomVoices[0]?.id || "Joanna",
         storyLength: 6,
         themeIndex: 0,
-        storyCategory: "all",
+        storyCategory: "adventures",
         illustrationStyle: "watercolor",
         customVoices: dbCustomVoices,
         updatedAt: new Date().toISOString(),
@@ -330,7 +339,7 @@ export function getPreferences(deviceId, userId = null) {
     voiceId: row.voice_id,
     storyLength: row.story_length,
     themeIndex: row.theme_index,
-    storyCategory: row.story_category,
+    storyCategory: normalizeCategory(row.story_category),
     illustrationStyle: row.illustration_style,
     customVoices: customVoices || [],
     updatedAt: row.updated_at,
@@ -385,7 +394,7 @@ export function savePreferences(deviceId, prefs = {}) {
     prefs.voiceId || "Joanna",
     prefs.storyLength || 6,
     prefs.themeIndex !== undefined ? prefs.themeIndex : 0,
-    prefs.storyCategory || "all",
+    normalizeCategory(prefs.storyCategory),
     prefs.illustrationStyle || "watercolor",
     customVoicesJson,
     now

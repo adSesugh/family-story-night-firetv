@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import { generateStoryData } from "../services/bedrockService.js";
 import { saveStory } from "../db.js";
+import { normalizeCategory } from "../constants/themes.js";
 
 const ALLOWED_STORY_LENGTHS = [3, 4, 6, 8, 9];
 
@@ -15,10 +16,12 @@ export const generateStory = async (req, res) => {
       selectedChoice,
       chapter = 1,
       previousSummary,
-      category = "adventures",
+      category: rawCategory = "adventures",
       deviceId: bodyDeviceId,
       storyId: incomingStoryId,
     } = req.body;
+
+    const category = normalizeCategory(rawCategory);
 
     const deviceId =
       bodyDeviceId ||
