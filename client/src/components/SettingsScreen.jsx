@@ -280,6 +280,19 @@ export default function SettingsScreen({
     if (onSettingsChange) onSettingsChange(updated);
   };
 
+  const handleUpdateMultipleSettings = (newSettings) => {
+    const updated = {
+      ...settingsData,
+      settings: {
+        ...settingsData.settings,
+        ...newSettings,
+      },
+    };
+    saveSettings(updated);
+    setSettingsData(updated);
+    if (onSettingsChange) onSettingsChange(updated);
+  };
+
   const handleClearAnalytics = () => {
     setConfirmClearAnalytics(true);
   };
@@ -716,10 +729,9 @@ export default function SettingsScreen({
                             key={id}
                             type="button"
                             onClick={() => {
-                              handleSelectSetting("ageRestriction", id);
-                              if (id === "3+" && setStoryLength) setStoryLength(3);
-                              else if (id === "5+" && setStoryLength) setStoryLength(6);
-                              else if (id === "8+" && setStoryLength) setStoryLength(9);
+                              const nextLength = id === "3+" ? 3 : id === "8+" ? 9 : 6;
+                              if (setStoryLength) setStoryLength(nextLength);
+                              handleUpdateMultipleSettings({ ageRestriction: id, storyLength: nextLength });
                             }}
                             aria-pressed={isSelected}
                             aria-label={`Age Guidance: ${label}`}
@@ -758,8 +770,9 @@ export default function SettingsScreen({
                             key={length}
                             type="button"
                             onClick={() => {
+                              const nextAge = length === 3 ? "3+" : length === 9 ? "8+" : "5+";
                               if (setStoryLength) setStoryLength(length);
-                              handleSelectSetting("storyLength", length);
+                              handleUpdateMultipleSettings({ storyLength: length, ageRestriction: nextAge });
                             }}
                             aria-pressed={isSelected}
                             aria-label={`Story Length: ${label} (${ages}), ${length} pages, ${desc}`}

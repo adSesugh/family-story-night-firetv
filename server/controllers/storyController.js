@@ -43,7 +43,16 @@ export const generateStory = async (req, res) => {
       return res.status(400).json({ error: "Custom theme must be 100 characters or fewer" });
     }
 
-    const parsedLength = Number(storyLength);
+    let parsedLength = Number(storyLength);
+
+    // If Toddlers (2–4 / 3+) is selected and storyLength was left at the default (6), align to 3 pages
+    if (
+      (ageGuidance === "3+" || ageGuidance === "toddler" || ageGuidance === "2-4" || ageGuidance === "2–4") &&
+      (!req.body.storyLength || parsedLength === 6)
+    ) {
+      parsedLength = 3;
+    }
+
     if (!ALLOWED_STORY_LENGTHS.includes(parsedLength)) {
       return res.status(400).json({ error: "storyLength must be 3, 4, 6, 8, or 9" });
     }

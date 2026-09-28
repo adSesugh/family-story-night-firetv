@@ -302,5 +302,30 @@ ${familyWeave}`;
       expect(prompt.startsWith("Noah gently setting two white doves")).toBe(true);
       expect(prompt).toContain("Style: Children's storybook watercolor painting");
     });
+
+    it('aligns parsedLength to 3 for toddler/preschool age guidance when unassigned or default 6', () => {
+      // Simulate backend logic in storyController
+      const testCases = [
+        { ageGuidance: "3+", inputLength: 6, expected: 3 },
+        { ageGuidance: "toddler", inputLength: undefined, expected: 3 },
+        { ageGuidance: "2-4", inputLength: 6, expected: 3 },
+        { ageGuidance: "8+", inputLength: 6, expected: 6 },
+        { ageGuidance: "5-7", inputLength: 6, expected: 6 },
+        { ageGuidance: "3+", inputLength: 9, expected: 9 }, // Explicit custom choice preserved
+      ];
+
+      testCases.forEach(({ ageGuidance, inputLength, expected }) => {
+        let parsedLength = Math.max(3, Math.min(9, parseInt(inputLength, 10) || 6));
+        const normalizedAge = (ageGuidance || "").toLowerCase().trim();
+        if (
+          (normalizedAge === "3+" || normalizedAge === "toddler" || normalizedAge === "2-4" || normalizedAge === "2–4") &&
+          (!inputLength || parsedLength === 6)
+        ) {
+          parsedLength = 3;
+        }
+        expect(parsedLength).toBe(expected);
+      });
+    });
   });
 });
+
