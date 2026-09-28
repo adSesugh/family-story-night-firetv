@@ -2,13 +2,15 @@
 # XTTS-v2 Voice Cloning Microservice - Production Dockerfile for Google Cloud Run
 # ==============================================================================
 
-FROM python:3.10-slim
+FROM python:3.11-slim
 
 # Prevent Python from writing .pyc files and enable unbuffered logging
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PORT=8080 \
-    COQUI_TOS_AGREED=1
+    COQUI_TOS_AGREED=1 \
+    NVIDIA_VISIBLE_DEVICES=all \
+    NVIDIA_DRIVER_CAPABILITIES=compute,utility
 
 # Install system dependencies required for audio synthesis & conversion
 RUN apt-get update && apt-get install -y --no-install-recommends \

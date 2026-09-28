@@ -6,7 +6,7 @@ torch==2.2.2
 torchaudio==2.2.2
 TTS==0.22.0
 soundfile==0.14.0
-scipy==1.17.1
+scipy>=1.11.0,<1.18.0
 numpy==1.26.4
 fastapi==0.141.1
 uvicorn==0.54.0
