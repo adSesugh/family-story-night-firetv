@@ -10,11 +10,11 @@ export async function synthesizeWithKokoro(
   speed = 0.95,
   audioSample = null
 ) {
-  const kokoroUrl = process.env.KOKORO_VOICE_SERVICE_URL || process.env.KOKORO_API_URL;
+  const kokoroUrl = process.env.VOICE_SERVICE_URL || process.env.KOKORO_VOICE_SERVICE_URL || process.env.KOKORO_API_URL;
   if (!kokoroUrl) return null;
 
   const endpoint = `${kokoroUrl.replace(/\/+$/, "")}/synthesize`;
-  console.log(`[narrate] 🎙️ Routing speech to Kokoro-82M Voice Microservice: ${endpoint} (voice=${voiceId}, hasSample=${Boolean(audioSample)})`);
+  console.log(`[narrate] 🎙️ Routing speech to Voice Microservice: ${endpoint} (voice=${voiceId}, hasSample=${Boolean(audioSample)})`);
 
   const response = await fetch(endpoint, {
     method: "POST",
@@ -33,7 +33,7 @@ export async function synthesizeWithKokoro(
 
   if (!response.ok) {
     const errText = await response.text().catch(() => "");
-    throw new Error(`Kokoro voice service error ${response.status}: ${errText.slice(0, 200)}`);
+    throw new Error(`Voice service error ${response.status}: ${errText.slice(0, 200)}`);
   }
 
   const data = await response.json();
@@ -41,7 +41,7 @@ export async function synthesizeWithKokoro(
     audioData: data.audio_base64,
     speechMarks: data.speech_marks || [],
     durationMs: data.duration_ms || 0,
-    engine: "kokoro-82m",
+    engine: data.engine || "kokoro-82m",
   };
 }
 
@@ -53,7 +53,7 @@ export async function cloneVoiceWithKokoro({
   audioSample = null,
   blendWeights = null,
 }) {
-  const kokoroUrl = process.env.KOKORO_VOICE_SERVICE_URL || process.env.KOKORO_API_URL;
+  const kokoroUrl = process.env.VOICE_SERVICE_URL || process.env.KOKORO_VOICE_SERVICE_URL || process.env.KOKORO_API_URL;
   if (!kokoroUrl) return null;
 
   const endpoint = `${kokoroUrl.replace(/\/+$/, "")}/clone`;

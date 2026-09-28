@@ -154,7 +154,7 @@ export const narrate = async (req, res) => {
               audio: kokoroResult.audioData,
               speechMarks: kokoroResult.speechMarks,
               cached: false,
-              engine: "kokoro-82m",
+              engine: kokoroResult.engine || "xtts-v2",
               voiceId: lookupVoice,
             });
           }
@@ -163,7 +163,7 @@ export const narrate = async (req, res) => {
           const audioBuffer = Buffer.from(base64Data, "base64");
           res.setHeader("Content-Type", "audio/wav");
           res.setHeader("Content-Length", audioBuffer.length);
-          res.setHeader("X-Voice-Engine", "kokoro-82m");
+          res.setHeader("X-Voice-Engine", kokoroResult.engine || "xtts-v2");
           return res.end(audioBuffer);
         }
       } catch (kErr) {
