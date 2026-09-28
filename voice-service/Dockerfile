@@ -20,9 +20,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-# Install Python dependencies
+# Install Python dependencies with PyTorch CUDA 12.1 support
+# (Automatically runs on NVIDIA L4 GPU when attached, or falls back to CPU cleanly)
 COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir torch==2.2.2 torchaudio==2.2.2 --index-url https://download.pytorch.org/whl/cu121 && \
     pip install --no-cache-dir -r requirements.txt
 
 # Pre-download XTTS-v2 model weights into the image layer for instant Cloud Run boots (<3s)

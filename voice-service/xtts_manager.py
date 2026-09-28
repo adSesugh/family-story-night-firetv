@@ -1,7 +1,11 @@
 """
 XTTS-v2 Voice Manager for True Zero-Shot Voice Cloning
 Conditioned directly on the user's recorded audio sample waveform (.wav).
-No base voice scaffolding (no Joanna / Matthew / Bella fallback).
+Features:
+- Pre-computed and cached speaker conditioning latents (gpt_cond_latent & speaker_embedding)
+- Direct in-memory inference without temporary disk WAV files
+- Sentence splitting for fast chunked autoregression
+- Accurate acoustic karaoke speech mark alignment
 """
 
 import os
@@ -60,11 +64,9 @@ def decode_audio_sample(audio_sample_base64: str) -> Optional[Tuple[np.ndarray, 
 
         out_path = in_path + ".wav"
         try:
-            # Try ffmpeg first (standard in Linux/Docker/Cloud Run and brew)
             cmd = ["ffmpeg", "-y", "-i", in_path, "-ac", "1", "-ar", "24000", out_path]
             res = subprocess.run(cmd, capture_output=True, timeout=10)
             if res.returncode != 0 and os.path.exists("/usr/bin/afconvert"):
-                # Fallback to macOS native afconvert
                 subprocess.run(
                     ["/usr/bin/afconvert", "-f", "WAVE", "-d", "LEI16", in_path, out_path],
                     capture_output=True,
@@ -94,6 +96,8 @@ class XTTSVoiceManager:
         self.tts = None
         self.sample_rate = 24000
         self.is_loading = False
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self._latents_cache: Dict[str, Tuple[torch.Tensor, torch.Tensor]] = {}
 
     @classmethod
     def get_instance(cls):
@@ -113,17 +117,20 @@ class XTTSVoiceManager:
 
         self.is_loading = True
         try:
-            print("[XTTSVoiceManager] Loading XTTS-v2 checkpoint (tts_models/multilingual/multi-dataset/xtts_v2)...")
-            num_threads = max(1, min(os.cpu_count() or 4, 4))
-            torch.set_num_threads(num_threads)
+            use_gpu = torch.cuda.is_available()
+            self.device = "cuda" if use_gpu else "cpu"
+            print(f"[XTTSVoiceManager] Loading XTTS-v2 checkpoint (device={self.device}, GPU={use_gpu})...")
+            if not use_gpu:
+                num_threads = max(1, min(os.cpu_count() or 4, 4))
+                torch.set_num_threads(num_threads)
 
             from TTS.api import TTS
             self.tts = TTS(
                 model_name="tts_models/multilingual/multi-dataset/xtts_v2",
                 progress_bar=False,
-                gpu=False
+                gpu=use_gpu,
             )
-            print("[XTTSVoiceManager] XTTS-v2 model loaded successfully.")
+            print(f"[XTTSVoiceManager] XTTS-v2 model loaded successfully on {self.device}.")
         finally:
             self.is_loading = False
 
@@ -132,10 +139,71 @@ class XTTSVoiceManager:
     def has_speaker_wav(self, voice_id: str) -> bool:
         clean_id = re.sub(r"[^a-zA-Z0-9_-]", "_", voice_id.lower().strip())
         wav_path = os.path.join(VOICES_DIR, f"{clean_id}.wav")
-        return os.path.exists(wav_path) and os.path.getsize(wav_path) > 1000
+        pt_path = os.path.join(VOICES_DIR, f"{clean_id}.pt")
+        return (os.path.exists(wav_path) and os.path.getsize(wav_path) > 1000) or os.path.exists(pt_path)
+
+    def get_or_compute_latents(self, voice_id: str, wav_path: str) -> Tuple[torch.Tensor, torch.Tensor]:
+        """
+        Loads pre-computed speaker conditioning latents from memory/disk cache,
+        or computes and saves them once, completely eliminating re-encoding on every page.
+        """
+        clean_id = re.sub(r"[^a-zA-Z0-9_-]", "_", voice_id.lower().strip())
+
+        # 1. In-memory cache
+        if clean_id in self._latents_cache:
+            g, s = self._latents_cache[clean_id]
+            return g.to(self.device), s.to(self.device)
+
+        # 2. Disk cache (.pt)
+        pt_path = os.path.join(VOICES_DIR, f"{clean_id}.pt")
+        if os.path.exists(pt_path):
+            try:
+                data = torch.load(pt_path, map_location=self.device)
+                if isinstance(data, dict) and "gpt_cond_latent" in data and "speaker_embedding" in data:
+                    latents = (data["gpt_cond_latent"].to(self.device), data["speaker_embedding"].to(self.device))
+                    self._latents_cache[clean_id] = latents
+                    print(f"[XTTSVoiceManager] Loaded cached latents from disk: {pt_path}")
+                    return latents
+            except Exception as e:
+                print(f"[XTTSVoiceManager] Warning loading cached latents from {pt_path}: {e}")
+
+        # 3. Compute latents from WAV
+        if not os.path.exists(wav_path):
+            raise FileNotFoundError(f"Speaker WAV file not found: {wav_path}")
+
+        tts_model = self.ensure_model_loaded()
+        xtts = tts_model.synthesizer.tts_model
+
+        print(f"[XTTSVoiceManager] Extracting speaker conditioning latents for '{clean_id}' from {wav_path}...")
+        t0 = time.time()
+        # gpt_cond_len=6, max_ref_length=10 ensures fast, focused speaker latent extraction without quadratic bloat
+        gpt_cond_latent, speaker_embedding = xtts.get_conditioning_latents(
+            audio_path=wav_path,
+            max_ref_length=10,
+            gpt_cond_len=6,
+            gpt_cond_chunk_len=6,
+        )
+        print(f"[XTTSVoiceManager] Speaker latents extracted in {time.time() - t0:.2f}s")
+
+        # Save to disk cache for future instant access (CPU tensors for portable storage)
+        try:
+            torch.save(
+                {
+                    "gpt_cond_latent": gpt_cond_latent.cpu(),
+                    "speaker_embedding": speaker_embedding.cpu(),
+                },
+                pt_path,
+            )
+            print(f"[XTTSVoiceManager] Cached speaker latents to {pt_path}")
+        except Exception as e:
+            print(f"[XTTSVoiceManager] Warning saving latents to {pt_path}: {e}")
+
+        latents = (gpt_cond_latent.to(self.device), speaker_embedding.to(self.device))
+        self._latents_cache[clean_id] = latents
+        return latents
 
     def save_speaker_wav(self, voice_id: str, audio_sample: str) -> str:
-        """Decodes a base64 audio sample and saves it to voices/<voice_id>.wav."""
+        """Decodes audio sample, saves to voices/<voice_id>.wav, and pre-caches latents."""
         clean_id = re.sub(r"[^a-zA-Z0-9_-]", "_", voice_id.lower().strip())
         wav_path = os.path.join(VOICES_DIR, f"{clean_id}.wav")
 
@@ -144,28 +212,53 @@ class XTTSVoiceManager:
             raise ValueError(f"Could not decode audio sample for voice '{voice_id}'")
 
         samples, sr = decoded
+        # Trim to optimal reference duration (max 10 seconds) to prevent excessive memory/compute
+        max_samples = int(sr * 10)
+        if len(samples) > max_samples:
+            samples = samples[:max_samples]
+
         sf.write(wav_path, samples, sr, format="WAV")
         print(f"[XTTSVoiceManager] Saved speaker reference WAV: {wav_path} ({len(samples)} samples @ {sr}Hz)")
+
+        # Invalidate in-memory and disk cache
+        self._latents_cache.pop(clean_id, None)
+        pt_path = os.path.join(VOICES_DIR, f"{clean_id}.pt")
+        if os.path.exists(pt_path):
+            try:
+                os.remove(pt_path)
+            except OSError:
+                pass
+
+        # Pre-compute latents immediately so synthesis calls are instant
+        try:
+            self.get_or_compute_latents(clean_id, wav_path)
+        except Exception as e:
+            print(f"[XTTSVoiceManager] Background latent pre-computation note: {e}")
+
         return wav_path
 
     def list_custom_voices(self) -> List[Dict[str, Any]]:
-        """Returns list of all custom voices with speaker WAV references in voices/."""
+        """Returns list of all custom voices with speaker WAV or PT references in voices/."""
         voices = []
         if not os.path.exists(VOICES_DIR):
             return voices
 
+        seen = set()
         for fname in sorted(os.listdir(VOICES_DIR)):
-            if fname.endswith(".wav") and not fname.startswith("."):
-                voice_id = fname[:-4]
+            if (fname.endswith(".wav") or fname.endswith(".pt")) and not fname.startswith("."):
+                voice_id = os.path.splitext(fname)[0]
+                if voice_id in seen:
+                    continue
+                seen.add(voice_id)
                 file_path = os.path.join(VOICES_DIR, fname)
                 file_size = os.path.getsize(file_path)
-                if file_size > 1000:
-                    voices.append({
-                        "id": voice_id,
-                        "name": voice_id.replace("_", " ").title(),
-                        "engine": "xtts-v2",
-                        "size_bytes": file_size,
-                    })
+                voices.append({
+                    "id": voice_id,
+                    "name": voice_id.replace("_", " ").title(),
+                    "engine": "xtts-v2",
+                    "size_bytes": file_size,
+                    "has_cached_latents": os.path.exists(os.path.join(VOICES_DIR, f"{voice_id}.pt")),
+                })
         return voices
 
     def synthesize_custom_voice(
@@ -176,7 +269,7 @@ class XTTSVoiceManager:
         speed: float = 1.0,
     ) -> Tuple[np.ndarray, List[Dict[str, Any]], int]:
         """
-        Synthesizes speech using XTTS-v2 directly conditioned on the speaker's recorded WAV.
+        Synthesizes speech using XTTS-v2 directly using pre-computed speaker latents.
         Returns: (audio_numpy_array, speech_marks_list, duration_ms)
         """
         clean_text = text.strip()
@@ -186,46 +279,47 @@ class XTTSVoiceManager:
         clean_id = re.sub(r"[^a-zA-Z0-9_-]", "_", voice_id.lower().strip())
         wav_path = os.path.join(VOICES_DIR, f"{clean_id}.wav")
 
-        # If audio_sample base64 was passed in request, decode & update the reference WAV
+        # If audio_sample base64 was passed in request, save and pre-compute latents
         if audio_sample:
             try:
                 self.save_speaker_wav(voice_id, audio_sample)
             except Exception as e:
                 print(f"[XTTSVoiceManager] Warning saving audio_sample: {e}")
 
-        if not os.path.exists(wav_path) or os.path.getsize(wav_path) < 1000:
+        if not self.has_speaker_wav(voice_id):
             raise FileNotFoundError(
-                f"No speaker reference audio found for voice '{voice_id}' at {wav_path}. Please record a voice sample in Voice Studio."
+                f"No speaker reference audio found for voice '{voice_id}'. Please record a voice sample in Voice Studio."
             )
 
         tts_model = self.ensure_model_loaded()
+        xtts = tts_model.synthesizer.tts_model
 
-        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as out_wav_tmp:
-            out_wav_path = out_wav_tmp.name
+        # Retrieve or compute cached latents
+        gpt_cond_latent, speaker_embedding = self.get_or_compute_latents(clean_id, wav_path)
 
-        try:
-            print(f"[XTTSVoiceManager] Generating voice '{clean_id}' for: \"{clean_text[:50]}...\"")
-            start_t = time.time()
-            tts_model.tts_to_file(
+        print(f"[XTTSVoiceManager] Generating voice '{clean_id}' with cached latents for: \"{clean_text[:50]}...\"")
+        start_t = time.time()
+
+        with torch.inference_mode():
+            out = xtts.inference(
                 text=clean_text,
-                speaker_wav=wav_path,
                 language="en",
-                file_path=out_wav_path,
+                gpt_cond_latent=gpt_cond_latent,
+                speaker_embedding=speaker_embedding,
                 speed=speed,
+                enable_text_splitting=True,
             )
-            elapsed = time.time() - start_t
-            print(f"[XTTSVoiceManager] XTTS synthesis complete in {elapsed:.2f}s")
 
-            audio_data, sr = sf.read(out_wav_path)
-            if audio_data.ndim > 1:
-                audio_data = np.mean(audio_data, axis=1)
-            audio_data = audio_data.astype(np.float32)
+        audio_data = out["wav"]
+        if isinstance(audio_data, torch.Tensor):
+            audio_data = audio_data.cpu().numpy()
+        audio_data = audio_data.astype(np.float32)
 
-            speech_marks, total_duration_ms = self._generate_speech_marks(clean_text, audio_data, sr)
-            return audio_data, speech_marks, total_duration_ms
-        finally:
-            if os.path.exists(out_wav_path):
-                os.remove(out_wav_path)
+        elapsed = time.time() - start_t
+        print(f"[XTTSVoiceManager] XTTS direct inference complete in {elapsed:.2f}s ({len(audio_data)} samples)")
+
+        speech_marks, total_duration_ms = self._generate_speech_marks(clean_text, audio_data, self.sample_rate)
+        return audio_data, speech_marks, total_duration_ms
 
     def _generate_speech_marks(
         self,
