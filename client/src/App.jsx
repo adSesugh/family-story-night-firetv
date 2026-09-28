@@ -58,14 +58,19 @@ export default function App() {
     return settings?.settings?.defaultVoice || "Joanna";
   });
   const [storyLength, setStoryLength] = useState(() => {
+    const settings = loadSettings();
+    const age = settings?.settings?.ageRestriction;
+    const settingsLength = Number(settings?.settings?.storyLength);
+    if ((age === "3+" || age === "toddler" || age === "2-4") && (!settingsLength || settingsLength === 6)) {
+      return 3;
+    }
+    if (settingsLength) {
+      return settingsLength;
+    }
+    if (age === "3+") return 3;
+    if (age === "8+") return 9;
     const stored = StorageService.getItem("familyStoryNight_storyLength");
     if (stored && Number(stored)) return Number(stored);
-    const settings = loadSettings();
-    if (settings?.settings?.storyLength && Number(settings.settings.storyLength)) {
-      return Number(settings.settings.storyLength);
-    }
-    if (settings?.settings?.ageRestriction === "3+") return 3;
-    if (settings?.settings?.ageRestriction === "8+") return 9;
     return 6;
   });
   const [illustrationStyle, setIllustrationStyle] = useState(() => {

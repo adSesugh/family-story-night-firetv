@@ -115,7 +115,6 @@ export default function SetupScreen({
   const themeMicBtnRef = React.useRef(null);
   const viewHistoryBtnRef = React.useRef(null);
   const beginStoryBtnRef = React.useRef(null);
-  const storyLengthRef = React.useRef(null);
 
   React.useEffect(() => {
     if (categoryTabsRef.current) {
@@ -465,10 +464,7 @@ export default function SetupScreen({
                     } else if (e.key === "ArrowDown") {
                       e.preventDefault();
                       e.stopPropagation();
-                      (storyLengthRef.current?.querySelector('[aria-pressed="true"]') ||
-                        storyLengthRef.current?.querySelector("button") ||
-                        viewHistoryBtnRef.current ||
-                        beginStoryBtnRef.current)?.focus();
+                      (viewHistoryBtnRef.current || beginStoryBtnRef.current)?.focus();
                     } else if (e.key === "ArrowRight") {
                       e.preventDefault();
                       e.stopPropagation();
@@ -498,10 +494,7 @@ export default function SetupScreen({
                     } else if (e.key === "ArrowDown") {
                       e.preventDefault();
                       e.stopPropagation();
-                      (storyLengthRef.current?.querySelector('[aria-pressed="true"]') ||
-                        storyLengthRef.current?.querySelector("button") ||
-                        viewHistoryBtnRef.current ||
-                        beginStoryBtnRef.current)?.focus();
+                      (viewHistoryBtnRef.current || beginStoryBtnRef.current)?.focus();
                     } else if (e.key === "ArrowLeft") {
                       e.preventDefault();
                       e.stopPropagation();
@@ -549,10 +542,7 @@ export default function SetupScreen({
                   } else if (e.key === "ArrowDown") {
                     e.preventDefault();
                     e.stopPropagation();
-                    (storyLengthRef.current?.querySelector('[aria-pressed="true"]') ||
-                      storyLengthRef.current?.querySelector("button") ||
-                      viewHistoryBtnRef.current ||
-                      beginStoryBtnRef.current)?.focus();
+                    (viewHistoryBtnRef.current || beginStoryBtnRef.current)?.focus();
                   } else if (e.key === "ArrowRight") {
                     const isAtEnd = e.target.selectionEnd === e.target.value.length;
                     if (isAtEnd) {
@@ -668,72 +658,10 @@ export default function SetupScreen({
         )}
       </div>
 
-      {/* Story Length Selector */}
-      <div ref={storyLengthRef} className="mt-5 sm:mt-6">
-        <div className="flex items-center justify-between mb-2">
-          <label className="font-sans text-xs uppercase tracking-wider text-starlight/80 font-semibold flex items-center gap-1.5">
-            <span>Story Length</span>
-          </label>
-          <span className="font-sans text-[11px] text-lamp/90 font-medium">
-            {Number(storyLength) === 3
-              ? "🐣 Toddler (3 pages · ~2 min)"
-              : Number(storyLength) === 9
-              ? "🚀 Chapter Book (9 pages · ~8 min)"
-              : "📖 Early Reader (6 pages · ~5 min)"}
-          </span>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {[
-            { label: "Toddler", ages: "2–4", length: 3, emoji: "🐣", desc: "~2 min" },
-            { label: "Early Reader", ages: "5–7", length: 6, emoji: "📖", desc: "~5 min" },
-            { label: "Chapter Book", ages: "8+", length: 9, emoji: "🚀", desc: "~8 min" },
-          ].map(({ label, ages, length, emoji, desc }) => {
-            const isSelected = Number(storyLength) === length;
-            return (
-              <button
-                key={length}
-                type="button"
-                onClick={() => setStoryLength && setStoryLength(length)}
-                onKeyDown={(e) => {
-                  if (e.key === "ArrowUp") {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    if (activeThemeMode === "custom") {
-                      customThemeRef.current?.focus();
-                    } else {
-                      themeControlsRef.current?.querySelectorAll("button")?.[0]?.focus();
-                    }
-                  } else if (e.key === "ArrowDown") {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    (viewHistoryBtnRef.current || beginStoryBtnRef.current)?.focus();
-                  }
-                }}
-                aria-pressed={isSelected}
-                aria-label={`Story Length: ${label} (${ages}), ${length} pages, ${desc}`}
-                style={{ outline: "none" }}
-                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border font-sans text-xs font-semibold transition-all cursor-pointer focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lamp focus-visible:ring-offset-2 focus-visible:ring-offset-dusk ${
-                  isSelected
-                    ? "border-lamp bg-lamp/20 text-lamp shadow-sm shadow-lamp/20 ring-1 ring-lamp/50"
-                    : "border-starlight/20 bg-starlight/5 text-starlight/70 hover:border-starlight/40 hover:text-parchment"
-                }`}
-              >
-                <span>{emoji}</span>
-                <span>{label}</span>
-                <span className="text-[10px] opacity-75 font-normal">({length}p · {ages})</span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
       {error && <p className="mt-6 font-sans text-base text-red-300">{error}</p>}
       {customThemeError && (
         <p className="mt-2 font-sans text-base text-red-300">{customThemeError}</p>
       )}
-
-
-
 
       <div className="flex flex-col sm:flex-row gap-3 mt-6 sm:mt-8">
         {allowHistory && hasHistory && (
@@ -749,9 +677,11 @@ export default function SetupScreen({
               } else if (e.key === "ArrowUp") {
                 e.preventDefault();
                 e.stopPropagation();
-                (storyLengthRef.current?.querySelector('[aria-pressed="true"]') ||
-                  storyLengthRef.current?.querySelector("button") ||
-                  themeControlsRef.current?.querySelectorAll("button")?.[0])?.focus();
+                if (activeThemeMode === "custom") {
+                  customThemeRef.current?.focus();
+                } else {
+                  themeControlsRef.current?.querySelectorAll("button")?.[0]?.focus();
+                }
               }
             }}
             style={{ outline: "none" }}
@@ -772,9 +702,11 @@ export default function SetupScreen({
             } else if (e.key === "ArrowUp") {
               e.preventDefault();
               e.stopPropagation();
-              (storyLengthRef.current?.querySelector('[aria-pressed="true"]') ||
-                storyLengthRef.current?.querySelector("button") ||
-                themeControlsRef.current?.querySelectorAll("button")?.[0])?.focus();
+              if (activeThemeMode === "custom") {
+                customThemeRef.current?.focus();
+              } else {
+                themeControlsRef.current?.querySelectorAll("button")?.[0]?.focus();
+              }
             }
           }}
           style={{ outline: "none" }}

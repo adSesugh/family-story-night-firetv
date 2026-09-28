@@ -90,24 +90,17 @@ describe("SetupScreen D-pad Navigation on All Actions", () => {
     expect(setThemeIndex).toHaveBeenCalled();
   });
 
-  it("navigates from theme controls down to story length and bottom buttons and up back to theme controls", () => {
+  it("navigates from theme controls down to bottom buttons and up back to theme controls", () => {
     render(<SetupScreen {...defaultProps} />);
 
     const prevBtn = screen.getByRole("button", { name: /previous story theme/i });
     const viewHistoryBtn = screen.getByRole("button", { name: /view history/i });
-    const lengthBtn = screen.getByRole("button", { name: /story length: early reader/i });
 
     prevBtn.focus();
     fireEvent.keyDown(prevBtn, { key: "ArrowDown" });
-    expect(document.activeElement).toBe(lengthBtn);
-
-    fireEvent.keyDown(lengthBtn, { key: "ArrowDown" });
     expect(document.activeElement).toBe(viewHistoryBtn);
 
     fireEvent.keyDown(viewHistoryBtn, { key: "ArrowUp" });
-    expect(document.activeElement).toBe(lengthBtn);
-
-    fireEvent.keyDown(lengthBtn, { key: "ArrowUp" });
     expect(document.activeElement).toBe(prevBtn);
   });
 
