@@ -1,4 +1,5 @@
-.venv
+.venv*
+.venv_xtts/
 __pycache__
 *.pyc
 *.pyo
