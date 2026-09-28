@@ -279,8 +279,8 @@ class XTTSVoiceManager:
         clean_id = re.sub(r"[^a-zA-Z0-9_-]", "_", voice_id.lower().strip())
         wav_path = os.path.join(VOICES_DIR, f"{clean_id}.wav")
 
-        # If audio_sample base64 was passed in request, save and pre-compute latents
-        if audio_sample:
+        # If audio_sample base64 was passed in request, save and pre-compute latents only if not already cached
+        if audio_sample and not self.has_speaker_wav(voice_id):
             try:
                 self.save_speaker_wav(voice_id, audio_sample)
             except Exception as e:

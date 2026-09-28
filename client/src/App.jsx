@@ -158,6 +158,7 @@ export default function App() {
 
   const narrationMemoryCacheRef = useRef(new Map());
   const inFlightNarrationsRef = useRef(new Map());
+  const currentAudioPageIndexRef = useRef(null);
 
   // Pre-fetches narration in the background so reading begins instantly on page turns without pauses
   const prefetchNarration = useCallback(async ({ text, pageIdx, targetVoice, baseVoice, storyId }) => {
@@ -622,6 +623,19 @@ export default function App() {
       clearTimeout(turnTimerRef.current);
       turnTimerRef.current = null;
     }
+    // Stop any existing page narration immediately so it never bleeds into the next page
+    if (audioRef.current) {
+      try {
+        audioRef.current.pause();
+        audioRef.current.removeAttribute("src");
+        audioRef.current.load();
+      } catch (e) { }
+    }
+    currentAudioPageIndexRef.current = null;
+    setActiveSpeechMark(null);
+    setIsNarrating(false);
+    setPendingAudioPlay(null);
+
     setPageIndex(next);
     setTurnKey((k) => k + 1);
     if (next >= pages.length) {
@@ -1207,6 +1221,7 @@ export default function App() {
 
     const playAudioItem = (audioUrl, marks) => {
       if (audioRef.current && !cancelled && audioUrl) {
+        currentAudioPageIndexRef.current = pageIndex;
         speechMarksRef.current = normalizeSpeechMarks(marks || [], textToNarrate);
         setActiveSpeechMark(null);
         isPrimingAudioRef.current = false;
@@ -1368,6 +1383,12 @@ export default function App() {
       if (isPrimingAudioRef.current || !audio.src || isPrimingSrc) {
         return;
       }
+
+      // CRITICAL: Only advance the page if the audio that just finished truly belongs to this page
+      if (currentAudioPageIndexRef.current !== pageIndex) {
+        return;
+      }
+      currentAudioPageIndexRef.current = null;
 
       if (turnTimerRef.current) {
         clearTimeout(turnTimerRef.current);

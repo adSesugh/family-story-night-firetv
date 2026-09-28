@@ -177,10 +177,10 @@ export default function StoryScreen({
     onResult: (text) => setCustomTwist(text),
   });
 
-  // Sync Swiper with pageIndex when it changes from parent
+  // Sync Swiper with pageIndex when it changes from parent without firing duplicate callbacks
   useEffect(() => {
     if (swiperRef.current && swiperRef.current.swiper) {
-      swiperRef.current.swiper.slideTo(pageIndex, 0);
+      swiperRef.current.swiper.slideTo(pageIndex, 0, false);
     }
   }, [pageIndex]);
 
