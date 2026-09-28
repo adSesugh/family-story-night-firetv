@@ -10,7 +10,7 @@ export async function synthesizeWithKokoro(
   speed = 0.95,
   audioSample = null
 ) {
-  const kokoroUrl = process.env.VOICE_SERVICE_URL || process.env.KOKORO_VOICE_SERVICE_URL || process.env.KOKORO_API_URL;
+  const kokoroUrl = process.env.VOICE_SERVICE_URL || process.env.VOICE_SERVICE_URL || process.env.KOKORO_API_URL;
   if (!kokoroUrl) return null;
 
   const endpoint = `${kokoroUrl.replace(/\/+$/, "")}/synthesize`;
@@ -53,7 +53,7 @@ export async function cloneVoiceWithKokoro({
   audioSample = null,
   blendWeights = null,
 }) {
-  const kokoroUrl = process.env.VOICE_SERVICE_URL || process.env.KOKORO_VOICE_SERVICE_URL || process.env.KOKORO_API_URL;
+  const kokoroUrl = process.env.VOICE_SERVICE_URL || process.env.VOICE_SERVICE_URL || process.env.KOKORO_API_URL;
   if (!kokoroUrl) return null;
 
   const endpoint = `${kokoroUrl.replace(/\/+$/, "")}/clone`;

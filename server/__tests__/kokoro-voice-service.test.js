@@ -15,15 +15,15 @@ describe("Kokoro-82M Voice Microservice Integration", () => {
     vi.restoreAllMocks();
   });
 
-  it("returns null if KOKORO_VOICE_SERVICE_URL is not set", async () => {
-    delete process.env.KOKORO_VOICE_SERVICE_URL;
+  it("returns null if VOICE_SERVICE_URL is not set", async () => {
+    delete process.env.VOICE_SERVICE_URL;
     delete process.env.KOKORO_API_URL;
     const res = await synthesizeWithKokoro("Hello bedtime story");
     expect(res).toBeNull();
   });
 
   it("calls the Kokoro service endpoint and parses audio and speech marks", async () => {
-    process.env.KOKORO_VOICE_SERVICE_URL = "http://localhost:8880";
+    process.env.VOICE_SERVICE_URL = "http://localhost:8880";
 
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
@@ -59,7 +59,7 @@ describe("Kokoro-82M Voice Microservice Integration", () => {
   });
 
   it("routes through Kokoro when a custom voice clone is requested", async () => {
-    process.env.KOKORO_VOICE_SERVICE_URL = "http://localhost:8880";
+    process.env.VOICE_SERVICE_URL = "http://localhost:8880";
 
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
@@ -101,7 +101,7 @@ describe("Kokoro-82M Voice Microservice Integration", () => {
   });
 
   it("does not call AWS Polly when Kokoro microservice returns an error for a custom voice", async () => {
-    process.env.KOKORO_VOICE_SERVICE_URL = "http://localhost:8880";
+    process.env.VOICE_SERVICE_URL = "http://localhost:8880";
 
     const mockFetch = vi.fn().mockResolvedValue({
       ok: false,
@@ -141,8 +141,8 @@ describe("Kokoro-82M Voice Microservice Integration", () => {
     expect(responseJson.error).toContain("Kokoro voice synthesis error");
   });
 
-  it("does not call AWS Polly when KOKORO_VOICE_SERVICE_URL is missing for a custom voice", async () => {
-    delete process.env.KOKORO_VOICE_SERVICE_URL;
+  it("does not call AWS Polly when VOICE_SERVICE_URL is missing for a custom voice", async () => {
+    delete process.env.VOICE_SERVICE_URL;
     delete process.env.KOKORO_API_URL;
 
     let responseJson = null;
@@ -176,7 +176,7 @@ describe("Kokoro-82M Voice Microservice Integration", () => {
   });
 
   it("passes custom audio sample to Kokoro when custom voice has recorded audio sample", async () => {
-    process.env.KOKORO_VOICE_SERVICE_URL = "http://localhost:8880";
+    process.env.VOICE_SERVICE_URL = "http://localhost:8880";
     const { saveCustomVoiceRecord } = await import("../db.js");
     const testVoiceId = `custom_test_${Date.now()}`;
     saveCustomVoiceRecord({

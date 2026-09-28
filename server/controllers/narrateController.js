@@ -115,13 +115,13 @@ export const narrate = async (req, res) => {
     }
 
     // 2. Custom voice or Kokoro voice: Route exclusively to Voice Microservice (NEVER call AWS Polly)
-    const kokoroUrl = process.env.KOKORO_VOICE_SERVICE_URL || process.env.KOKORO_API_URL;
+    const kokoroUrl = process.env.VOICE_SERVICE_URL || process.env.KOKORO_API_URL;
 
     if (isMicroserviceVoice) {
       if (!kokoroUrl) {
-        console.warn(`[narrate] Custom voice '${lookupVoice}' requested, but KOKORO_VOICE_SERVICE_URL is not set.`);
+        console.warn(`[narrate] Custom voice '${lookupVoice}' requested, but VOICE_SERVICE_URL is not set.`);
         return res.status(503).json({
-          error: `Voice microservice is required for '${lookupVoice}', but KOKORO_VOICE_SERVICE_URL is not configured.`
+          error: `Voice microservice is required for '${lookupVoice}', but VOICE_SERVICE_URL is not configured.`
         });
       }
 

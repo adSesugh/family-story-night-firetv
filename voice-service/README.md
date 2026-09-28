@@ -68,6 +68,6 @@ cd voice-service
 ### 2. Connect Your App
 Once deployed, copy the service URL output by the script and paste it into `server/.env`:
 ```env
-KOKORO_VOICE_SERVICE_URL=https://family-story-night-voice-xxxxxx.a.run.app
+VOICE_SERVICE_URL=https://family-story-night-voice-xxxxxx.a.run.app
 ```
 Restart your Node server (`npm run dev`) and voice generation across the entire app will run via your ultra-fast Cloud Run GPU service!
