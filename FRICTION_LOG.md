@@ -152,4 +152,110 @@ Additionally, the existing `:focus-visible` CSS rule is not reliably supported o
 2. **`:focus-visible` Support Documentation**: Provide clear documentation and testing guidance about which CSS pseudo-classes (`:focus`, `:focus-visible`, `:focus-within`) are supported in each version of the Amazon Silk Browser, along with recommended fallback CSS patterns for TV web apps.
 3. **TV Web App Starter Template**: Provide an official Amazon Fire TV web app starter kit that pre-includes spatial navigation, D-pad event handling, and proper focus ring CSS — reducing the barrier to building accessible, navigable web apps.
 
+---
+
+## Friction Log Entry 4: Deep-Learning Voice Cloning (XTTS-v2) & AWS Serverless (Lambda / API Gateway) Roadblocks
+**Date:** September 26–30, 2026
+
+### Task Attempted
+Deploying the custom voice cloning microservice (XTTS-v2) onto AWS Serverless infrastructure (AWS Lambda + Amazon API Gateway) to provide a unified, zero-infrastructure AWS deployment alongside Amazon Bedrock and Amazon Polly.
+
+---
+
+### Steps Taken
+1. Packaged the zero-shot voice cloning service into a Docker container image adhering to AWS Lambda container specifications.
+2. Evaluated runtime cold-start and inference latency on x86_64 Lambda runtimes with maximum memory (10,240 MB RAM).
+3. Attempted synchronous synthesis invocations routed through Amazon API Gateway (`/synthesize`).
+
+---
+
+### Expected Result
+1. Lambda would cold-start in under 5–10 seconds, load the PyTorch model checkpoint, and synthesize 2–3 bedtime story sentences on CPU in under 3–5 seconds.
+2. Amazon API Gateway would stream the resulting audio and speech marks to the Fire TV client without timing out.
+
+---
+
+### Actual Result
+1. **No GPU Acceleration on AWS Lambda**: Lambda runtimes are strictly CPU-bound (x86_64 / ARM64). Deep autoregressive transformers and vocoders in XTTS-v2 require GPU tensor cores. On Lambda's shared vCPUs, synthesizing a single 3-sentence story page took **25 to 45+ seconds**, rendering the interactive bedtime reading experience sluggish and unviable.
+2. **API Gateway 29-Second Hard Limit**: Amazon API Gateway enforces an immutable maximum integration timeout of **29 seconds**. Whenever CPU synthesis exceeded 29 seconds, API Gateway severed the connection and returned a `504 Gateway Timeout` before synthesis finished.
+3. **Severe Cold-Start Penalty**: Pulling and loading the ~2.2 GB XTTS-v2 checkpoint and PyTorch runtime into memory during cold starts took **35 to 60+ seconds**, failing initial requests immediately.
+4. **Container Image & Memory Footprint**: The uncompressed PyTorch + CUDA + XTTS-v2 container was ~7.2 GB, approaching Lambda's 10 GB container image limit and requiring costly 8–10 GB RAM allocations.
+
+---
+
+### Severity Rating
+**High** (precluded running deep-learning zero-shot voice cloning on AWS Lambda serverless infrastructure).
+
+---
+
+### Workaround Applied
+1. **Hybrid Cloud & Dedicated GPU Deployments**:
+   - **Google Cloud Run with NVIDIA L4 GPU** (`deploy-cloudrun.sh`): Deployed on serverless Google Cloud Run with an NVIDIA L4 GPU (24 GB VRAM) providing **sub-second inference (~350–450ms per page)** while preserving scale-to-zero when idle ($0 idle cost).
+   - **Amazon ECS / EC2 `g4dn.xlarge` Alternative**: Documented native AWS deployment using Amazon ECS with an EC2 `g4dn.xlarge` spot instance (NVIDIA T4 GPU) for teams requiring a single AWS cloud perimeter.
+   - **Turn-key Google Colab T4 Runner** (`colab_voice_service.ipynb`): Created a fully scripted Colab notebook using a free NVIDIA T4 GPU and Cloudflare HTTPS tunneling, allowing judges and developers to run zero-shot voice cloning with zero setup cost.
+2. **Narration Pipeline Prefetching & Non-Blocking Audio**:
+   - Engineered `prefetchSubsequentPage` in `client/src/App.jsx` to prefetch narration for page $N+1$ in the background while page $N$ is being read aloud.
+   - Decoupled audio playback from background illustration rendering so voice narration starts immediately without waiting for image diffusion.
+3. **In-Memory Microservice Latent Caching**:
+   - In `kokoroVoiceService.js`, tracked synchronized voice IDs in memory and omitted sending heavy base64 audio samples once the microservice has extracted and cached speaker conditioning latents (`.pt`), drastically cutting network payload overhead.
+
+---
+
+### Actionable Suggestions for Amazon Developer Platform
+1. **GPU-Accelerated AWS Lambda Runtimes**: Provide optional fractional GPU or vGPU runtime slices (e.g., NVIDIA T4 / L4) for AWS Lambda container images, enabling modern generative AI and speech synthesis workloads to run in true serverless mode without dedicated EC2 management.
+2. **Configurable API Gateway Timeouts**: Allow developers to configure HTTP API Gateway integration timeouts up to 60–120 seconds for AI and deep-learning inference payloads where response latency exceeds 29 seconds.
+3. **Zero-Shot Voice Cloning Support in Amazon Polly**: Extend Amazon Polly Neural with a voice enrollment endpoint that accepts a 10-second reference audio sample, enabling developers to synthesize custom family voices directly through native Polly APIs without managing third-party PyTorch microservices.
+
+---
+
+## Friction Log Entry 5: Karaōke Highlighting Drift from Polly UTF-8 Byte Offsets & Acoustic Speech Marks Alignment
+**Date:** September 27–30, 2026
+
+### Task Attempted
+Achieving pixel-perfect Karaōke read-along highlighting across both Amazon Polly Neural narration and custom XTTS-v2 cloned family voices on a 65" Fire TV screen, ensuring word glow precisely matches spoken words across stories containing quotes, dialogue dashes, and bedtime punctuation.
+
+---
+
+### Steps Taken
+1. Requested word-level speech marks from Amazon Polly using `SpeechMarkTypes: ["word"]`.
+2. Sliced story text in JavaScript using `mark.start` and `mark.end` returned by Polly.
+3. Implemented synthetic speech mark generation for XTTS-v2 based on uniform character duration.
+
+---
+
+### Expected Result
+1. The gold Karaōke highlight glow precisely tracks the spoken word on the TV screen.
+2. The highlight cleanly pauses during breath pauses, punctuation breaks, and sentence transitions.
+
+---
+
+### Actual Result
+1. **Polly UTF-8 Byte Offset vs. JavaScript UTF-16 Character Drift**: Amazon Polly specifies `start` and `end` offsets as **byte counts in UTF-8**. Bedtime stories generated by Claude 3.5 Sonnet frequently contain smart quotes (`“`, `”`), curly apostrophes (`’`), and em dashes (`—`), which occupy 3 bytes in UTF-8 but count as 1 character in JavaScript strings. After the first curly quote or apostrophe in a story, the client-side character slicing drifted by 2+ characters, highlighting the wrong words or splitting syllables across words.
+2. **Highlight Stalling Across Punctuation**: Uniform character durations caused the Karaōke highlight to linger on the last word of a clause or sentence during natural speech pauses (e.g. at commas, semicolons, and periods), making the highlight appear stuck before jumping ahead.
+
+---
+
+### Severity Rating
+**Medium-High** (jarring visual defect that undermined the literacy-reinforcing read-along experience on the living room display).
+
+---
+
+### Workaround Applied
+1. **UTF-8 Byte to UTF-16 Character Offset Converter** (`server/controllers/narrateController.js`):
+   - Implemented `convertPollyMarksToCharIndices` using Node.js `Buffer.from(text, "utf8").subarray(0, m.start).toString("utf8").length`.
+   - Converts all incoming Polly speech mark offsets from UTF-8 byte positions into true JavaScript string character indices before delivering them to the Fire TV client.
+2. **Acoustic Waveform Energy & Punctuation Pause Alignment** (`voice-service/xtts_manager.py`):
+   - Replaced uniform character estimation with an acoustic energy envelope detector (`np.abs(audio_data) > 0.012`) to detect true speech onset and trailing silence.
+   - Incorporated phonetic duration weighting (vowels count $1.6\times$ vs. consonants $0.7\times$).
+   - Explicitly modeled natural punctuation pauses (480ms for periods/exclamations, 260ms for commas/dashes, 50ms inter-word gap).
+3. **Clamped Word Glow Duration** (`client/src/utils/speechMarks.js`):
+   - Updated `getActiveSpeechMarkAtTime` to honor explicit `mark.duration` with a strict lower bound (`Math.max(..., 80ms)`) and upper clamp, ensuring highlights cleanly extinguish during natural sentence pauses.
+
+---
+
+### Actionable Suggestions for Amazon Developer Platform
+1. **Polly Character Offset Option**: Provide an option in the Amazon Polly SDK (e.g. `SpeechMarkUnit: "character"`) to return string character indices directly rather than UTF-8 byte offsets, eliminating the need for server-side byte re-encoding in web applications.
+2. **Pre-Built Karaōke Component for Fire TV**: Include a reference Karaōke read-along component in the Fire TV developer sample library that demonstrates proper speech mark synchronization with HTML5 audio elements on Amazon Silk.
+
+
 

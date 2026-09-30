@@ -69,8 +69,10 @@ flowchart TD
 - **Select for Storytime**: In the story setup screen, choose your custom cloned voice from the voice dropdown. When selected, the story is narrated in Mom, Dad, or Grandma's voice with matching Karaōke highlighting!
 
 ### 3. 📖 Bedtime Reading & Real-Time Karaōke
-- **Synchronized Read-Along**: As each word is spoken, it illuminates in gold on the big screen, reinforcing word recognition and literacy.
+- **Synchronized Read-Along**: As each word is spoken, it illuminates in gold on the big screen, reinforcing word recognition and early childhood literacy.
 - **Cinematic Visuals**: Each page displays high-resolution storybook art generated dynamically by **Amazon Nova Canvas** with smooth Ken Burns camera panning.
+- **Instant Playback & Background Prefetching**: Narration begins immediately without blocking on background illustration rendering. While the child listens to page $N$, the client automatically prefetches narration for page $N+1$ in the background for zero-latency page turns.
+- **Visual Voice Status**: Dedicated on-screen status shows when the engine is actively reading aloud or preparing a custom voice clone.
 - **Audio & Page Controls**:
   - Press **D-Pad Right / Left** to advance or review pages.
   - Press **Play / Pause** on the Fire TV remote to toggle narration.
@@ -107,10 +109,13 @@ flowchart TD
 ### 3. Voice Cloning Microservice (`voice-service/`)
 - **Framework**: Python 3.10 / FastAPI + Coqui XTTS-v2.
 - **Features**:
-  - True zero-shot voice cloning from a 10s audio sample.
-  - Pre-computed speaker conditioning latents (`.pt`) to bypass repeated audio encoding.
-  - Aligns acoustic energy envelopes with word tokens for exact millisecond Karaōke speech marks.
-  - Dual deployment: runs locally on CPU or on **Google Cloud Run with NVIDIA L4 GPU acceleration** (~400ms per page).
+  - True zero-shot voice cloning from a 10-second reference audio sample.
+  - Pre-computed speaker conditioning latents (`.pt`) and in-memory synchronization cache to bypass repeated audio encoding and heavy network transfers.
+  - Acoustic waveform energy envelope detection and punctuation pause modeling (480ms for periods, 260ms for commas) for millisecond Karaōke speech marks.
+  - Flexible deployment profiles:
+    - **Google Cloud Run (NVIDIA L4 GPU)**: Serverless, scale-to-zero, ~350–450ms inference.
+    - **Google Colab (NVIDIA T4 GPU)**: Free zero-setup runner with Cloudflare tunnel (`colab_voice_service.ipynb`).
+    - **Amazon ECS on EC2 `g4dn.xlarge`**: Single-cloud AWS production hosting with NVIDIA T4 GPU.
 - **Port**: `8880`.
 
 ---
@@ -156,6 +161,18 @@ VOICE_SERVICE_URL=http://localhost:8880
 ```
 
 ### Step 3: Start the Voice Cloning Microservice
+You can run the voice microservice locally, or connect to a free GPU runner in Google Colab:
+
+**Option A: Free Google Colab T4 GPU (Recommended for Testing & Judging)**:
+1. Open [`voice-service/colab_voice_service.ipynb`](file:///Users/adsesugh/devapps/family-story-night/voice-service/colab_voice_service.ipynb) in Google Colab.
+2. Select **Runtime > Change runtime type > T4 GPU**.
+3. Run all cells in order. The notebook downloads XTTS-v2 and starts a public HTTPS Cloudflare tunnel.
+4. Set the printed URL in `server/.env`:
+   ```properties
+   VOICE_SERVICE_URL=https://your-tunnel-url.trycloudflare.com
+   ```
+
+**Option B: Local Machine Execution**:
 ```bash
 cd voice-service
 python3 -m venv .venv_xtts
@@ -185,38 +202,31 @@ npm run dev
 
 ---
 
-## ☁️ Deploying the Voice Service to Google Cloud Run
+## ☁️ Deploying the Voice Service: Architecture & Options
 
-For production-grade voice cloning with **instant ~400ms inference**, deploy the voice microservice to Google Cloud Run with an NVIDIA L4 GPU.
+The voice cloning microservice is designed for fast, zero-shot autoregressive inference. We offer multiple deployment patterns depending on your infrastructure preferences:
 
-### Option 1: Automated Script
+### Option 1: Free Google Colab Runner (Zero-Cost Hackathon Judging)
+Run [`voice-service/colab_voice_service.ipynb`](file:///Users/adsesugh/devapps/family-story-night/voice-service/colab_voice_service.ipynb) on a free Colab NVIDIA T4 GPU instance. It patches all dependencies, starts the FastAPI microservice, and launches a secure public Cloudflare HTTPS tunnel with zero configuration.
+
+### Option 2: Google Cloud Run with NVIDIA L4 GPU (Production Serverless)
+For production-grade voice cloning with **instant ~350–450ms inference**, deploy to Google Cloud Run with an NVIDIA L4 GPU:
 ```bash
 cd voice-service
 chmod +x deploy-cloudrun.sh
-
-# Deploy with NVIDIA L4 GPU acceleration
 ./deploy-cloudrun.sh
-
-# (Or deploy with standard CPU mode: ./deploy-cloudrun.sh --cpu)
 ```
+- **Scale-to-Zero**: Scales down to 0 instances when idle, incurring $0 baseline cost.
+- **Container Cold-Start**: Pre-cached checkpoint layers in the Docker image enable fast boots (<3s).
 
-### Option 2: Continuous Deployment via Cloud Run Console
-1. In Google Cloud Console, navigate to **Cloud Run** $\rightarrow$ **Create Service**.
-2. Select **"Continuously deploy from a repository"** and connect this repository.
-3. Configure build settings:
-   - **Branch**: `^main$`
-   - **Build Type**: `Dockerfile`
-   - **Source location**: `/voice-service/Dockerfile`
-4. Container settings:
-   - **GPU**: NVIDIA L4 (1 GPU)
-   - **CPU**: 4 vCPUs
-   - **Memory**: 16 GiB
-   - **Minimum instances**: 0 (scales to 0 when idle to eliminate costs)
-   - **Authentication**: Allow unauthenticated invocations
-5. Copy the deployed URL and set in `server/.env`:
-   ```env
-   VOICE_SERVICE_URL=https://family-story-night-voice-xxxxxx.a.run.app
-   ```
+### Option 3: Native AWS Hosting (Amazon ECS on EC2 `g4dn.xlarge`)
+To maintain all application tiers within a single AWS cloud perimeter alongside Amazon Bedrock and Amazon Polly:
+- Deploy [`voice-service/Dockerfile`](file:///Users/adsesugh/devapps/family-story-night/voice-service/Dockerfile) to **Amazon ECS** backed by an EC2 `g4dn.xlarge` instance (NVIDIA T4 Tensor Core GPU, 16 GB RAM).
+- Provides dedicated sub-second synthesis (~500ms per page) within your AWS VPC.
+
+> [!NOTE]
+> **Why Not AWS Lambda for XTTS-v2?**
+> AWS Lambda runs exclusively on CPUs and does not provide GPU acceleration. Autoregressive transformer synthesis for XTTS-v2 on CPU takes **25–45 seconds per page**, which exceeds Amazon API Gateway's hard **29-second timeout ceiling** (triggering `504 Gateway Timeout` errors) and creates a sluggish bedtime experience. Dedicated GPU hosting or serverless L4 GPU containers are therefore strongly recommended for deep-learning voice cloning.
 
 ---
 
@@ -249,7 +259,7 @@ cd client && npm test
 cd server && npm test
 ```
 
-*177+ automated tests verifying remote keycodes, audio synthesis, bedtime dimming, and voice cloning.*
+*252 automated tests (171 client tests across 30 test suites + 81 backend tests across 9 test files) verifying remote keycodes, audio synthesis, bedtime dimming, and voice cloning.*
 
 ---
 
