@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, fireEvent, act } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import "@testing-library/jest-dom";
 // Mock swiper to avoid ESM syntax issues in Jest
 jest.mock("swiper/react", () => ({
@@ -22,6 +22,9 @@ describe("Personalized Voice Clones (Family Voice Studio)", () => {
   beforeEach(() => {
     window.localStorage.clear();
     jest.clearAllMocks();
+    if (typeof global.URL !== "undefined" && !global.URL.createObjectURL) {
+      global.URL.createObjectURL = jest.fn(() => "blob:mock-url");
+    }
   });
 
   describe("customVoices utility", () => {
@@ -116,6 +119,68 @@ describe("Personalized Voice Clones (Family Voice Studio)", () => {
       const createdVoice = onVoiceCreated.mock.calls[0][0];
       expect(createdVoice.name).toBe("Grandma Susan");
       expect(onClose).toHaveBeenCalled();
+    });
+
+    it("closes modal when Escape or GoBack key is pressed", () => {
+      const onClose = jest.fn();
+      render(
+        <FamilyVoiceStudioModal
+          isOpen={true}
+          onClose={onClose}
+          onVoiceCreated={jest.fn()}
+        />
+      );
+
+      fireEvent.keyDown(window, { key: "Escape" });
+      expect(onClose).toHaveBeenCalledTimes(1);
+
+      fireEvent.keyDown(window, { key: "GoBack" });
+      expect(onClose).toHaveBeenCalledTimes(2);
+    });
+
+    it("focuses interactive element upon open and scopes spatial navigation", async () => {
+      const onClose = jest.fn();
+      render(
+        <FamilyVoiceStudioModal
+          isOpen={true}
+          onClose={onClose}
+          onVoiceCreated={jest.fn()}
+        />
+      );
+
+      // Wait for the open focus timeout
+      await new Promise((resolve) => setTimeout(resolve, 60));
+      expect(document.activeElement).not.toBeNull();
+      expect(document.activeElement.tagName).toMatch(/BUTTON|INPUT/);
+    });
+
+    it("supports uploading an audio file and triggers onVoiceCreated with voice data", async () => {
+      const onVoiceCreated = jest.fn();
+      const onClose = jest.fn();
+
+      render(
+        <FamilyVoiceStudioModal
+          isOpen={true}
+          onClose={onClose}
+          onVoiceCreated={onVoiceCreated}
+        />
+      );
+
+      const fileInput = screen.getByTestId("audio-file-input");
+      const mockFile = new File(["dummy-audio-content"], "mom_voice.wav", { type: "audio/wav" });
+
+      fireEvent.change(fileInput, { target: { files: [mockFile] } });
+
+      await waitFor(() => {
+        expect(screen.getByText(/Voice sample ready/i)).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByTestId("save-voice-clone-btn"));
+
+      await waitFor(() => {
+        expect(onVoiceCreated).toHaveBeenCalled();
+        expect(onClose).toHaveBeenCalled();
+      });
     });
   });
 

@@ -69,6 +69,7 @@ export default function DpadController({
         {/* Up Button */}
         <button
           type="button"
+          tabIndex={-1}
           onClick={() => handlePress("up")}
           aria-label="D-pad Up"
           className={`${getBtnClass("up")} col-start-2 row-start-1 h-10 sm:h-11`}
@@ -83,6 +84,7 @@ export default function DpadController({
         {/* Left Button */}
         <button
           type="button"
+          tabIndex={-1}
           onClick={() => handlePress("left")}
           aria-label="D-pad Left"
           className={`${getBtnClass("left")} col-start-1 row-start-2 h-10 sm:h-11`}
@@ -94,6 +96,7 @@ export default function DpadController({
         {/* Center / Select OK Button */}
         <button
           type="button"
+          tabIndex={-1}
           onClick={() => handlePress("select")}
           aria-label="D-pad Select"
           className={`${getBtnClass(
@@ -107,6 +110,7 @@ export default function DpadController({
         {/* Right Button */}
         <button
           type="button"
+          tabIndex={-1}
           onClick={() => handlePress("right")}
           aria-label="D-pad Right"
           className={`${getBtnClass("right")} col-start-3 row-start-2 h-10 sm:h-11`}
@@ -121,6 +125,7 @@ export default function DpadController({
         {/* Down Button */}
         <button
           type="button"
+          tabIndex={-1}
           onClick={() => handlePress("down")}
           aria-label="D-pad Down"
           className={`${getBtnClass("down")} col-start-2 row-start-3 h-10 sm:h-11`}

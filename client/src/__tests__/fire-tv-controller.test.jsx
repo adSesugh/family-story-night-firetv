@@ -36,6 +36,12 @@ describe("Fire TV Remote & Gamepad Controller Support", () => {
           blob: () => Promise.resolve(new Blob(["audio-data"], { type: "audio/mpeg" })),
         });
       }
+      if (url.includes("/illustrate")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ imageUrl: "data:image/png;base64,mock" }),
+        });
+      }
       return Promise.reject(new Error(`Unhandled URL: ${url}`));
     });
 

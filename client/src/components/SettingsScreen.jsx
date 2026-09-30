@@ -29,6 +29,7 @@ import Toast from "./Toast";
 import DpadController from "./DpadController";
 import { getDeviceId, getUserId, setUserId } from "../utils/device";
 import { syncPreferencesToServer } from "../utils/userPreferences";
+import { moveFocus, focusFirst } from "../utils/spatialNav";
 
 const API_BASE = (import.meta.env.VITE_API_BASE || "http://localhost:4000").trim().replace(/\/+$/, "");
 
@@ -112,116 +113,71 @@ export default function SettingsScreen({
 
   const handleDpadNavigate = useCallback(
     (direction) => {
-      if (!screenRef.current) return;
-
-      const focusableSelector =
-        'button:not([disabled]):not([tabindex="-1"]), [role="tab"], input:not([disabled]), textarea:not([disabled]), select:not([disabled])';
-      const rawElements = Array.from(screenRef.current.querySelectorAll(focusableSelector));
-
-      const elements = rawElements.filter(
-        (el) => !el.closest('[aria-hidden="true"]') && el.style.display !== "none"
-      );
-
-      if (direction === "left") {
-        if (activeTab === "parent") {
-          selectTab("story");
-          tabRefs.current["story"]?.focus();
-        } else {
-          const activeEl = document.activeElement;
-          const currentIndex = elements.indexOf(activeEl);
-          const prevIndex =
-            currentIndex === -1 ? elements.length - 1 : (currentIndex - 1 + elements.length) % elements.length;
-          elements[prevIndex]?.focus();
-          elements[prevIndex]?.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
+      if (direction === "back") {
+        const openDialog = document.querySelector('[role="dialog"][aria-modal="true"], dialog[open]');
+        if (openDialog) {
+          const closeBtn = openDialog.querySelector(
+            '[data-testid="close-voice-studio-btn"], [aria-label*="close" i], button[data-close], button.close'
+          );
+          if (closeBtn && typeof closeBtn.click === "function") {
+            closeBtn.click();
+            return;
+          }
         }
+        if (onBack) onBack();
         return;
       }
-
-      if (direction === "right") {
-        if (activeTab === "story") {
-          selectTab("parent");
-          tabRefs.current["parent"]?.focus();
-        } else {
-          const activeEl = document.activeElement;
-          const currentIndex = elements.indexOf(activeEl);
-          const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % elements.length;
-          elements[nextIndex]?.focus();
-          elements[nextIndex]?.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
-        }
-        return;
-      }
-
-      if (elements.length === 0) return;
-
-      const activeEl = document.activeElement;
-      const currentIndex = elements.indexOf(activeEl);
-
-      if (direction === "down") {
-        const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % elements.length;
-        elements[nextIndex]?.focus();
-        elements[nextIndex]?.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
-      } else if (direction === "up") {
-        const prevIndex =
-          currentIndex === -1 ? elements.length - 1 : (currentIndex - 1 + elements.length) % elements.length;
-        elements[prevIndex]?.focus();
-        elements[prevIndex]?.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
-      } else if (direction === "select") {
+      if (direction === "select") {
+        const activeEl = document.activeElement;
         if (activeEl && typeof activeEl.click === "function") {
           activeEl.click();
         }
-      } else if (direction === "back") {
-        if (onBack) onBack();
+        return;
       }
+
+      const activeEl = document.activeElement;
+      const isOnTab = activeEl && activeEl.getAttribute("role") === "tab";
+
+      if (direction === "right") {
+        if (isOnTab && activeTab === "story") {
+          selectTab("parent");
+          tabRefs.current["parent"]?.focus();
+          return;
+        }
+        const moved = moveFocus("right");
+        if (!moved && activeTab === "story") {
+          selectTab("parent");
+          tabRefs.current["parent"]?.focus();
+        }
+        return;
+      }
+
+      if (direction === "left") {
+        if (isOnTab && activeTab === "parent") {
+          selectTab("story");
+          tabRefs.current["story"]?.focus();
+          return;
+        }
+        const moved = moveFocus("left");
+        if (!moved && activeTab === "parent") {
+          selectTab("story");
+          tabRefs.current["story"]?.focus();
+        }
+        return;
+      }
+
+      moveFocus(direction);
     },
     [activeTab, onBack]
   );
 
   useEffect(() => {
-    const handleKeyDown = (e) => {
-      const isInput =
-        e.target?.tagName === "INPUT" || e.target?.tagName === "TEXTAREA";
-
-      if (isInput) {
-        if (e.key === "Escape" || e.key === "GoBack" || e.keyCode === 4) {
-          e.preventDefault();
-          onBack?.();
-        }
-        return;
-      }
-
-      if (e.key === "ArrowDown" || e.keyCode === 40) {
-        e.preventDefault();
-        handleDpadNavigate("down");
-      } else if (e.key === "ArrowUp" || e.keyCode === 38) {
-        e.preventDefault();
-        handleDpadNavigate("up");
-      } else if (e.key === "ArrowLeft" || e.keyCode === 37) {
-        e.preventDefault();
-        handleDpadNavigate("left");
-      } else if (e.key === "ArrowRight" || e.keyCode === 39) {
-        e.preventDefault();
-        handleDpadNavigate("right");
-      } else if (e.key === "Enter" || e.keyCode === 13) {
-        if (document.activeElement && typeof document.activeElement.click === "function") {
-          e.preventDefault();
-          document.activeElement.click();
-        }
-      } else if (
-        e.key === "Escape" ||
-        e.key === "Backspace" ||
-        e.key === "GoBack" ||
-        e.keyCode === 4 ||
-        e.keyCode === 8 ||
-        e.keyCode === 27
-      ) {
-        e.preventDefault();
-        onBack?.();
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [handleDpadNavigate, onBack]);
+    if (tabRefs.current[activeTab]) {
+      tabRefs.current[activeTab].focus();
+    } else if (screenRef.current) {
+      focusFirst(screenRef.current);
+    }
+  }, [activeTab]);
 
   const handleCreatePin = (e) => {
     e?.preventDefault();
@@ -368,7 +324,7 @@ export default function SettingsScreen({
               id={`settings-tab-${id}`}
               aria-selected={selected}
               aria-controls={selected ? `settings-panel-${id}` : undefined}
-              tabIndex={selected ? 0 : -1}
+              tabIndex={0}
               onClick={() => selectTab(id)}
               className={`-mb-px flex cursor-pointer items-center justify-center gap-2 border-b-2 px-3 py-2.5 font-sans text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-lamp sm:px-6 sm:text-base ${selected
                   ? "border-lamp font-medium text-parchment"

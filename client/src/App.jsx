@@ -1489,6 +1489,7 @@ export default function App() {
   // Supports: D-pad navigation (37, 38, 39, 40), Select/A/X/Y (13), Play/Pause (179), Rewind (227), Fast Forward (228), Back/Gamepad B (4, 8, 27)
   useEffect(() => {
     const handleKeyDown = (e) => {
+      if (e.defaultPrevented) return;
       const isSelect = e.key === "Enter" || e.keyCode === 13 || e.which === 13;
       const isUp = e.key === "ArrowUp" || e.keyCode === 38 || e.which === 38;
       const isDown = e.key === "ArrowDown" || e.keyCode === 40 || e.which === 40;
@@ -1527,6 +1528,62 @@ export default function App() {
         e.stopPropagation();
         handleReturnHome();
         return;
+      }
+
+      // Active modal / dialog D-pad & remote control (e.g. Family Voice Studio, ConfirmModal)
+      const openDialog = document.querySelector('[role="dialog"][aria-modal="true"], dialog[open]');
+      if (openDialog) {
+        if (isBack) {
+          e.preventDefault();
+          const closeBtn = openDialog.querySelector(
+            '[data-testid="close-voice-studio-btn"], [aria-label*="close" i], button[data-close], button.close'
+          );
+          if (closeBtn && typeof closeBtn.click === "function") {
+            closeBtn.click();
+          } else {
+            openDialog.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
+          }
+          return;
+        }
+
+        const tag = e.target?.tagName;
+        const isFocusedOnInput = tag === "INPUT" || tag === "TEXTAREA";
+
+        if (isFocusedOnInput) {
+          if (isSelect) {
+            if (e.target?.form && typeof e.target.form.requestSubmit === "function") {
+              e.preventDefault();
+              e.target.form.requestSubmit();
+            }
+            return;
+          }
+          if (isDown || isUp) {
+            const direction = isDown ? "down" : "up";
+            const moved = moveFocus(direction);
+            if (moved) e.preventDefault();
+            return;
+          }
+          // Inside text input, allow Left/Right arrows to move cursor
+          return;
+        }
+
+        if (isDown || isUp || isLeft || isRight) {
+          const direction = isDown ? "down" : isUp ? "up" : isLeft ? "left" : "right";
+          const moved = moveFocus(direction);
+          if (moved) e.preventDefault();
+          return;
+        }
+
+        if (isSelect) {
+          const focused = document.activeElement;
+          if (focused && focused !== document.body && typeof focused.click === "function") {
+            e.preventDefault();
+            focused.click();
+          }
+          return;
+        }
+
+        return; // Modal is open; prevent underlying screen handlers from reacting
       }
 
       if (screen === "setup") {
@@ -1726,6 +1783,34 @@ export default function App() {
           setScreen("setup");
         }
       } else if (screen === "history" || screen === "settings") {
+        const tag = e.target?.tagName;
+        const isFocusedOnInput = tag === "INPUT" || tag === "TEXTAREA";
+
+        if (isFocusedOnInput) {
+          if (isBack) {
+            e.preventDefault();
+            setScreen("setup");
+            return;
+          }
+          if (isSelect) {
+            if (e.target?.form && typeof e.target.form.requestSubmit === "function") {
+              e.preventDefault();
+              e.target.form.requestSubmit();
+            } else if (typeof e.target.click === "function") {
+              e.preventDefault();
+              e.target.click();
+            }
+            return;
+          }
+          if (isDown || isUp) {
+            const direction = isDown ? "down" : "up";
+            const moved = moveFocus(direction);
+            if (moved) e.preventDefault();
+            return;
+          }
+          return;
+        }
+
         // In history and settings screens, use full spatial navigation for all
         // arrow keys so the user can reach every button/link with the d-pad.
         if (isDown || isUp || isLeft || isRight) {

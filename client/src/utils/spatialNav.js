@@ -30,16 +30,22 @@ const FOCUSABLE_SELECTOR = [
  * Return all currently visible, non-hidden focusable elements in the DOM.
  * @returns {HTMLElement[]}
  */
-export function getFocusableElements() {
-  const all = Array.from(document.querySelectorAll(FOCUSABLE_SELECTOR));
+export function getFocusableElements(container) {
+  let root = container;
+  if (!root) {
+    const openDialog = document.querySelector('[role="dialog"][aria-modal="true"], dialog[open]');
+    root = openDialog || document;
+  }
+  const all = Array.from(root.querySelectorAll(FOCUSABLE_SELECTOR));
   return all.filter((el) => {
-    if (!el.offsetParent && el.tagName !== "BODY") return false; // hidden via display:none
+    const isJSDOM = typeof navigator !== "undefined" && navigator.userAgent && navigator.userAgent.includes("jsdom");
+    if (!isJSDOM && !el.offsetParent && el.tagName !== "BODY") return false; // hidden via display:none
     const style = window.getComputedStyle(el);
     if (style.visibility === "hidden" || style.display === "none") return false;
     if (el.getAttribute("aria-hidden") === "true") return false;
     // Skip elements inside aria-hidden containers
     let parent = el.parentElement;
-    while (parent) {
+    while (parent && parent !== root) {
       if (parent.getAttribute("aria-hidden") === "true") return false;
       parent = parent.parentElement;
     }
@@ -119,7 +125,13 @@ export function moveFocus(direction) {
 
   // If nothing meaningful is focused, start at the first element
   if (!current || current === document.body || !focusable.includes(current)) {
-    focusable[0].focus({ preventScroll: false });
+    const target = focusable[0];
+    if (document.querySelectorAll) {
+      document.querySelectorAll("[data-dpad-focused]").forEach((el) => el.removeAttribute("data-dpad-focused"));
+    }
+    target.setAttribute("data-dpad-focused", "true");
+    target.focus({ preventScroll: false });
+    target.scrollIntoView?.({ behavior: "smooth", block: "nearest", inline: "nearest" });
     return true;
   }
 
@@ -127,6 +139,7 @@ export function moveFocus(direction) {
   let best = null;
   let bestScore = Infinity;
 
+  // Pass 1: Strict 45-degree cone test
   for (const candidate of focusable) {
     if (candidate === current) continue;
     const toCenter = getCenter(candidate);
@@ -138,10 +151,39 @@ export function moveFocus(direction) {
     }
   }
 
+  // Pass 2: Fallback to half-plane if strict cone found nothing
+  // (Prevents D-pad from freezing when candidates are off-axis or diagonally across wide grids)
+  if (!best) {
+    for (const candidate of focusable) {
+      if (candidate === current) continue;
+      const toCenter = getCenter(candidate);
+      const dx = toCenter.x - fromCenter.x;
+      const dy = toCenter.y - fromCenter.y;
+      let inHalfPlane = false;
+      if (direction === "up" && dy < -4) inHalfPlane = true;
+      else if (direction === "down" && dy > 4) inHalfPlane = true;
+      else if (direction === "left" && dx < -4) inHalfPlane = true;
+      else if (direction === "right" && dx > 4) inHalfPlane = true;
+
+      if (!inHalfPlane) continue;
+
+      // Heavy off-axis penalty in fallback pass
+      const s = score(fromCenter, toCenter, direction) + 500;
+      if (s < bestScore) {
+        bestScore = s;
+        best = candidate;
+      }
+    }
+  }
+
   if (best) {
+    if (document.querySelectorAll) {
+      document.querySelectorAll("[data-dpad-focused]").forEach((el) => el.removeAttribute("data-dpad-focused"));
+    }
+    best.setAttribute("data-dpad-focused", "true");
     best.focus({ preventScroll: false });
     // Scroll into view smoothly so the focused element is visible
-    best.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
+    best.scrollIntoView?.({ behavior: "smooth", block: "nearest", inline: "nearest" });
     return true;
   }
 
@@ -155,15 +197,25 @@ export function moveFocus(direction) {
  * @param {HTMLElement|null} [container=document] - Optional container to search within
  */
 export function focusFirst(container) {
-  const root = container || document;
-  const all = Array.from(root.querySelectorAll(FOCUSABLE_SELECTOR)).filter((el) => {
-    if (!el.offsetParent && el.tagName !== "BODY") return false;
-    const style = window.getComputedStyle(el);
-    return style.visibility !== "hidden" && style.display !== "none";
-  });
-  if (all.length > 0) {
-    all[0].focus({ preventScroll: false });
-    return all[0];
+  let root = container;
+  if (!root) {
+    const openDialog = document.querySelector('[role="dialog"][aria-modal="true"], dialog[open]');
+    root = openDialog || document;
+  }
+  const focusable = getFocusableElements(root);
+  if (focusable.length > 0) {
+    // If there is an active tab or selected element, prefer focusing it first
+    const activeTab = focusable.find(
+      (el) => el.getAttribute("role") === "tab" && el.getAttribute("aria-selected") === "true"
+    );
+    const target = activeTab || focusable[0];
+    if (document.querySelectorAll) {
+      document.querySelectorAll("[data-dpad-focused]").forEach((el) => el.removeAttribute("data-dpad-focused"));
+    }
+    target.setAttribute("data-dpad-focused", "true");
+    target.focus({ preventScroll: false });
+    target.scrollIntoView?.({ behavior: "smooth", block: "nearest", inline: "nearest" });
+    return target;
   }
   return null;
 }

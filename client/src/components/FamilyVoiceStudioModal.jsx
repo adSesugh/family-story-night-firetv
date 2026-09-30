@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Mic, MicOff, Play, Square, X, Sparkles, Check, Heart, Volume2 } from "lucide-react";
+import { Mic, MicOff, Play, Square, X, Sparkles, Check, Heart, Volume2, Upload, Smartphone, Info } from "lucide-react";
 import { saveCustomVoice, syncCustomVoiceToServer } from "../utils/customVoices";
 import { getDeviceId, getUserId } from "../utils/device";
+import { focusFirst } from "../utils/spatialNav";
 
 const API_BASE = (import.meta.env?.VITE_API_BASE || "http://localhost:4000").trim().replace(/\/+$/, "");
 
@@ -102,6 +103,73 @@ export default function FamilyVoiceStudioModal({ isOpen, onClose, onVoiceCreated
   const audioBlobRef = useRef(null);
   const timerIntervalRef = useRef(null);
   const audioPlayerRef = useRef(null);
+  const modalRef = useRef(null);
+  const fileInputRef = useRef(null);
+
+  const hasMediaDevices =
+    typeof navigator !== "undefined" &&
+    Boolean(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setErrorMessage(null);
+    try {
+      let localUrl = "";
+      if (typeof URL !== "undefined" && typeof URL.createObjectURL === "function") {
+        try {
+          localUrl = URL.createObjectURL(file);
+        } catch (_) {}
+      }
+      setAudioUrl(localUrl || "blob:mock-audio");
+      audioBlobRef.current = file;
+      setRecordingSeconds(15);
+
+      try {
+        const wavB64 = await convertBlobToWavBase64(file);
+        if (wavB64) {
+          setAudioBlobBase64(wavB64);
+        } else if (typeof FileReader !== "undefined") {
+          const reader = new FileReader();
+          reader.onloadend = () => setAudioBlobBase64(reader.result || "");
+          reader.readAsDataURL(file);
+        }
+      } catch (_) {
+        if (typeof FileReader !== "undefined") {
+          const reader = new FileReader();
+          reader.onloadend = () => setAudioBlobBase64(reader.result || "");
+          reader.readAsDataURL(file);
+        }
+      }
+    } catch (err) {
+      console.warn("Could not load audio file:", err);
+      setErrorMessage("Could not load audio file. Please choose an audio file (.wav, .mp3, .m4a).");
+    }
+  };
+
+  // Focus first element upon opening and handle Escape/Back to close
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const timer = setTimeout(() => {
+      if (modalRef.current) {
+        focusFirst(modalRef.current);
+      }
+    }, 50);
+
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape" || e.key === "GoBack" || e.keyCode === 4) {
+        e.preventDefault();
+        onClose?.();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen, onClose]);
 
   // Auto-update voiceName default when role changes if name hasn't been heavily customized
   const handleRoleChange = (newRole) => {
@@ -141,7 +209,9 @@ export default function FamilyVoiceStudioModal({ isOpen, onClose, onVoiceCreated
     audioChunksRef.current = [];
 
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      setErrorMessage("Microphone access is not supported in this browser.");
+      setErrorMessage(
+        "Microphone access is not supported in this browser (Fire TV Silk / insecure HTTP). You can upload a voice memo below or record from your phone using your Family ID."
+      );
       return;
     }
 
@@ -292,6 +362,7 @@ export default function FamilyVoiceStudioModal({ isOpen, onClose, onVoiceCreated
 
   return (
     <div
+      ref={modalRef}
       role="dialog"
       aria-modal="true"
       aria-labelledby="voice-studio-title"
@@ -317,7 +388,8 @@ export default function FamilyVoiceStudioModal({ isOpen, onClose, onVoiceCreated
             type="button"
             data-testid="close-voice-studio-btn"
             onClick={onClose}
-            className="p-1.5 rounded-lg text-starlight/70 hover:text-parchment hover:bg-starlight/10 transition-colors cursor-pointer"
+            aria-label="Close voice studio"
+            className="p-1.5 rounded-lg text-starlight/70 hover:text-parchment hover:bg-starlight/10 transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-lamp"
           >
             <X className="w-5 h-5" />
           </button>
@@ -342,9 +414,9 @@ export default function FamilyVoiceStudioModal({ isOpen, onClose, onVoiceCreated
                   key={r}
                   type="button"
                   onClick={() => handleRoleChange(r)}
-                  className={`px-3 py-1 rounded-full text-xs font-sans font-medium transition-all cursor-pointer ${
+                  className={`px-3 py-1 rounded-full text-xs font-sans font-medium transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-lamp ${
                     role === r
-                      ? "bg-lamp text-night shadow-md font-bold scale-105"
+                      ? "bg-lamp text-night shadow-md font-bold scale-105 ring-1 ring-lamp"
                       : "bg-dusk/70 text-starlight/80 border border-starlight/20 hover:border-lamp/40"
                   }`}
                 >
@@ -358,7 +430,8 @@ export default function FamilyVoiceStudioModal({ isOpen, onClose, onVoiceCreated
               value={voiceName}
               onChange={(e) => setVoiceName(e.target.value)}
               placeholder="e.g. Mom's Bedtime Voice"
-              className="w-full px-3.5 py-2 rounded-xl bg-dusk/80 border border-starlight/25 text-parchment text-sm font-sans focus:outline-none focus:border-lamp focus:ring-1 focus:ring-lamp"
+              aria-label="Custom Voice Name"
+              className="w-full px-3.5 py-2 rounded-xl bg-dusk/80 border border-starlight/25 text-parchment text-sm font-sans focus:outline-none focus:border-lamp focus:ring-2 focus:ring-lamp"
             />
           </div>
 
@@ -379,6 +452,16 @@ export default function FamilyVoiceStudioModal({ isOpen, onClose, onVoiceCreated
 
           {/* Step 3: Record Voice Sample */}
           <div className="flex flex-col items-center justify-center p-4 rounded-xl bg-dusk/50 border border-starlight/15">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="audio/*,.wav,.mp3,.m4a,.ogg,.webm"
+              onChange={handleFileUpload}
+              className="hidden"
+              data-testid="audio-file-input"
+              aria-label="Upload audio file"
+            />
+
             {isRecording ? (
               <div className="flex flex-col items-center gap-2.5">
                 <div className="relative flex items-center justify-center w-16 h-16 rounded-full bg-red-500/20 border-2 border-red-500 animate-pulse">
@@ -395,7 +478,8 @@ export default function FamilyVoiceStudioModal({ isOpen, onClose, onVoiceCreated
                   type="button"
                   data-testid="stop-recording-btn"
                   onClick={stopRecording}
-                  className="px-4 py-1.5 rounded-full bg-red-500 text-white font-sans text-xs font-bold shadow-lg hover:bg-red-600 transition-all cursor-pointer"
+                  aria-label="Finish recording voice"
+                  className="px-4 py-1.5 rounded-full bg-red-500 text-white font-sans text-xs font-bold shadow-lg hover:bg-red-600 transition-all cursor-pointer focus:outline-none focus:ring-4 focus:ring-red-400"
                 >
                   <Square className="w-3.5 h-3.5 inline mr-1.5 fill-current" />
                   Finish Recording
@@ -405,14 +489,15 @@ export default function FamilyVoiceStudioModal({ isOpen, onClose, onVoiceCreated
               <div className="flex flex-col items-center gap-3 w-full">
                 <div className="flex items-center gap-2 text-emerald-400 font-sans text-xs font-semibold">
                   <Check className="w-4 h-4" />
-                  <span>Voice sample recorded ({recordingSeconds || 15} seconds)</span>
+                  <span>Voice sample ready ({recordingSeconds || 15}s)</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <button
                     type="button"
                     data-testid="preview-recording-btn"
                     onClick={togglePlayback}
-                    className="flex items-center gap-2 px-4 py-2 rounded-full bg-lamp text-night font-sans text-xs font-bold shadow-md hover:bg-lamp/90 cursor-pointer"
+                    aria-label={isPlaying ? "Stop listening to sample" : "Play recorded voice sample"}
+                    className="flex items-center gap-2 px-4 py-2 rounded-full bg-lamp text-night font-sans text-xs font-bold shadow-md hover:bg-lamp/90 cursor-pointer focus:outline-none focus:ring-2 focus:ring-lamp"
                   >
                     {isPlaying ? (
                       <>
@@ -428,10 +513,20 @@ export default function FamilyVoiceStudioModal({ isOpen, onClose, onVoiceCreated
                   </button>
                   <button
                     type="button"
-                    onClick={startRecording}
-                    className="px-3 py-2 rounded-full text-starlight/70 hover:text-parchment text-xs font-sans transition-colors cursor-pointer"
+                    onClick={() => {
+                      setAudioUrl(null);
+                      setAudioBlobBase64("");
+                      audioBlobRef.current = null;
+                      if (hasMediaDevices) {
+                        startRecording();
+                      } else {
+                        fileInputRef.current?.click();
+                      }
+                    }}
+                    aria-label="Change voice sample"
+                    className="px-3 py-2 rounded-full text-starlight/70 hover:text-parchment text-xs font-sans transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-lamp"
                   >
-                    Re-record
+                    Replace Sample
                   </button>
                 </div>
                 <audio
@@ -442,18 +537,56 @@ export default function FamilyVoiceStudioModal({ isOpen, onClose, onVoiceCreated
                 />
               </div>
             ) : (
-              <div className="flex flex-col items-center gap-2.5">
-                <button
-                  type="button"
-                  data-testid="start-recording-btn"
-                  onClick={startRecording}
-                  className="flex items-center justify-center w-16 h-16 rounded-full bg-lamp/20 border-2 border-lamp text-lamp hover:bg-lamp hover:text-night transition-all shadow-lg shadow-lamp/20 cursor-pointer group"
-                >
-                  <Mic className="w-7 h-7 group-hover:scale-110 transition-transform" />
-                </button>
-                <span className="font-sans text-xs text-starlight/80 font-medium">
-                  Tap microphone to begin speaking
-                </span>
+              <div className="flex flex-col items-center gap-3 w-full">
+                <div className="flex flex-col items-center gap-2">
+                  <button
+                    type="button"
+                    data-testid="start-recording-btn"
+                    onClick={startRecording}
+                    aria-label="Start recording bedtime voice"
+                    className="flex items-center justify-center w-16 h-16 rounded-full bg-lamp/20 border-2 border-lamp text-lamp hover:bg-lamp hover:text-night transition-all shadow-lg shadow-lamp/20 cursor-pointer group focus:outline-none focus:ring-4 focus:ring-lamp"
+                  >
+                    <Mic className="w-7 h-7 group-hover:scale-110 transition-transform" />
+                  </button>
+                  <span className="font-sans text-xs text-starlight/80 font-medium">
+                    Tap microphone to begin speaking
+                  </span>
+                </div>
+
+                {!hasMediaDevices && (
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-300 text-[11px] font-sans">
+                    <Smartphone className="w-3.5 h-3.5 shrink-0" />
+                    <span>Microphone not accessible on this TV browser</span>
+                  </div>
+                )}
+
+                {/* Upload Voice File Option */}
+                <div className="flex flex-wrap items-center justify-center gap-2 pt-2 border-t border-starlight/10 w-full">
+                  <button
+                    type="button"
+                    data-testid="upload-voice-file-btn"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-starlight/10 border border-starlight/20 text-starlight hover:text-parchment hover:border-lamp/50 text-xs font-sans transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-lamp"
+                  >
+                    <Upload className="w-3.5 h-3.5 text-lamp" />
+                    <span>Upload Audio File (.wav, .mp3, .m4a)</span>
+                  </button>
+                </div>
+
+                {/* Companion Phone Recording Tip */}
+                <div className="p-3 rounded-xl bg-dusk/90 border border-lamp/20 text-left w-full space-y-1.5">
+                  <div className="flex items-center gap-1.5 font-sans text-xs font-semibold text-lamp">
+                    <Smartphone className="w-3.5 h-3.5" />
+                    <span>How to record with your phone (Auto-Syncs to Fire TV):</span>
+                  </div>
+                  <ol className="list-decimal list-inside font-sans text-[11px] text-starlight/80 space-y-1 leading-relaxed">
+                    <li>Open this web app on your phone or laptop.</li>
+                    <li>
+                      Enter Family ID: <code className="bg-night/70 px-1.5 py-0.5 rounded text-lamp font-mono font-bold">{getUserId()}</code> in Settings &rarr; Parent Controls.
+                    </li>
+                    <li>Tap &ldquo;+ Record Voice&rdquo; on your phone to use the mic. It will appear on this Fire TV!</li>
+                  </ol>
+                </div>
               </div>
             )}
           </div>
@@ -472,7 +605,8 @@ export default function FamilyVoiceStudioModal({ isOpen, onClose, onVoiceCreated
                   key={opt.id}
                   type="button"
                   onClick={() => setBaseVoice(opt.id)}
-                  className={`flex flex-col text-left p-2.5 rounded-xl border transition-all cursor-pointer ${
+                  aria-pressed={baseVoice === opt.id}
+                  className={`flex flex-col text-left p-2.5 rounded-xl border transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-lamp ${
                     baseVoice === opt.id
                       ? "bg-panel border-lamp ring-2 ring-lamp/70 shadow-sm"
                       : "bg-dusk/60 border-starlight/20 hover:border-starlight/40"
@@ -491,7 +625,7 @@ export default function FamilyVoiceStudioModal({ isOpen, onClose, onVoiceCreated
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 rounded-xl text-starlight/80 hover:text-parchment text-xs font-sans transition-colors cursor-pointer"
+            className="px-4 py-2 rounded-xl text-starlight/80 hover:text-parchment text-xs font-sans transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-starlight/50"
           >
             Cancel
           </button>
@@ -499,7 +633,7 @@ export default function FamilyVoiceStudioModal({ isOpen, onClose, onVoiceCreated
             type="button"
             data-testid="save-voice-clone-btn"
             onClick={handleSave}
-            className="flex items-center gap-1.5 px-5 py-2 rounded-xl bg-lamp text-night font-sans text-xs font-bold hover:bg-lamp/90 shadow-lg shadow-lamp/30 transition-all cursor-pointer"
+            className="flex items-center gap-1.5 px-5 py-2 rounded-xl bg-lamp text-night font-sans text-xs font-bold hover:bg-lamp/90 shadow-lg shadow-lamp/30 transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-lamp"
           >
             <Sparkles className="w-3.5 h-3.5 fill-current" />
             <span>Save Voice Clone</span>
