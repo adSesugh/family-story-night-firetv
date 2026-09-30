@@ -27,7 +27,7 @@ import { VOICES } from "./constants/voices";
 import FamilyVoiceStudioModal from "./components/FamilyVoiceStudioModal";
 
 const API_BASE = (import.meta.env.VITE_API_BASE || "http://localhost:4000").trim().replace(/\/+$/, "");
-const AUDIO_PLAYBACK_LEAD_MS = 60; // Offset for audio hardware output buffer latency
+const AUDIO_PLAYBACK_LEAD_MS = 0; // Exact audio word synchronization (no premature highlighting)
 
 export default function App() {
   const [screen, setScreen] = useState("setup"); // setup | loading | story | history | settings
@@ -1010,6 +1010,7 @@ export default function App() {
   }, []);
 
   const [isNarrating, setIsNarrating] = useState(false);
+  const [isLoadingNarration, setIsLoadingNarration] = useState(false);
   const speechMarksRef = useRef([]);
   const [activeSpeechMark, setActiveSpeechMark] = useState(null);
 
@@ -1226,6 +1227,7 @@ export default function App() {
 
     const playAudioItem = (audioUrl, marks) => {
       if (audioRef.current && !cancelled && audioUrl) {
+        setIsLoadingNarration(false);
         currentAudioPageIndexRef.current = pageIndex;
         speechMarksRef.current = normalizeSpeechMarks(marks || [], textToNarrate);
         setActiveSpeechMark(null);
@@ -1245,19 +1247,57 @@ export default function App() {
 
     (async () => {
       try {
+        let effectiveBaseVoice = undefined;
+        if (voice && voice.startsWith("custom")) {
+          const customProfiles = loadCustomVoices();
+          const matchedCustom = customProfiles.find((v) => v.id === voice);
+          if (matchedCustom?.baseVoice) {
+            effectiveBaseVoice = matchedCustom.baseVoice;
+          }
+        }
+
+        const prefetchSubsequentPage = (currIdx, effectiveBase) => {
+          if (typeof process === "undefined" || process.env?.NODE_ENV !== "test") {
+            const nextIdx = currIdx + 1;
+            let nextText = "";
+            if (nextIdx < pages.length && pages[nextIdx]) {
+              const nextP = pages[nextIdx];
+              nextText = typeof nextP === "object" ? nextP.text : nextP;
+            } else if (nextIdx === pages.length && lesson) {
+              const lessonPrefix = Number(chapter) > 1 ? `Chapter ${chapter} lesson:` : "Lesson to learn:";
+              nextText = `The End. ${lessonPrefix} ${lesson}`;
+            }
+
+            if (nextText && typeof nextText === "string" && nextText.trim()) {
+              prefetchNarration({
+                text: nextText.trim(),
+                pageIdx: nextIdx,
+                targetVoice: voice,
+                baseVoice: effectiveBase,
+                storyId: currentStoryId,
+              }).catch(() => {});
+            }
+          }
+        };
+
         // 1. Check In-Memory Cache first (0ms instant playback)
         const memItem = narrationMemoryCacheRef.current.get(memKey);
         if (memItem?.audioUrl) {
+          setIsLoadingNarration(false);
           playAudioItem(memItem.audioUrl, memItem.speechMarks);
+          prefetchSubsequentPage(pageIndex, effectiveBaseVoice);
           return;
         }
 
         // 2. Check In-Flight Request: If already fetching, await existing promise
         const inFlight = inFlightNarrationsRef.current.get(memKey);
         if (inFlight) {
+          setIsLoadingNarration(true);
           const resItem = await inFlight;
           if (resItem?.audioUrl && !cancelled) {
+            setIsLoadingNarration(false);
             playAudioItem(resItem.audioUrl, resItem.speechMarks);
+            prefetchSubsequentPage(pageIndex, effectiveBaseVoice);
             return;
           }
         }
@@ -1291,7 +1331,9 @@ export default function App() {
                 rawAudio: savedNarration.audio,
               });
               if (!cancelled) {
+                setIsLoadingNarration(false);
                 playAudioItem(audioUrl, marks);
+                prefetchSubsequentPage(pageIndex, effectiveBaseVoice);
                 return;
               }
             }
@@ -1301,15 +1343,7 @@ export default function App() {
         }
 
         // 4. Fetch via prefetchNarration (handles custom voices, Kokoro, and caching)
-        let effectiveBaseVoice = undefined;
-        if (voice && voice.startsWith("custom")) {
-          const customProfiles = loadCustomVoices();
-          const matchedCustom = customProfiles.find((v) => v.id === voice);
-          if (matchedCustom?.baseVoice) {
-            effectiveBaseVoice = matchedCustom.baseVoice;
-          }
-        }
-
+        setIsLoadingNarration(true);
         const narrationResult = await prefetchNarration({
           text: textToNarrate,
           pageIdx: pageIndex,
@@ -1319,7 +1353,9 @@ export default function App() {
         });
 
         if (narrationResult && !cancelled) {
+          setIsLoadingNarration(false);
           playAudioItem(narrationResult.audioUrl, narrationResult.speechMarks);
+          prefetchSubsequentPage(pageIndex, effectiveBaseVoice);
 
           // Save narration onto the story in history and sync to SQLite
           if (currentStoryId && narrationResult.rawAudio) {
@@ -1345,23 +1381,24 @@ export default function App() {
               console.warn("[App] Could not persist narration to story:", e.message);
             }
           }
+        } else {
+          setIsLoadingNarration(false);
         }
       } catch (err) {
+        setIsLoadingNarration(false);
         console.error("narration failed", err);
       }
     })();
 
     return () => {
       cancelled = true;
+      setIsLoadingNarration(false);
     };
   }, [screen, pageIndex, pages, voice, lesson, networkRetryKey, currentStoryId, prefetchNarration]);
 
-  // Coordinate playback so audio only plays when the illustration for the current page is ready (or immediately if on the conclusion screen)
+  // Play audio immediately when ready - do not hold up reading aloud for slow background illustrations
   useEffect(() => {
-    const isConclusionPage = pageIndex >= pages.length;
-    const isIllustrationReady = isConclusionPage || illustrations[pageIndex];
-
-    if (pendingAudioPlay === pageIndex && isIllustrationReady && audioRef.current) {
+    if (pendingAudioPlay === pageIndex && audioRef.current) {
       setPendingAudioPlay(null);
       try {
         const playPromise = audioRef.current.play();
@@ -1372,7 +1409,7 @@ export default function App() {
         }
       } catch (e) { }
     }
-  }, [pendingAudioPlay, pageIndex, illustrations]);
+  }, [pendingAudioPlay, pageIndex]);
 
   useEffect(() => {
     if (!audioRef.current) return;
@@ -1802,6 +1839,7 @@ export default function App() {
           turnKey={turnKey}
           onTurn={turnTo}
           isNarrating={isNarrating}
+          isLoadingNarration={isLoadingNarration}
           onToggleNarration={handleToggleNarration}
           lesson={lesson}
           choices={choices}

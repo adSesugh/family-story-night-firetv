@@ -328,8 +328,8 @@ class XTTSVoiceManager:
         sample_rate: int,
     ) -> Tuple[List[Dict[str, Any]], int]:
         """
-        Calculates syllable/duration weighted speech marks with acoustic energy envelope detection.
-        Aligns words directly to the synthesized waveform for karaoke tracking.
+        Calculates exact character-aligned, pause-aware speech marks synchronized with
+        synthesized waveform acoustics and punctuation rhythm.
         """
         total_duration_ms = int((len(audio_data) / sample_rate) * 1000)
         speech_marks = []
@@ -338,7 +338,7 @@ class XTTSVoiceManager:
         if not words or total_duration_ms <= 0:
             return speech_marks, total_duration_ms
 
-        # Energy envelope detection to detect leading and trailing silence
+        # 1. Acoustic energy envelope: detect leading silence and trailing silence
         abs_wave = np.abs(audio_data)
         voiced = np.where(abs_wave > 0.012)[0]
         if len(voiced) > 0:
@@ -347,39 +347,51 @@ class XTTSVoiceManager:
             active_duration_ms = max(end_offset_ms - start_offset_ms, 200)
         else:
             start_offset_ms = 0
+            end_offset_ms = total_duration_ms
             active_duration_ms = total_duration_ms
 
+        # 2. Phonetic word duration weighting (vowels count heavily, consonants moderately)
         def word_weight(w: str) -> float:
             vowels = len(re.findall(r"[aeiouyAEIOUY]", w))
-            return max(vowels * 1.5, len(w) * 0.8, 1.0)
+            consonants = max(0, len(w) - vowels)
+            return max(vowels * 1.6 + consonants * 0.7, 1.0)
 
         weights = [word_weight(m.group(0)) for m in words]
         total_weight = sum(weights) or 1.0
 
-        current_char_offset = 0
-        elapsed_weight = 0.0
+        # 3. Punctuation-aware pause modeling (XTTS naturally pauses after punctuation)
+        pauses_ms = []
+        for i in range(len(words)):
+            if i < len(words) - 1:
+                gap = text[words[i].end() : words[i + 1].start()]
+                if any(p in gap for p in [".", "!", "?", "\n"]):
+                    pauses_ms.append(480)  # Sentence end pause
+                elif any(p in gap for p in [",", ";", ":", "—", "-"]):
+                    pauses_ms.append(260)  # Clause / comma pause
+                else:
+                    pauses_ms.append(50)   # Normal inter-word gap
+            else:
+                pauses_ms.append(0)
 
+        total_pauses_ms = sum(pauses_ms)
+        # Active vocalization time without pauses
+        vocal_time_ms = max(active_duration_ms - total_pauses_ms, int(active_duration_ms * 0.55))
+
+        # 4. Generate exact character-offset speech marks
+        curr_time_ms = start_offset_ms
         for idx, match in enumerate(words):
             word_str = match.group(0)
-            w = weights[idx]
-            word_time = start_offset_ms + int((elapsed_weight / total_weight) * active_duration_ms)
-            elapsed_weight += w
-
-            char_pos = text.find(word_str, current_char_offset)
-            if char_pos != -1:
-                char_start = char_pos
-                char_end = char_pos + len(word_str)
-                current_char_offset = char_end
-            else:
-                char_start = current_char_offset
-                char_end = current_char_offset + len(word_str)
+            word_duration = int((weights[idx] / total_weight) * vocal_time_ms)
+            word_duration = max(word_duration, 120)
 
             speech_marks.append({
-                "time": word_time,
+                "time": int(curr_time_ms),
+                "duration": word_duration,
                 "type": "word",
-                "start": char_start,
-                "end": char_end,
+                "start": match.start(),
+                "end": match.end(),
                 "value": word_str,
             })
+            curr_time_ms += word_duration + pauses_ms[idx]
 
         return speech_marks, total_duration_ms

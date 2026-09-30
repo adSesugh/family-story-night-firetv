@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Navigation } from "swiper/modules";
-import { Volume2, VolumeX, Sparkles, Compass, Home, Moon, Mic, MicOff, Heart } from "lucide-react";
+import { Volume2, VolumeX, Sparkles, Compass, Home, Moon, Mic, MicOff, Heart, Loader2 } from "lucide-react";
 import AmbientParticles from "./AmbientParticles";
 import { useSpeechRecognition } from "../utils/useSpeechRecognition";
 import { loadCustomVoices } from "../utils/customVoices";
@@ -86,6 +86,7 @@ export default function StoryScreen({
   turnKey,
   onTurn,
   isNarrating = false,
+  isLoadingNarration = false,
   onToggleNarration,
   lesson = "",
   choices = [],
@@ -268,7 +269,13 @@ export default function StoryScreen({
             {isNarrating ? (
               <>
                 <Volume2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-lamp animate-pulse" />
-                <span className="hidden sm:inline">Reading aloud</span>
+                <span className="text-xs sm:text-sm">Reading aloud</span>
+                {narratorAvatar && <span className="text-xs">{narratorAvatar}</span>}
+              </>
+            ) : isLoadingNarration ? (
+              <>
+                <Loader2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-lamp animate-spin" />
+                <span className="text-xs sm:text-sm">Preparing voice…</span>
                 {narratorAvatar && <span className="text-xs">{narratorAvatar}</span>}
               </>
             ) : (

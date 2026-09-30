@@ -76,9 +76,11 @@ export function getActiveSpeechMarkAtTime(marks, currentTimeMs, offsetMs = 0) {
   for (let i = 0; i < marks.length; i++) {
     const mark = marks[i];
     if (mark.time <= effectiveTimeMs) {
-      // Natural word duration: up to next mark, or at most 550ms so highlight cleanly pauses between sentences
-      const nextTime = marks[i + 1] ? marks[i + 1].time : mark.time + 550;
-      const wordDuration = Math.min(nextTime - mark.time, 550);
+      // Natural word duration: respect explicit mark.duration or calculate from next mark
+      const nextTime = marks[i + 1] ? marks[i + 1].time : mark.time + (mark.duration || 550);
+      const wordDuration = mark.duration && mark.duration > 0
+        ? Math.min(mark.duration, Math.max(nextTime - mark.time, 80))
+        : Math.min(nextTime - mark.time, 550);
 
       if (effectiveTimeMs < mark.time + wordDuration) {
         return mark;
