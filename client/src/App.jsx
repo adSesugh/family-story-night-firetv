@@ -34,7 +34,11 @@ export default function App() {
   const [names, setNames] = useState("");
   const [categories, setCategories] = useState(THEME_CATEGORIES);
   const [serverVoices, setServerVoices] = useState(VOICES);
-  const [category, setCategory] = useState(DEFAULT_CATEGORY_ID);
+  const [category, setCategory] = useState(() => {
+    const stored = StorageService.getItem("familyStoryNight_category");
+    if (stored) return normalizeCategory(stored);
+    return DEFAULT_CATEGORY_ID;
+  });
   const [isVoiceStudioOpen, setIsVoiceStudioOpen] = useState(false);
   const [voiceStudioRole, setVoiceStudioRole] = useState("Mom");
   const [themeIndex, setThemeIndex] = useState(0);
@@ -114,7 +118,14 @@ export default function App() {
         if (prefs.storyLength) setStoryLength(prefs.storyLength);
         if (prefs.illustrationStyle) setIllustrationStyle(prefs.illustrationStyle);
         if (prefs.themeIndex !== undefined) setThemeIndex(prefs.themeIndex);
-        if (prefs.storyCategory) setCategory(normalizeCategory(prefs.storyCategory));
+        if (prefs.storyCategory) {
+          const localCategory = StorageService.getItem("familyStoryNight_category");
+          if (!localCategory) {
+            const norm = normalizeCategory(prefs.storyCategory);
+            setCategory(norm);
+            StorageService.setItem("familyStoryNight_category", norm);
+          }
+        }
         if (prefs.parentSettings) setParentSettings(loadSettings());
       }
     });
@@ -159,6 +170,13 @@ export default function App() {
     } catch (e) {
       console.warn("Could not sync voice to parent settings:", e);
     }
+  }, []);
+
+  const handleCategoryChange = useCallback((newCat) => {
+    const norm = normalizeCategory(newCat);
+    setCategory(norm);
+    StorageService.setItem("familyStoryNight_category", norm);
+    syncPreferencesToServer(API_BASE, getDeviceId(), { storyCategory: norm }, getUserId());
   }, []);
 
   const narrationMemoryCacheRef = useRef(new Map());
@@ -1134,7 +1152,7 @@ export default function App() {
         cat.label.toLowerCase() === lower ||
         ((lower.includes("bedtime") || lower.includes("adventure")) && cat.id === "adventures")
       ) {
-        setCategory(cat.id);
+        handleCategoryChange(cat.id);
         setThemeIndex(0);
         setThemeMode("preset");
         return;
@@ -1143,7 +1161,7 @@ export default function App() {
         (t) => t.toLowerCase().includes(lower) || lower.includes(t.toLowerCase())
       );
       if (foundIdx !== -1) {
-        setCategory(cat.id);
+        handleCategoryChange(cat.id);
         setThemeIndex(foundIdx);
         setThemeMode("preset");
         return;
@@ -1151,7 +1169,7 @@ export default function App() {
     }
     setThemeMode("custom");
     setCustomTheme(themeText.slice(0, 100));
-  }, [categories]);
+  }, [categories, handleCategoryChange]);
 
   const handleAlexaNavigatePage = useCallback((direction) => {
     if (direction === "next") {
@@ -1608,6 +1626,10 @@ export default function App() {
           const moved = moveFocus(direction);
           if (moved) {
             e.preventDefault();
+            const activeEl = document.activeElement;
+            if (activeEl?.getAttribute("role") === "tab" && typeof activeEl.click === "function") {
+              activeEl.click();
+            }
             return;
           }
           // Fallback: theme/category cycling if spatial nav found nothing
@@ -1616,24 +1638,28 @@ export default function App() {
           if (isLeft) {
             e.preventDefault();
             const currentCatId = normalizeCategory(category);
-            const catIdx = THEME_CATEGORIES.findIndex((c) => c.id === currentCatId);
-            const prevCat = THEME_CATEGORIES[(catIdx - 1 + THEME_CATEGORIES.length) % THEME_CATEGORIES.length];
-            setCategory(prevCat.id); setThemeIndex(0);
+            const catList = categories && categories.length > 0 ? categories : THEME_CATEGORIES;
+            const catIdx = catList.findIndex((c) => c.id === currentCatId);
+            const prevCat = catList[(catIdx - 1 + catList.length) % catList.length];
+            handleCategoryChange(prevCat.id); setThemeIndex(0);
           }
           if (isRight) {
             e.preventDefault();
             const currentCatId = normalizeCategory(category);
-            const catIdx = THEME_CATEGORIES.findIndex((c) => c.id === currentCatId);
-            const nextCat = THEME_CATEGORIES[(catIdx + 1) % THEME_CATEGORIES.length];
-            setCategory(nextCat.id); setThemeIndex(0);
+            const catList = categories && categories.length > 0 ? categories : THEME_CATEGORIES;
+            const catIdx = catList.findIndex((c) => c.id === currentCatId);
+            const nextCat = catList[(catIdx + 1) % catList.length];
+            handleCategoryChange(nextCat.id); setThemeIndex(0);
           }
           return;
         }
 
         if (isSelect) {
           e.preventDefault();
-          // If focus is on a button/link, click it; otherwise submit the story
-          if (isFocusedOnButton && e.target && typeof e.target.click === "function") {
+          const activeEl = document.activeElement;
+          if (activeEl && typeof activeEl.click === "function" && activeEl !== document.body) {
+            activeEl.click();
+          } else if (isFocusedOnButton && e.target && typeof e.target.click === "function") {
             e.target.click();
           } else {
             generateStory();
@@ -1869,7 +1895,7 @@ export default function App() {
           themeIndex={themeIndex}
           setThemeIndex={setThemeIndex}
           category={category}
-          setCategory={setCategory}
+          setCategory={handleCategoryChange}
           categories={categories}
           themeMode={themeMode}
           setThemeMode={setThemeMode}

@@ -107,8 +107,8 @@ export default function StoryScreen({
 
   useEffect(() => {
     if (activeWordRef.current) {
-      // Keep the spoken word roughly in the center of the text container
-      activeWordRef.current?.scrollIntoView?.({ behavior: "smooth", block: "center" });
+      // Keep the spoken word visible in the text container without aggressive re-centering
+      activeWordRef.current?.scrollIntoView?.({ behavior: "smooth", block: "nearest", inline: "nearest" });
     }
   }, [activeSpeechMark]);
 
@@ -136,7 +136,7 @@ export default function StoryScreen({
   const toggleLovedOneMessage = () => {
     if (!customVoiceProfile?.audioDataUrl) return;
     if (isPlayingLovedOne && lovedOneAudioRef.current) {
-      try { lovedOneAudioRef.current.pause(); } catch (e) {}
+      try { lovedOneAudioRef.current.pause(); } catch (e) { }
       lovedOneAudioRef.current.currentTime = 0;
       setIsPlayingLovedOne(false);
       return;
@@ -167,7 +167,7 @@ export default function StoryScreen({
   useEffect(() => {
     return () => {
       if (lovedOneAudioRef.current) {
-        try { lovedOneAudioRef.current.pause(); } catch (e) {}
+        try { lovedOneAudioRef.current.pause(); } catch (e) { }
         lovedOneAudioRef.current = null;
       }
     };
@@ -246,11 +246,10 @@ export default function StoryScreen({
             onClick={toggleLovedOneMessage}
             aria-label={isPlayingLovedOne ? "Stop personal voice message" : `Play ${narratorLabel}'s voice message`}
             title={`Listen to ${narratorLabel}'s bedtime voice recording`}
-            className={`flex items-center gap-1.5 sm:gap-2 rounded-full border px-2.5 sm:px-3.5 py-1 sm:py-2 font-sans text-xs sm:text-sm backdrop-blur-sm transition-all shadow-md focus:outline-none focus:ring-2 focus:ring-rose-400/50 cursor-pointer ${
-              isPlayingLovedOne
-                ? "border-rose-400 bg-rose-950/80 text-rose-200 font-semibold ring-2 ring-rose-400/40"
-                : "border-rose-500/30 bg-panel/80 text-rose-300 hover:border-rose-400/60 hover:text-rose-100"
-            }`}
+            className={`flex items-center gap-1.5 sm:gap-2 rounded-full border px-2.5 sm:px-3.5 py-1 sm:py-2 font-sans text-xs sm:text-sm backdrop-blur-sm transition-all shadow-md focus:outline-none focus:ring-2 focus:ring-rose-400/50 cursor-pointer ${isPlayingLovedOne
+              ? "border-rose-400 bg-rose-950/80 text-rose-200 font-semibold ring-2 ring-rose-400/40"
+              : "border-rose-500/30 bg-panel/80 text-rose-300 hover:border-rose-400/60 hover:text-rose-100"
+              }`}
           >
             <Heart className={`h-3.5 w-3.5 ${isPlayingLovedOne ? "fill-rose-400 text-rose-400 animate-pulse" : "text-rose-400"}`} />
             <span className="hidden sm:inline">
@@ -478,7 +477,7 @@ export default function StoryScreen({
               className={
                 isBookMode
                   ? "flex flex-col items-center justify-start gap-y-4 w-full h-full min-h-0 pt-16 pb-4 px-5 rounded-t-[2rem] bg-panel/95 text-center overflow-y-auto"
-                  : "flex flex-col items-center justify-start gap-y-4 sm:gap-y-5 w-full max-w-4xl h-full max-h-[88vh] md:max-h-[38rem] min-h-0 p-4 sm:p-6 md:p-8 rounded-xl bg-panel/75 border border-starlight/20 shadow-2xl shadow-black/50 backdrop-blur-md text-center overflow-y-auto"
+                  : "flex flex-col items-center justify-start gap-y-4 sm:gap-y-5 w-full max-w-5xl h-full max-h-[88vh] md:max-h-[42rem] min-h-0 p-4 sm:p-6 md:p-8 rounded-xl bg-panel/75 border border-starlight/20 shadow-2xl shadow-black/50 backdrop-blur-md text-center overflow-y-auto"
               }
             >
               {/* Header */}
@@ -591,8 +590,8 @@ export default function StoryScreen({
                                 className={`flex items-center gap-2 px-4 py-2 rounded-full font-sans text-xs font-semibold tracking-wide transition-all cursor-pointer ${twistSpeech.isListening
                                   ? "bg-lamp text-night animate-pulse shadow-lg shadow-lamp/50 scale-105 ring-4 ring-lamp/80"
                                   : isVoiceFocused && !customTwist
-                                  ? "border-2 border-lamp bg-panel text-lamp ring-4 ring-lamp/80 shadow-lamp/30 scale-105"
-                                  : "bg-panel/90 text-lamp border border-lamp/40 hover:bg-lamp/20"
+                                    ? "border-2 border-lamp bg-panel text-lamp ring-4 ring-lamp/80 shadow-lamp/30 scale-105"
+                                    : "bg-panel/90 text-lamp border border-lamp/40 hover:bg-lamp/20"
                                   }`}
                               >
                                 {twistSpeech.isListening ? (

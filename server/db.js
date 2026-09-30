@@ -358,13 +358,26 @@ export function savePreferences(deviceId, prefs = {}) {
     }
   }
 
+  const existing = db.prepare(`SELECT * FROM preferences WHERE device_id = ?`).get(deviceId);
+
+  const voiceId = prefs.voiceId !== undefined ? prefs.voiceId : (existing?.voice_id || "Joanna");
+  const storyLength = prefs.storyLength !== undefined ? prefs.storyLength : (existing?.story_length || 6);
+  const themeIndex = prefs.themeIndex !== undefined ? prefs.themeIndex : (existing?.theme_index !== undefined ? existing.theme_index : 0);
+  const storyCategory = prefs.storyCategory !== undefined
+    ? normalizeCategory(prefs.storyCategory)
+    : (existing?.story_category ? normalizeCategory(existing.story_category) : "adventures");
+  const illustrationStyle = prefs.illustrationStyle !== undefined ? prefs.illustrationStyle : (existing?.illustration_style || "watercolor");
+  const pinHash = prefs.pinHash !== undefined ? prefs.pinHash : (existing?.pin_hash || null);
+  const parentSettingsJson = prefs.parentSettings !== undefined
+    ? (prefs.parentSettings ? JSON.stringify(prefs.parentSettings) : null)
+    : (existing?.parent_settings_json || null);
+
   const allVoices = getCustomVoices({ userId: effectiveUserId, deviceId });
   const customVoicesJson = allVoices.length > 0
     ? JSON.stringify(allVoices)
-    : (prefs.customVoices ? JSON.stringify(prefs.customVoices) : null);
+    : (prefs.customVoices ? JSON.stringify(prefs.customVoices) : (existing?.custom_voices_json || null));
 
   const now = new Date().toISOString();
-  const parentSettingsJson = prefs.parentSettings ? JSON.stringify(prefs.parentSettings) : null;
 
   const stmt = db.prepare(`
     INSERT INTO preferences (
@@ -375,27 +388,27 @@ export function savePreferences(deviceId, prefs = {}) {
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(device_id) DO UPDATE SET
       user_id = COALESCE(excluded.user_id, preferences.user_id),
-      pin_hash = COALESCE(excluded.pin_hash, preferences.pin_hash),
-      parent_settings_json = COALESCE(excluded.parent_settings_json, preferences.parent_settings_json),
-      voice_id = COALESCE(excluded.voice_id, preferences.voice_id),
-      story_length = COALESCE(excluded.story_length, preferences.story_length),
-      theme_index = COALESCE(excluded.theme_index, preferences.theme_index),
-      story_category = COALESCE(excluded.story_category, preferences.story_category),
-      illustration_style = COALESCE(excluded.illustration_style, preferences.illustration_style),
-      custom_voices_json = COALESCE(excluded.custom_voices_json, preferences.custom_voices_json),
+      pin_hash = excluded.pin_hash,
+      parent_settings_json = excluded.parent_settings_json,
+      voice_id = excluded.voice_id,
+      story_length = excluded.story_length,
+      theme_index = excluded.theme_index,
+      story_category = excluded.story_category,
+      illustration_style = excluded.illustration_style,
+      custom_voices_json = excluded.custom_voices_json,
       updated_at = excluded.updated_at
   `);
 
   stmt.run(
     deviceId,
     effectiveUserId,
-    prefs.pinHash !== undefined ? prefs.pinHash : null,
+    pinHash,
     parentSettingsJson,
-    prefs.voiceId || "Joanna",
-    prefs.storyLength || 6,
-    prefs.themeIndex !== undefined ? prefs.themeIndex : 0,
-    normalizeCategory(prefs.storyCategory),
-    prefs.illustrationStyle || "watercolor",
+    voiceId,
+    storyLength,
+    themeIndex,
+    storyCategory,
+    illustrationStyle,
     customVoicesJson,
     now
   );

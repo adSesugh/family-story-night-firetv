@@ -55,16 +55,9 @@ export default function SetupScreen({
   hasHistory,
   onViewHistory,
   themeMode = "preset",
-  setThemeMode,
   customTheme = "",
   setCustomTheme,
   customThemeError,
-  voice = "Joanna",
-  setVoice,
-  storyLength = 6,
-  setStoryLength,
-  illustrationStyle = "watercolor",
-  setIllustrationStyle,
   parentSettings,
   onOpenSettings,
   alexaPairingCode,
@@ -371,7 +364,12 @@ export default function SetupScreen({
                             }
                           }}
                           onKeyDown={(e) => {
-                            if (e.key === "ArrowRight") {
+                            const isRight = e.key === "ArrowRight" || e.key === "Right" || e.keyCode === 39 || e.which === 39;
+                            const isLeft = e.key === "ArrowLeft" || e.key === "Left" || e.keyCode === 37 || e.which === 37;
+                            const isUp = e.key === "ArrowUp" || e.key === "Up" || e.keyCode === 38 || e.which === 38;
+                            const isDown = e.key === "ArrowDown" || e.key === "Down" || e.keyCode === 40 || e.which === 40;
+
+                            if (isRight) {
                               e.preventDefault();
                               e.stopPropagation();
                               const nextIdx = (idx + 1) % categories.length;
@@ -382,11 +380,15 @@ export default function SetupScreen({
                               }
                               const buttons = categoryTabsRef.current?.querySelectorAll('[role="tab"]');
                               const target = buttons?.[nextIdx];
+                              if (document.querySelectorAll) {
+                                document.querySelectorAll("[data-dpad-focused]").forEach((el) => el.removeAttribute("data-dpad-focused"));
+                              }
+                              target?.setAttribute("data-dpad-focused", "true");
                               target?.focus();
                               if (target && typeof target.scrollIntoView === "function") {
                                 target.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
                               }
-                            } else if (e.key === "ArrowLeft") {
+                            } else if (isLeft) {
                               e.preventDefault();
                               e.stopPropagation();
                               const prevIdx = (idx - 1 + categories.length) % categories.length;
@@ -397,15 +399,19 @@ export default function SetupScreen({
                               }
                               const buttons = categoryTabsRef.current?.querySelectorAll('[role="tab"]');
                               const target = buttons?.[prevIdx];
+                              if (document.querySelectorAll) {
+                                document.querySelectorAll("[data-dpad-focused]").forEach((el) => el.removeAttribute("data-dpad-focused"));
+                              }
+                              target?.setAttribute("data-dpad-focused", "true");
                               target?.focus();
                               if (target && typeof target.scrollIntoView === "function") {
                                 target.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
                               }
-                            } else if (e.key === "ArrowUp") {
+                            } else if (isUp) {
                               e.preventDefault();
                               e.stopPropagation();
                               namesInputRef.current?.focus();
-                            } else if (e.key === "ArrowDown") {
+                            } else if (isDown) {
                               e.preventDefault();
                               e.stopPropagation();
                               if (activeThemeMode === "custom") {
@@ -421,8 +427,8 @@ export default function SetupScreen({
                             }
                           }}
                           style={{ outline: "none" }}
-                          className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full font-sans text-xs font-semibold shrink-0 transition-all cursor-pointer focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lamp focus-visible:ring-offset-2 focus-visible:ring-offset-dusk ${isSelected
-                            ? "bg-lamp/25 text-lamp border border-lamp/80 shadow-md shadow-lamp/15 font-bold"
+                          className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full font-sans text-xs font-semibold shrink-0 transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-lamp focus:ring-offset-2 focus:ring-offset-dusk tv-focus-glow ${isSelected
+                            ? "bg-lamp/25 text-lamp border border-lamp/80 shadow-md shadow-lamp/15 font-bold ring-1 ring-lamp/40"
                             : "bg-starlight/10 text-starlight/75 border border-transparent hover:bg-starlight/20 hover:text-parchment"
                             }`}
                         >

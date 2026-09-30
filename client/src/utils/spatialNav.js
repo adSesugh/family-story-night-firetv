@@ -182,6 +182,11 @@ export function moveFocus(direction) {
     }
     best.setAttribute("data-dpad-focused", "true");
     best.focus({ preventScroll: false });
+    if (best.getAttribute("role") === "tab" || best.dataset?.testid?.startsWith("category-tab-")) {
+      try {
+        best.click();
+      } catch (_) {}
+    }
     // Scroll into view smoothly so the focused element is visible
     best.scrollIntoView?.({ behavior: "smooth", block: "nearest", inline: "nearest" });
     return true;

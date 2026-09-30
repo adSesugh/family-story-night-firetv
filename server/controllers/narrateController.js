@@ -114,14 +114,14 @@ export const narrate = async (req, res) => {
       return res.end(audioBuffer);
     }
 
-    // 2. Custom voice or Kokoro voice: Route exclusively to Voice Microservice (NEVER call AWS Polly)
+    // 2. Custom voice: Route exclusively to Voice Microservice (ZERO fallback to AWS Polly)
     const kokoroUrl = process.env.VOICE_SERVICE_URL || process.env.KOKORO_API_URL;
 
     if (isMicroserviceVoice) {
       if (!kokoroUrl) {
         console.warn(`[narrate] Custom voice '${lookupVoice}' requested, but VOICE_SERVICE_URL is not set.`);
         return res.status(503).json({
-          error: `Voice microservice is required for '${lookupVoice}', but VOICE_SERVICE_URL is not configured.`
+          error: `Voice microservice is required for custom voice '${lookupVoice}', but VOICE_SERVICE_URL is not configured.`
         });
       }
 
@@ -146,7 +146,7 @@ export const narrate = async (req, res) => {
               pageIndex,
             });
           } catch (dbErr) {
-            console.warn("Could not cache Kokoro narration in DB:", dbErr.message);
+            console.warn("Could not cache custom voice narration in DB:", dbErr.message);
           }
 
           if (speechMarks) {
@@ -167,7 +167,7 @@ export const narrate = async (req, res) => {
           return res.end(audioBuffer);
         }
       } catch (kErr) {
-        console.error(`[narrate] Kokoro voice microservice failed for '${lookupVoice}': ${kErr.message}. Skipping AWS Polly.`);
+        console.error(`[narrate] Voice microservice failed for custom voice '${lookupVoice}': ${kErr.message}. Zero fallback.`);
         return res.status(502).json({
           error: `Kokoro voice synthesis error: ${kErr.message}`,
         });
@@ -228,21 +228,22 @@ export const narrate = async (req, res) => {
           storyId,
           deviceId,
           pageIndex,
-          voiceId: selectedVoice,
+          voiceId: lookupVoice,
           textHash,
           audioData: audioDataUrl,
           speechMarks: parsedMarks,
         });
-        console.log(`[narrate] 💾 Stored audio narration in SQLite database for ${selectedVoice}`);
+        console.log(`[narrate] 💾 Stored audio narration in SQLite database for ${lookupVoice}`);
       } catch (dbErr) {
         console.warn("[narrate] Failed to save narration to SQLite:", dbErr.message);
       }
 
-      console.log(`[narrate] Successfully generated audio+marks for voice: ${selectedVoice}`);
+      console.log(`[narrate] Successfully generated audio+marks for voice: ${lookupVoice}`);
       return res.json({
         audio: audioDataUrl,
         speechMarks: parsedMarks,
         cached: false,
+        voiceId: lookupVoice,
       });
     }
 
