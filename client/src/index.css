@@ -66,7 +66,7 @@ body {
   box-shadow: none;
 }
 
-:focus-visible:not(input):not(textarea) {
+:focus-visible:not(input):not(textarea):not([data-no-focus-ring]) {
   outline: 3px solid #e8a33d;
   outline-offset: 2px;
   border-radius: 25px;
@@ -95,10 +95,21 @@ input[type="radio"]:focus {
 }
 
 /* Explicit D-pad spatial navigation focus indicator (guarantees highlight regardless of browser focus-visible heuristics) */
-[data-dpad-focused="true"]:not(input):not(textarea) {
-  outline: 3px solid #e8a33d !important;
+[data-dpad-focused="true"]:not(input):not(textarea):not([data-no-focus-ring]) {
+  outline: 2px solid #e8a33d !important;
   outline-offset: 2px !important;
   box-shadow: 0 0 0 6px rgba(232, 163, 61, 0.35) !important;
+}
+
+/* Elements with data-no-focus-ring (like SettingsScreen underline tabs) use border-b only, not rounded focus ring */
+[data-no-focus-ring],
+[data-no-focus-ring]:focus,
+[data-no-focus-ring]:focus-visible,
+[data-dpad-focused="true"][data-no-focus-ring] {
+  outline: none !important;
+  outline-offset: 0 !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
 }
 
 /* Subtle Cinematic Ken Burns Camera Movements (Watercolor Living Picture Book) */

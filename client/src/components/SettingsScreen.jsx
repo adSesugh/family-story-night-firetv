@@ -70,6 +70,7 @@ export default function SettingsScreen({
   const [isUnlocked, setIsUnlocked] = useState(initialUnlocked);
   const [activeTab, setActiveTab] = useState(initialTab);
   const tabRefs = useRef({});
+  const backBtnRef = useRef(null);
   const screenRef = useRef(null);
 
   // PIN setup / verify state
@@ -88,6 +89,9 @@ export default function SettingsScreen({
 
   // Switching tabs also drops any half-typed PIN or unfinished "change PIN" flow.
   const selectTab = (id) => {
+    if (typeof document !== "undefined" && document.querySelectorAll) {
+      document.querySelectorAll("[data-dpad-focused]").forEach((el) => el.removeAttribute("data-dpad-focused"));
+    }
     if (id === activeTab) return;
     setActiveTab(id);
     setPinInput("");
@@ -96,19 +100,101 @@ export default function SettingsScreen({
     setIsChangingPin(false);
   };
 
-  // Arrow keys / Home / End move between tabs.
+  // Dedicated key handler for the Back button to move D-pad cleanly to the tabs
+  const handleBackKeyDown = (e) => {
+    const isDown = e.key === "ArrowDown" || e.key === "Down" || e.keyCode === 40 || e.which === 40;
+    const isLeft = e.key === "ArrowLeft" || e.key === "Left" || e.keyCode === 37 || e.which === 37;
+
+    if (isDown) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (typeof document !== "undefined" && document.querySelectorAll) {
+        document.querySelectorAll("[data-dpad-focused]").forEach((el) => el.removeAttribute("data-dpad-focused"));
+      }
+      const target = tabRefs.current[activeTab] || tabRefs.current["story"];
+      target?.setAttribute("data-dpad-focused", "true");
+      target?.focus();
+      return;
+    }
+
+    if (isLeft) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (typeof document !== "undefined" && document.querySelectorAll) {
+        document.querySelectorAll("[data-dpad-focused]").forEach((el) => el.removeAttribute("data-dpad-focused"));
+      }
+      const target = tabRefs.current["parent"] || tabRefs.current[activeTab] || tabRefs.current["story"];
+      target?.setAttribute("data-dpad-focused", "true");
+      target?.focus();
+      return;
+    }
+  };
+
+  // Arrow keys / Home / End / Fire TV remote move between tabs and back button.
   const handleTabKeyDown = (e) => {
-    const current = TABS.findIndex((t) => t.id === activeTab);
+    const isRight = e.key === "ArrowRight" || e.key === "Right" || e.keyCode === 39 || e.which === 39;
+    const isLeft = e.key === "ArrowLeft" || e.key === "Left" || e.keyCode === 37 || e.which === 37;
+    const isDown = e.key === "ArrowDown" || e.key === "Down" || e.keyCode === 40 || e.which === 40;
+    const isUp = e.key === "ArrowUp" || e.key === "Up" || e.keyCode === 38 || e.which === 38;
+    const isHome = e.key === "Home";
+    const isEnd = e.key === "End";
+
+    if (isUp) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (typeof document !== "undefined" && document.querySelectorAll) {
+        document.querySelectorAll("[data-dpad-focused]").forEach((el) => el.removeAttribute("data-dpad-focused"));
+      }
+      backBtnRef.current?.setAttribute("data-dpad-focused", "true");
+      backBtnRef.current?.focus();
+      return;
+    }
+
+    if (isDown) {
+      e.preventDefault();
+      e.stopPropagation();
+      const panel = document.getElementById(`settings-panel-${activeTab}`);
+      if (panel) {
+        focusFirst(panel);
+      }
+      return;
+    }
+
+    const currentTabId =
+      e.target?.id?.replace("settings-tab-", "") ||
+      e.currentTarget?.id?.replace("settings-tab-", "") ||
+      activeTab;
+    const current = TABS.findIndex((t) => t.id === currentTabId);
+
+    // If moving right on the last tab (Parent Controls), focus the Back button
+    if (isRight && current === TABS.length - 1) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (typeof document !== "undefined" && document.querySelectorAll) {
+        document.querySelectorAll("[data-dpad-focused]").forEach((el) => el.removeAttribute("data-dpad-focused"));
+      }
+      backBtnRef.current?.setAttribute("data-dpad-focused", "true");
+      backBtnRef.current?.focus();
+      return;
+    }
+
     let next = null;
-    if (e.key === "ArrowRight") next = (current + 1) % TABS.length;
-    else if (e.key === "ArrowLeft") next = (current - 1 + TABS.length) % TABS.length;
-    else if (e.key === "Home") next = 0;
-    else if (e.key === "End") next = TABS.length - 1;
-    if (next === null) return;
+    if (isRight) next = (current + 1) % TABS.length;
+    else if (isLeft) next = Math.max(0, current - 1);
+    else if (isHome) next = 0;
+    else if (isEnd) next = TABS.length - 1;
+
+    if (next === null || next === current) return;
     e.preventDefault();
+    e.stopPropagation();
     const nextId = TABS[next].id;
     selectTab(nextId);
-    tabRefs.current[nextId]?.focus();
+    if (typeof document !== "undefined" && document.querySelectorAll) {
+      document.querySelectorAll("[data-dpad-focused]").forEach((el) => el.removeAttribute("data-dpad-focused"));
+    }
+    const target = tabRefs.current[nextId];
+    target?.setAttribute("data-dpad-focused", "true");
+    target?.focus();
   };
 
   const handleDpadNavigate = useCallback(
@@ -137,15 +223,28 @@ export default function SettingsScreen({
 
       const activeEl = document.activeElement;
       const isOnTab = activeEl && activeEl.getAttribute("role") === "tab";
+      const isDpadController = Boolean(activeEl && activeEl.closest?.('[data-testid="dpad-controller"]'));
 
       if (direction === "right") {
-        if (isOnTab && activeTab === "story") {
+        if (isOnTab) {
+          if (activeTab === "parent") {
+            if (typeof document !== "undefined" && document.querySelectorAll) {
+              document.querySelectorAll("[data-dpad-focused]").forEach((el) => el.removeAttribute("data-dpad-focused"));
+            }
+            backBtnRef.current?.setAttribute("data-dpad-focused", "true");
+            backBtnRef.current?.focus();
+            return;
+          }
           selectTab("parent");
+          if (typeof document !== "undefined" && document.querySelectorAll) {
+            document.querySelectorAll("[data-dpad-focused]").forEach((el) => el.removeAttribute("data-dpad-focused"));
+          }
+          tabRefs.current["parent"]?.setAttribute("data-dpad-focused", "true");
           tabRefs.current["parent"]?.focus();
           return;
         }
         const moved = moveFocus("right");
-        if (!moved && activeTab === "story") {
+        if (!moved && isDpadController && activeTab === "story") {
           selectTab("parent");
           tabRefs.current["parent"]?.focus();
         }
@@ -153,17 +252,53 @@ export default function SettingsScreen({
       }
 
       if (direction === "left") {
-        if (isOnTab && activeTab === "parent") {
+        if (activeEl === backBtnRef.current) {
+          if (typeof document !== "undefined" && document.querySelectorAll) {
+            document.querySelectorAll("[data-dpad-focused]").forEach((el) => el.removeAttribute("data-dpad-focused"));
+          }
+          const target = tabRefs.current["parent"] || tabRefs.current[activeTab] || tabRefs.current["story"];
+          target?.setAttribute("data-dpad-focused", "true");
+          target?.focus();
+          return;
+        }
+        if (isOnTab) {
           selectTab("story");
+          if (typeof document !== "undefined" && document.querySelectorAll) {
+            document.querySelectorAll("[data-dpad-focused]").forEach((el) => el.removeAttribute("data-dpad-focused"));
+          }
+          tabRefs.current["story"]?.setAttribute("data-dpad-focused", "true");
           tabRefs.current["story"]?.focus();
           return;
         }
         const moved = moveFocus("left");
-        if (!moved && activeTab === "parent") {
+        if (!moved && isDpadController && activeTab === "parent") {
           selectTab("story");
           tabRefs.current["story"]?.focus();
         }
         return;
+      }
+
+      if (direction === "down") {
+        if (activeEl === backBtnRef.current) {
+          if (typeof document !== "undefined" && document.querySelectorAll) {
+            document.querySelectorAll("[data-dpad-focused]").forEach((el) => el.removeAttribute("data-dpad-focused"));
+          }
+          const target = tabRefs.current[activeTab] || tabRefs.current["story"];
+          target?.setAttribute("data-dpad-focused", "true");
+          target?.focus();
+          return;
+        }
+      }
+
+      if (direction === "up") {
+        if (isOnTab) {
+          if (typeof document !== "undefined" && document.querySelectorAll) {
+            document.querySelectorAll("[data-dpad-focused]").forEach((el) => el.removeAttribute("data-dpad-focused"));
+          }
+          backBtnRef.current?.setAttribute("data-dpad-focused", "true");
+          backBtnRef.current?.focus();
+          return;
+        }
       }
 
       moveFocus(direction);
@@ -173,6 +308,10 @@ export default function SettingsScreen({
 
   useEffect(() => {
     if (tabRefs.current[activeTab]) {
+      if (typeof document !== "undefined" && document.querySelectorAll) {
+        document.querySelectorAll("[data-dpad-focused]").forEach((el) => el.removeAttribute("data-dpad-focused"));
+      }
+      tabRefs.current[activeTab].setAttribute("data-dpad-focused", "true");
       tabRefs.current[activeTab].focus();
     } else if (screenRef.current) {
       focusFirst(screenRef.current);
@@ -294,7 +433,11 @@ export default function SettingsScreen({
           <h1 className="font-serif text-2xl sm:text-3xl md:text-4xl text-parchment">Settings</h1>
         </div>
         <button
+          ref={backBtnRef}
+          type="button"
           onClick={onBack}
+          onKeyDown={handleBackKeyDown}
+          data-testid="settings-back-btn"
           className="flex items-center gap-1.5 sm:gap-2 rounded-sm bg-starlight/20 px-3.5 sm:px-5 py-1.5 sm:py-2 font-sans text-sm sm:text-base text-parchment transition-colors hover:bg-starlight/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-lamp cursor-pointer"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -322,13 +465,21 @@ export default function SettingsScreen({
               type="button"
               role="tab"
               id={`settings-tab-${id}`}
+              data-testid={`settings-tab-${id}`}
+              data-no-focus-ring
               aria-selected={selected}
               aria-controls={selected ? `settings-panel-${id}` : undefined}
-              tabIndex={0}
+              tabIndex={selected ? 0 : -1}
               onClick={() => selectTab(id)}
-              className={`-mb-px flex cursor-pointer items-center justify-center gap-2 border-b-2 px-3 py-2.5 font-sans text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-lamp sm:px-6 sm:text-base ${selected
-                  ? "border-lamp font-medium text-parchment"
-                  : "border-transparent text-starlight hover:text-parchment"
+              onFocus={() => {
+                if (activeTab !== id) {
+                  selectTab(id);
+                }
+              }}
+              style={{ outline: "none", borderRadius: 0 }}
+              className={`-mb-px flex cursor-pointer items-center justify-center gap-2 border-b-2 rounded-none px-3 py-2.5 font-sans text-sm transition-all focus:outline-none focus:ring-0 focus:rounded-none focus-visible:outline-none focus-visible:ring-0 focus-visible:rounded-none sm:px-6 sm:text-base ${selected
+                ? "border-lamp font-medium text-parchment"
+                : "border-transparent text-starlight hover:text-parchment"
                 }`}
             >
               <Icon
@@ -475,7 +626,7 @@ export default function SettingsScreen({
               </p>
               <button
                 type="button"
-                onClick={() => setActiveTab("parent")}
+                onClick={() => selectTab("parent")}
                 className="self-start rounded-full border border-lamp/40 bg-lamp/15 px-4 py-1.5 font-sans text-xs font-semibold text-lamp hover:bg-lamp/25 transition-colors cursor-pointer"
               >
                 {hasPin && isUnlocked ? "Open Parent Controls" : hasPin ? "Enter PIN to Manage" : "Set PIN to Manage"} &rarr;
@@ -691,11 +842,10 @@ export default function SettingsScreen({
                             }}
                             aria-pressed={isSelected}
                             aria-label={`Age Guidance: ${label}`}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border font-sans text-xs font-semibold transition-all cursor-pointer focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lamp focus-visible:ring-offset-2 focus-visible:ring-offset-dusk ${
-                              isSelected
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border font-sans text-xs font-semibold transition-all cursor-pointer focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lamp focus-visible:ring-offset-2 focus-visible:ring-offset-dusk ${isSelected
                                 ? "border-lamp bg-lamp/20 text-lamp shadow-sm shadow-lamp/20 ring-1 ring-lamp/50"
                                 : "border-starlight/20 bg-starlight/5 text-starlight/70 hover:border-starlight/40 hover:text-parchment"
-                            }`}
+                              }`}
                           >
                             <span>{emoji}</span>
                             <span>{label}</span>
@@ -732,11 +882,10 @@ export default function SettingsScreen({
                             }}
                             aria-pressed={isSelected}
                             aria-label={`Story Length: ${label} (${ages}), ${length} pages, ${desc}`}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border font-sans text-xs font-semibold transition-all cursor-pointer focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lamp focus-visible:ring-offset-2 focus-visible:ring-offset-dusk ${
-                              isSelected
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border font-sans text-xs font-semibold transition-all cursor-pointer focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lamp focus-visible:ring-offset-2 focus-visible:ring-offset-dusk ${isSelected
                                 ? "border-lamp bg-lamp/20 text-lamp shadow-sm shadow-lamp/20 ring-1 ring-lamp/50"
                                 : "border-starlight/20 bg-starlight/5 text-starlight/70 hover:border-starlight/40 hover:text-parchment"
-                            }`}
+                              }`}
                           >
                             <span>{emoji}</span>
                             <span>{label}</span>
@@ -769,11 +918,10 @@ export default function SettingsScreen({
                             }}
                             aria-pressed={isSelected}
                             aria-label={`Illustration Style: ${label}`}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border font-sans text-xs font-semibold transition-all cursor-pointer focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lamp focus-visible:ring-offset-2 focus-visible:ring-offset-dusk ${
-                              isSelected
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border font-sans text-xs font-semibold transition-all cursor-pointer focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lamp focus-visible:ring-offset-2 focus-visible:ring-offset-dusk ${isSelected
                                 ? "border-lamp bg-lamp/20 text-lamp shadow-sm shadow-lamp/20 ring-1 ring-lamp/50"
                                 : "border-starlight/20 bg-starlight/5 text-starlight/70 hover:border-starlight/40 hover:text-parchment"
-                            }`}
+                              }`}
                           >
                             <span>{emoji}</span>
                             <span>{label}</span>

@@ -228,15 +228,20 @@ export default function VoiceSelector({
                 key={v.id}
                 role="button"
                 tabIndex={0}
+                data-testid={`voice-card-${v.id}`}
                 aria-pressed={isSelected}
-                onClick={() => handleSelect(v.id)}
+                onClick={(e) => {
+                  handleSelect(v.id);
+                  handlePreview(e, v);
+                }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
                     e.preventDefault();
                     handleSelect(v.id);
+                    handlePreview(e, v);
                   }
                 }}
-                className={`group relative flex flex-col justify-between rounded-xl border p-4 text-left transition-all duration-200 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-lamp ${
+                className={`group relative flex flex-col justify-between rounded-xl border p-4 text-left transition-all duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-lamp focus-visible:ring-2 focus-visible:ring-lamp ${
                   isSelected
                     ? "border-lamp bg-gradient-to-b from-lamp/20 to-starlight/5 shadow-md shadow-lamp/15 ring-2 ring-lamp/60"
                     : "border-starlight/20 bg-panel/70 hover:border-starlight/40 hover:bg-panel/90"
@@ -284,6 +289,8 @@ export default function VoiceSelector({
                     {v.isCustom && (
                       <button
                         type="button"
+                        tabIndex={-1}
+                        data-no-focus-ring
                         onClick={(e) => handleDeleteCustomVoice(e, v.id)}
                         className="opacity-60 hover:opacity-100 p-1 text-starlight/60 hover:text-red-400 transition-colors"
                         title="Delete custom voice"
@@ -305,7 +312,12 @@ export default function VoiceSelector({
 
                   <button
                     type="button"
-                    onClick={(e) => handlePreview(e, v)}
+                    tabIndex={-1}
+                    data-no-focus-ring
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handlePreview(e, v);
+                    }}
                     className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors focus:outline-none cursor-pointer ${
                       isPlaying
                         ? "bg-lamp text-night font-bold"

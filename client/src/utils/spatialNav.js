@@ -17,11 +17,11 @@
  * CSS selector for all elements that should be navigable via d-pad.
  */
 const FOCUSABLE_SELECTOR = [
-  "a[href]",
-  "button:not([disabled])",
-  "input:not([disabled])",
-  "select:not([disabled])",
-  "textarea:not([disabled])",
+  "a[href]:not([tabindex='-1'])",
+  "button:not([disabled]):not([tabindex='-1'])",
+  "input:not([disabled]):not([tabindex='-1'])",
+  "select:not([disabled]):not([tabindex='-1'])",
+  "textarea:not([disabled]):not([tabindex='-1'])",
   "[tabindex]:not([tabindex='-1'])",
   "[data-focusable]",
 ].join(", ");
@@ -38,6 +38,7 @@ export function getFocusableElements(container) {
   }
   const all = Array.from(root.querySelectorAll(FOCUSABLE_SELECTOR));
   return all.filter((el) => {
+    if (el.getAttribute("tabindex") === "-1" && !el.hasAttribute("data-focusable")) return false;
     const isJSDOM = typeof navigator !== "undefined" && navigator.userAgent && navigator.userAgent.includes("jsdom");
     if (!isJSDOM && !el.offsetParent && el.tagName !== "BODY") return false; // hidden via display:none
     const style = window.getComputedStyle(el);
@@ -135,6 +136,82 @@ export function moveFocus(direction) {
     return true;
   }
 
+  // Special route: When moving down or left from the Settings Back button,
+  // ensure we navigate directly to the settings tabs instead of jumping down into content columns.
+  const isSettingsBack = current?.dataset?.testid === "settings-back-btn" || current?.getAttribute?.("data-testid") === "settings-back-btn";
+  if (isSettingsBack && (direction === "down" || direction === "left")) {
+    const activeTab = focusable.find(
+      (el) => el.getAttribute("role") === "tab" && el.getAttribute("aria-selected") === "true"
+    );
+    const anyTab = focusable.find((el) => el.getAttribute("role") === "tab");
+    const target = (direction === "left" ? (focusable.find((el) => el.id === "settings-tab-parent") || activeTab) : activeTab) || anyTab;
+    if (target) {
+      if (document.querySelectorAll) {
+        document.querySelectorAll("[data-dpad-focused]").forEach((el) => el.removeAttribute("data-dpad-focused"));
+      }
+      target.setAttribute("data-dpad-focused", "true");
+      target.focus({ preventScroll: false });
+      if (typeof target.click === "function") {
+        try { target.click(); } catch (_) {}
+      }
+      target.scrollIntoView?.({ behavior: "smooth", block: "nearest", inline: "nearest" });
+      return true;
+    }
+  }
+
+  // Special route: When moving up from Settings tabs, or right from Parent Controls tab, route to Back button.
+  const isSettingsTab = current?.getAttribute?.("role") === "tab" && current?.id?.startsWith("settings-tab-");
+  if (isSettingsTab) {
+    if (direction === "up" || (direction === "right" && current?.id === "settings-tab-parent")) {
+      const backBtn = focusable.find(
+        (el) => el.dataset?.testid === "settings-back-btn" || el.getAttribute?.("data-testid") === "settings-back-btn"
+      );
+      if (backBtn) {
+        if (document.querySelectorAll) {
+          document.querySelectorAll("[data-dpad-focused]").forEach((el) => el.removeAttribute("data-dpad-focused"));
+        }
+        backBtn.setAttribute("data-dpad-focused", "true");
+        backBtn.focus({ preventScroll: false });
+        backBtn.scrollIntoView?.({ behavior: "smooth", block: "nearest", inline: "nearest" });
+        return true;
+      }
+    }
+  }
+
+  // Special route: If moving up from inside a settings panel, prefer landing on the active tab rather than skipping past it to Back button
+  if (direction === "up" && current?.closest?.('[role="tabpanel"][id^="settings-panel-"]')) {
+    const activeTab = focusable.find(
+      (el) => el.getAttribute("role") === "tab" && el.getAttribute("aria-selected") === "true"
+    );
+    if (activeTab) {
+      const fromCenter = getCenter(current);
+      let bestAbove = null;
+      let bestScoreAbove = Infinity;
+      for (const candidate of focusable) {
+        if (candidate === current) continue;
+        const toCenter = getCenter(candidate);
+        if (isInDirection(fromCenter, toCenter, "up")) {
+          const s = score(fromCenter, toCenter, "up");
+          if (s < bestScoreAbove) {
+            bestScoreAbove = s;
+            bestAbove = candidate;
+          }
+        }
+      }
+      // If there are no other panel elements above or the element above is outside the panel (e.g. back button), focus active tab
+      const isAboveOutsidePanel = !bestAbove || !bestAbove.closest?.('[role="tabpanel"][id^="settings-panel-"]');
+      if (isAboveOutsidePanel) {
+        if (document.querySelectorAll) {
+          document.querySelectorAll("[data-dpad-focused]").forEach((el) => el.removeAttribute("data-dpad-focused"));
+        }
+        activeTab.setAttribute("data-dpad-focused", "true");
+        activeTab.focus({ preventScroll: false });
+        activeTab.scrollIntoView?.({ behavior: "smooth", block: "nearest", inline: "nearest" });
+        return true;
+      }
+    }
+  }
+
   const fromCenter = getCenter(current);
   let best = null;
   let bestScore = Infinity;
@@ -210,10 +287,13 @@ export function focusFirst(container) {
   const focusable = getFocusableElements(root);
   if (focusable.length > 0) {
     // If there is an active tab or selected element, prefer focusing it first
-    const activeTab = focusable.find(
-      (el) => el.getAttribute("role") === "tab" && el.getAttribute("aria-selected") === "true"
+    const selectedItem = focusable.find(
+      (el) =>
+        (el.getAttribute("role") === "tab" && el.getAttribute("aria-selected") === "true") ||
+        el.getAttribute("aria-pressed") === "true" ||
+        el.getAttribute("aria-selected") === "true"
     );
-    const target = activeTab || focusable[0];
+    const target = selectedItem || focusable[0];
     if (document.querySelectorAll) {
       document.querySelectorAll("[data-dpad-focused]").forEach((el) => el.removeAttribute("data-dpad-focused"));
     }
@@ -223,4 +303,16 @@ export function focusFirst(container) {
     return target;
   }
   return null;
+}
+
+if (typeof window !== "undefined") {
+  window.addEventListener("focusin", (e) => {
+    if (document.querySelectorAll) {
+      document.querySelectorAll("[data-dpad-focused]").forEach((el) => {
+        if (el !== e.target) {
+          el.removeAttribute("data-dpad-focused");
+        }
+      });
+    }
+  });
 }
