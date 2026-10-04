@@ -9,8 +9,7 @@ import {
 } from "../utils/customVoices";
 import { getDeviceId, getUserId } from "../utils/device";
 import FamilyVoiceStudioModal from "./FamilyVoiceStudioModal";
-
-const API_BASE = (import.meta.env.VITE_API_BASE || "http://localhost:4000").trim().replace(/\/+$/, "");
+import { API_BASE } from "../utils/apiBase";
 
 const VOICE_ICONS = {
   Joanna: Moon,

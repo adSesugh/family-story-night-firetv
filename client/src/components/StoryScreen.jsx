@@ -37,16 +37,25 @@ function IllustrationImage({ src, idx, kenBurnsClass, windDown }) {
     );
   }
 
+  const isSvg = typeof src === "string" && (src.startsWith("data:image/svg+xml") || src.includes(".svg"));
+
   return (
     <>
-      {/* Blurred backdrop fills letterbox gaps on mobile */}
-      <img src={src} alt="" aria-hidden="true"
-        className="absolute inset-0 h-full w-full object-cover scale-110 blur-2xl opacity-60 select-none md:hidden" />
-      {/* Main illustration — object-contain mobile, object-cover desktop */}
+      {/* Blurred backdrop fills letterbox gaps on mobile for raster photos, but omitted for SVGs to eliminate blurry edge bleeding */}
+      {!isSvg && (
+        <img
+          src={src}
+          alt=""
+          aria-hidden="true"
+          className="absolute inset-0 h-full w-full object-cover scale-110 blur-2xl opacity-60 select-none md:hidden"
+        />
+      )}
+      {/* Main illustration — object-cover on all screens for full-bleed SVGs, object-contain on mobile for photos */}
       <img
         src={src}
         alt={`Illustration for page ${idx + 1}`}
-        className={`absolute inset-0 h-full w-full object-contain sm:object-cover ${kenBurnsClass} transition-opacity duration-700 select-none`}
+        className={`absolute inset-0 h-full w-full ${isSvg ? "object-cover" : "object-contain sm:object-cover"} ${kenBurnsClass} transition-opacity duration-700 select-none`}
+        style={isSvg ? { imageRendering: "auto", willChange: "transform" } : undefined}
         onError={() => setErrored(true)}
       />
     </>
@@ -677,7 +686,7 @@ export default function StoryScreen({
 
       {/* Page indicator — hidden in book mode, where dot pagination inside the page panel replaces it */}
       {!isBookMode && (
-        <div className="pointer-events-none absolute bottom-10 sm:bottom-8 max-md:landscape:bottom-2 left-1/2 z-20 -translate-x-1/2 font-sans text-xs sm:text-sm text-starlight/70">
+        <div className="pointer-events-none absolute bottom-10 sm:bottom-4 max-md:landscape:bottom-2 left-1/2 z-20 -translate-x-1/2 font-sans text-xs sm:text-sm text-starlight/70">
           {pageIndex >= pages.length
             ? `Ch. ${chapter} • The End`
             : `Ch. ${chapter} • Page ${pageIndex + 1} of ${pages.length}`}

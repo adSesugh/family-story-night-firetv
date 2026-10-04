@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { StorageService } from "./storage";
+import { getDeviceId } from "./device";
 
 /**
  * Hook for syncing real-time voice commands from Alexa Skills Kit to Fire TV client.
@@ -16,7 +17,9 @@ export function useAlexaVoiceSync({
   enabled = true,
   pollIntervalMs = 1500,
 } = {}) {
-  const [pairingCode, setPairingCode] = useState(null);
+  const [pairingCode, setPairingCode] = useState(() => {
+    return StorageService.getItem("familyStoryNight_alexa_code") || null;
+  });
   const [isConnected, setIsConnected] = useState(false);
   const [lastVoiceAction, setLastVoiceAction] = useState(null);
   const currentIntervalRef = useRef(pollIntervalMs);
@@ -47,14 +50,9 @@ export function useAlexaVoiceSync({
 
   const sessionIdRef = useRef(null);
   if (!sessionIdRef.current) {
-    const existing = StorageService.getItem("familyStoryNight_alexa_session");
-    if (existing) {
-      sessionIdRef.current = existing;
-    } else {
-      const generated = "fsn-tv-" + Math.random().toString(36).slice(2, 10);
-      StorageService.setItem("familyStoryNight_alexa_session", generated);
-      sessionIdRef.current = generated;
-    }
+    const existing = StorageService.getItem("familyStoryNight_alexa_session") || getDeviceId();
+    sessionIdRef.current = existing;
+    StorageService.setItem("familyStoryNight_alexa_session", existing);
   }
 
   useEffect(() => {
@@ -63,17 +61,19 @@ export function useAlexaVoiceSync({
     let isMounted = true;
     let pollTimer = null;
     const sessionId = sessionIdRef.current;
+    const preferredCode = StorageService.getItem("familyStoryNight_alexa_code") || undefined;
 
     // 1. Register or refresh session with backend
     fetch(`${apiBase}/alexa/session`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sessionId }),
+      body: JSON.stringify({ sessionId, preferredCode }),
     })
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (!isMounted || !data) return;
         setPairingCode(data.pairingCode);
+        StorageService.setItem("familyStoryNight_alexa_code", data.pairingCode);
         setIsConnected(true);
       })
       .catch((err) => {

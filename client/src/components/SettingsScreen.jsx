@@ -14,6 +14,7 @@ import {
   BookOpen,
   Compass,
   Share2,
+  Tv,
 } from "lucide-react";
 import {
   loadSettings,
@@ -27,11 +28,10 @@ import VoiceSelector from "./VoiceSelector";
 import ConfirmModal from "./ConfirmModal";
 import Toast from "./Toast";
 import DpadController from "./DpadController";
-import { getDeviceId, getUserId, setUserId } from "../utils/device";
-import { syncPreferencesToServer } from "../utils/userPreferences";
+import { getDeviceId, getUserId, setUserId, setDeviceId } from "../utils/device";
+import { API_BASE } from "../utils/apiBase";
+import { fetchPreferencesFromServer, syncPreferencesToServer } from "../utils/userPreferences";
 import { moveFocus, focusFirst } from "../utils/spatialNav";
-
-const API_BASE = (import.meta.env.VITE_API_BASE || "http://localhost:4000").trim().replace(/\/+$/, "");
 
 const MAX_CUSTOM_THEME_LENGTH = 100;
 
@@ -49,6 +49,7 @@ const ILLUSTRATION_STYLES = [
 export default function SettingsScreen({
   onBack,
   onSettingsChange,
+  onFamilyIdChange,
   voice = "Joanna",
   setVoice,
   voices = VOICES,
@@ -399,26 +400,129 @@ export default function SettingsScreen({
     setToastMessage("Story analytics data cleared");
   };
 
+  const [currentDeviceId, setCurrentDeviceId] = useState(() => getDeviceId());
+  const [isEditingDeviceId, setIsEditingDeviceId] = useState(false);
+  const [newDeviceIdInput, setNewDeviceIdInput] = useState("");
+
   const [familyUserId, setFamilyUserId] = useState(() => getUserId());
   const [isEditingUserId, setIsEditingUserId] = useState(false);
   const [newUserIdInput, setNewUserIdInput] = useState("");
+  const [accountStoriesCount, setAccountStoriesCount] = useState(null);
+  const [accountVoicesCount, setAccountVoicesCount] = useState(null);
 
-  const handleSaveUserId = (e) => {
+  const loadAccountDetails = useCallback(async (uid = familyUserId, devId = currentDeviceId) => {
+    try {
+      const targetDev = devId || getDeviceId();
+      const targetUid = uid || getUserId();
+      const res = await fetch(`${API_BASE}/api/history?deviceId=${encodeURIComponent(targetDev)}&userId=${encodeURIComponent(targetUid)}`, {
+        headers: { "x-device-id": targetDev, "x-user-id": targetUid },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setAccountStoriesCount(Array.isArray(data.stories) ? data.stories.length : 0);
+      }
+      const vRes = await fetch(`${API_BASE}/api/preferences/custom-voices?deviceId=${encodeURIComponent(targetDev)}&userId=${encodeURIComponent(targetUid)}`, {
+        headers: { "x-device-id": targetDev, "x-user-id": targetUid },
+      });
+      if (vRes.ok) {
+        const vData = await vRes.json();
+        setAccountVoicesCount(Array.isArray(vData.voices) ? vData.voices.length : 0);
+      }
+    } catch (_) {}
+  }, [familyUserId, currentDeviceId]);
+
+  useEffect(() => {
+    loadAccountDetails(familyUserId, currentDeviceId);
+  }, [familyUserId, currentDeviceId, loadAccountDetails]);
+
+  const handleSaveUserId = async (e) => {
     e?.preventDefault();
-    if (newUserIdInput.trim()) {
-      const updated = setUserId(newUserIdInput.trim());
+    const cleanId = newUserIdInput.trim();
+    if (!cleanId) return;
+
+    try {
+      const updated = setUserId(cleanId);
       setFamilyUserId(updated);
       setIsEditingUserId(false);
-      setToastMessage("Family Sync ID updated. Voices and preferences will now sync with this family.");
-      syncPreferencesToServer(API_BASE, getDeviceId(), { userId: updated });
+
+      // 1. Fetch preferences, parent settings, and custom voices for this family from SQLite DB
+      const loadedPrefs = await fetchPreferencesFromServer(API_BASE, getDeviceId(), updated);
+      if (loadedPrefs) {
+        const reloadedParent = loadSettings();
+        setSettingsData(reloadedParent);
+        if (loadedPrefs.voiceId && setVoice) {
+          setVoice(loadedPrefs.voiceId);
+        }
+        if (loadedPrefs.storyLength && setStoryLength) {
+          setStoryLength(loadedPrefs.storyLength);
+        }
+        if (loadedPrefs.illustrationStyle && setIllustrationStyle) {
+          setIllustrationStyle(loadedPrefs.illustrationStyle);
+        }
+        if (loadedPrefs.themeIndex !== undefined && setThemeIndex) {
+          setThemeIndex(loadedPrefs.themeIndex);
+        }
+        if (onSettingsChange) {
+          onSettingsChange(reloadedParent);
+        }
+      }
+
+      // 2. Notify parent App to reload family stories and custom voices
+      if (onFamilyIdChange) {
+        await onFamilyIdChange(updated, loadedPrefs);
+      }
+
+      await loadAccountDetails(updated);
+      setToastMessage(`Connected to Family ID: ${updated}. Voices, stories, and settings synced!`);
+    } catch (err) {
+      console.error("[SettingsScreen] Error updating Family ID:", err);
+      setToastMessage("Failed to sync with family account. Please check your connection.");
+    }
+  };
+
+  const handleSaveDeviceId = async (e) => {
+    e?.preventDefault();
+    const cleanDev = newDeviceIdInput.trim();
+    if (!cleanDev) return;
+
+    try {
+      const updated = setDeviceId(cleanDev);
+      setCurrentDeviceId(updated);
+      setIsEditingDeviceId(false);
+
+      const loadedPrefs = await fetchPreferencesFromServer(API_BASE, updated, familyUserId);
+      if (loadedPrefs) {
+        const reloadedParent = loadSettings();
+        setSettingsData(reloadedParent);
+        if (loadedPrefs.voiceId && setVoice) setVoice(loadedPrefs.voiceId);
+        if (loadedPrefs.storyLength && setStoryLength) setStoryLength(loadedPrefs.storyLength);
+        if (loadedPrefs.illustrationStyle && setIllustrationStyle) setIllustrationStyle(loadedPrefs.illustrationStyle);
+        if (loadedPrefs.themeIndex !== undefined && setThemeIndex) setThemeIndex(loadedPrefs.themeIndex);
+        if (onSettingsChange) onSettingsChange(reloadedParent);
+      }
+      if (onFamilyIdChange) {
+        await onFamilyIdChange(familyUserId, loadedPrefs);
+      }
+      await loadAccountDetails(familyUserId, updated);
+      setToastMessage(`Device ID updated to: ${updated}. Stories and settings synced!`);
+    } catch (err) {
+      console.error("[SettingsScreen] Error updating Device ID:", err);
+      setToastMessage("Failed to update Device ID. Please check connection.");
+    }
+  };
+
+  const handleCopyDeviceId = () => {
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText(currentDeviceId);
+      setToastMessage("Device ID copied to clipboard!");
     }
   };
 
   const handleCopyUserId = () => {
     if (typeof navigator !== "undefined" && navigator.clipboard) {
       navigator.clipboard.writeText(familyUserId);
+      setToastMessage("Family ID copied to clipboard!");
     }
-    setToastMessage("Family ID copied to clipboard! Enter it on other devices to sync voices.");
   };
 
   return (
@@ -997,52 +1101,142 @@ export default function SettingsScreen({
                   </h2>
                 </div>
                 <p className="mt-3 text-xs text-starlight/80">
-                  Recorded family voices (Mom, Dad, Grandparents) and bedtime stories sync across all your children&apos;s devices using this Family ID.
+                  Recorded family voices, story library, and bedtime settings sync across all your Fire TVs and devices using this Family ID.
                 </p>
 
-                <div className="mt-4 rounded-sm bg-starlight/10 p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div>
-                    <span className="text-[11px] uppercase tracking-wider text-starlight/60 font-mono">Family Account ID</span>
-                    <p className="font-mono text-base font-bold text-lamp select-all">{familyUserId}</p>
+                {/* Device & Account Identifier Cards */}
+                <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {/* Fire TV Device ID */}
+                  <div className="rounded-sm bg-starlight/10 p-3 flex flex-col justify-between gap-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <Tv className="h-3.5 w-3.5 text-starlight/70" />
+                        <span className="text-[10px] uppercase tracking-wider text-starlight/60 font-mono">This Device ID</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={handleCopyDeviceId}
+                          className="rounded-sm bg-starlight/20 px-2 py-0.5 font-sans text-xs text-parchment hover:bg-starlight/30 transition-colors cursor-pointer"
+                        >
+                          Copy
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsEditingDeviceId(!isEditingDeviceId);
+                            setNewDeviceIdInput(currentDeviceId);
+                          }}
+                          className="rounded-sm bg-lamp/20 px-2 py-0.5 font-sans text-xs text-lamp hover:bg-lamp/30 transition-colors cursor-pointer"
+                        >
+                          {isEditingDeviceId ? "Cancel" : "Change"}
+                        </button>
+                      </div>
+                    </div>
+                    <p className="font-mono text-sm font-semibold text-parchment truncate" title={currentDeviceId}>
+                      {currentDeviceId}
+                    </p>
+                    {isEditingDeviceId && (
+                      <form onSubmit={handleSaveDeviceId} className="mt-1 flex gap-1.5">
+                        <input
+                          type="text"
+                          value={newDeviceIdInput}
+                          onChange={(e) => setNewDeviceIdInput(e.target.value)}
+                          placeholder="e.g. fsn-tv-j5col04y"
+                          className="flex-1 rounded-sm border border-starlight/30 bg-dusk/60 px-2 py-1 font-mono text-xs text-parchment focus:border-lamp focus:outline-none"
+                        />
+                        <button
+                          type="submit"
+                          className="rounded-sm bg-lamp px-3 py-1 font-sans text-xs font-medium text-dusk hover:scale-[1.02] cursor-pointer"
+                        >
+                          Save
+                        </button>
+                      </form>
+                    )}
                   </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={handleCopyUserId}
-                      className="rounded-sm bg-starlight/20 px-3 py-1.5 font-sans text-xs text-parchment hover:bg-starlight/30 transition-colors cursor-pointer"
-                    >
-                      Copy ID
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsEditingUserId(!isEditingUserId);
-                        setNewUserIdInput(familyUserId);
-                      }}
-                      className="rounded-sm bg-lamp/20 px-3 py-1.5 font-sans text-xs text-lamp hover:bg-lamp/30 transition-colors cursor-pointer"
-                    >
-                      {isEditingUserId ? "Cancel" : "Change ID"}
-                    </button>
+
+                  {/* Connected Family Account ID */}
+                  <div className="rounded-sm bg-starlight/10 p-3 flex flex-col justify-between gap-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <Users className="h-3.5 w-3.5 text-lamp" />
+                        <span className="text-[10px] uppercase tracking-wider text-starlight/60 font-mono">Connected Family ID</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={handleCopyUserId}
+                          className="rounded-sm bg-starlight/20 px-2 py-0.5 font-sans text-xs text-parchment hover:bg-starlight/30 transition-colors cursor-pointer"
+                        >
+                          Copy
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsEditingUserId(!isEditingUserId);
+                            setNewUserIdInput(familyUserId);
+                          }}
+                          className="rounded-sm bg-lamp/20 px-2 py-0.5 font-sans text-xs text-lamp hover:bg-lamp/30 transition-colors cursor-pointer"
+                        >
+                          {isEditingUserId ? "Cancel" : "Change"}
+                        </button>
+                      </div>
+                    </div>
+                    <p className="font-mono text-sm font-bold text-lamp truncate" title={familyUserId}>
+                      {familyUserId}
+                    </p>
+                    {isEditingUserId && (
+                      <form onSubmit={handleSaveUserId} className="mt-1 flex gap-1.5">
+                        <input
+                          type="text"
+                          value={newUserIdInput}
+                          onChange={(e) => setNewUserIdInput(e.target.value)}
+                          placeholder="e.g. family-j5col04y or fsn-tv-..."
+                          className="flex-1 rounded-sm border border-starlight/30 bg-dusk/60 px-2 py-1 font-mono text-xs text-parchment focus:border-lamp focus:outline-none"
+                        />
+                        <button
+                          type="submit"
+                          className="rounded-sm bg-lamp px-3 py-1 font-sans text-xs font-medium text-dusk hover:scale-[1.02] cursor-pointer"
+                        >
+                          Save
+                        </button>
+                      </form>
+                    )}
                   </div>
                 </div>
 
-                {isEditingUserId && (
-                  <form onSubmit={handleSaveUserId} className="mt-3 flex gap-2">
-                    <input
-                      type="text"
-                      value={newUserIdInput}
-                      onChange={(e) => setNewUserIdInput(e.target.value)}
-                      placeholder="Enter family ID (e.g. family-smith)"
-                      className="flex-1 rounded-sm border border-starlight/30 bg-dusk/60 px-3 py-1.5 font-mono text-xs text-parchment focus:border-lamp focus:outline-none"
-                    />
-                    <button
-                      type="submit"
-                      className="rounded-sm bg-lamp px-4 py-1.5 font-sans text-xs font-medium text-dusk hover:scale-[1.02] cursor-pointer"
-                    >
-                      Save ID
-                    </button>
-                  </form>
-                )}
+                {/* Account Details & Sync Status */}
+                <div className="mt-4 rounded-sm border border-starlight/15 bg-black/20 p-3.5">
+                  <span className="text-[11px] font-sans font-medium text-starlight uppercase tracking-wider">
+                    Synced Account Status
+                  </span>
+                  <div className="mt-2.5 grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-center">
+                    <div className="rounded-sm bg-starlight/5 p-2 border border-starlight/10">
+                      <p className="text-[11px] text-starlight/70 font-sans">Story Library</p>
+                      <p className="font-serif text-base font-semibold text-lamp mt-0.5">
+                        {accountStoriesCount !== null ? `${accountStoriesCount} stories` : "Loading..."}
+                      </p>
+                    </div>
+                    <div className="rounded-sm bg-starlight/5 p-2 border border-starlight/10">
+                      <p className="text-[11px] text-starlight/70 font-sans">Custom Voices</p>
+                      <p className="font-serif text-base font-semibold text-parchment mt-0.5">
+                        {accountVoicesCount !== null ? `${accountVoicesCount} voices` : "Loading..."}
+                      </p>
+                    </div>
+                    <div className="rounded-sm bg-starlight/5 p-2 border border-starlight/10">
+                      <p className="text-[11px] text-starlight/70 font-sans">Narrator</p>
+                      <p className="font-sans text-xs font-medium text-parchment mt-1 truncate" title={settingsData?.settings?.defaultVoice || voice || "Joanna"}>
+                        {settingsData?.settings?.defaultVoice || voice || "Joanna"}
+                      </p>
+                    </div>
+                    <div className="rounded-sm bg-starlight/5 p-2 border border-starlight/10">
+                      <p className="text-[11px] text-starlight/70 font-sans">Illustration</p>
+                      <p className="font-sans text-xs font-medium text-parchment mt-1 capitalize">
+                        {settingsData?.settings?.illustrationStyle || illustrationStyle || "watercolor"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           )}

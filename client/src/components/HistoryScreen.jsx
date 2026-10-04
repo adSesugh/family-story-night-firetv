@@ -8,15 +8,17 @@ import {
   fetchStoriesFromServer,
   deleteStoryFromServer,
 } from "../utils/storyHistory";
-import { getDeviceId } from "../utils/device";
+import { getDeviceId, getUserId } from "../utils/device";
+import { API_BASE } from "../utils/apiBase";
 import ConfirmModal from "./ConfirmModal";
 import Toast from "./Toast";
 
-const API_BASE = (import.meta.env.VITE_API_BASE || "http://localhost:4000").trim().replace(/\/+$/, "");
 const PAGE_BATCH_SIZE = 8;
 
-export default function HistoryScreen({ onSelect, onBack }) {
-  const [history, setHistory] = useState([]);
+export default function HistoryScreen({ history: propHistory, onSelect, onBack }) {
+  const [history, setHistory] = useState(() =>
+    Array.isArray(propHistory) && propHistory.length > 0 ? propHistory : loadHistory()
+  );
   const [filter, setFilter] = useState("all"); // "all" | "adventures" | "bible"
   const [visibleCount, setVisibleCount] = useState(PAGE_BATCH_SIZE);
   const [confirmModal, setConfirmModal] = useState(null); // { isOpen: boolean, type: "single" | "all", id?: string, title?: string, message?: string, confirmText?: string }
@@ -25,13 +27,20 @@ export default function HistoryScreen({ onSelect, onBack }) {
   const sentinelRef = useRef(null);
 
   useEffect(() => {
-    setHistory(loadHistory());
-    fetchStoriesFromServer(API_BASE, getDeviceId()).then((serverStories) => {
-      if (Array.isArray(serverStories) && serverStories.length > 0) {
+    if (Array.isArray(propHistory) && propHistory.length > 0) {
+      setHistory(propHistory);
+    } else {
+      setHistory(loadHistory());
+    }
+
+    const devId = getDeviceId();
+    const uId = getUserId();
+    fetchStoriesFromServer(API_BASE, devId, uId).then((serverStories) => {
+      if (Array.isArray(serverStories)) {
         setHistory(serverStories);
       }
     });
-  }, []);
+  }, [propHistory]);
 
   const requestDeleteStory = (id, storyTitle) => {
     setConfirmModal({

@@ -3,73 +3,8 @@ import { Mic, MicOff, Play, Square, X, Sparkles, Check, Heart, Volume2, Upload, 
 import { saveCustomVoice, syncCustomVoiceToServer } from "../utils/customVoices";
 import { getDeviceId, getUserId } from "../utils/device";
 import { focusFirst } from "../utils/spatialNav";
-
-const API_BASE = (import.meta.env?.VITE_API_BASE || "http://localhost:4000").trim().replace(/\/+$/, "");
-
-async function convertBlobToWavBase64(blob) {
-  if (!blob) return "";
-  try {
-    if (typeof blob.arrayBuffer === "function") {
-      const AudioContextClass = typeof window !== "undefined" ? (window.AudioContext || window.webkitAudioContext) : null;
-      if (AudioContextClass) {
-        const arrayBuffer = await blob.arrayBuffer();
-        const audioCtx = new AudioContextClass();
-        const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
-        try { await audioCtx.close(); } catch (_) {}
-
-        const channelData = audioBuffer.getChannelData(0);
-        const sampleRate = audioBuffer.sampleRate;
-        const length = channelData.length;
-        const buffer = new ArrayBuffer(44 + length * 2);
-        const view = new DataView(buffer);
-
-        const writeStr = (offset, str) => {
-          for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
-        };
-
-        writeStr(0, "RIFF");
-        view.setUint32(4, 36 + length * 2, true);
-        writeStr(8, "WAVE");
-        writeStr(12, "fmt ");
-        view.setUint32(16, 16, true);
-        view.setUint16(20, 1, true); // PCM
-        view.setUint16(22, 1, true); // Mono
-        view.setUint32(24, sampleRate, true);
-        view.setUint32(28, sampleRate * 2, true);
-        view.setUint16(32, 2, true);
-        view.setUint16(34, 16, true);
-        writeStr(36, "data");
-        view.setUint32(40, length * 2, true);
-
-        let offset = 44;
-        for (let i = 0; i < length; i++, offset += 2) {
-          const s = Math.max(-1, Math.min(1, channelData[i]));
-          view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7fff, true);
-        }
-
-        const wavBlob = new Blob([view], { type: "audio/wav" });
-        return new Promise((resolve) => {
-          const reader = new FileReader();
-          reader.onloadend = () => resolve(reader.result || "");
-          reader.onerror = () => resolve("");
-          reader.readAsDataURL(wavBlob);
-        });
-      }
-    }
-  } catch (err) {
-    console.warn("WAV encoding note:", err);
-  }
-
-  if (typeof FileReader !== "undefined") {
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result || "");
-      reader.onerror = () => resolve("");
-      reader.readAsDataURL(blob);
-    });
-  }
-  return "";
-}
+import { API_BASE } from "../utils/apiBase";
+import { convertBlobToWavBase64 } from "../utils/audioEncoding";
 
 const BEDTIME_READING_SCRIPT =
   "The stars are shining softly tonight. Close your eyes, little one, and listen to the quiet wind. A magical adventure is waiting in your dreams...";

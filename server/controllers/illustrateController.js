@@ -11,15 +11,18 @@ export const illustrate = async (req, res) => {
     prompt,
     storyId,
     pageIndex,
+    chapter = 1,
   } = req.body;
   if (!text && !scene && !prompt) return res.status(400).json({ error: "text, scene, or prompt is required" });
+
+  const chapterNum = Number(chapter) || 1;
 
   // 1. Check SQLite Cache if storyId and pageIndex are provided
   if (storyId && pageIndex !== undefined && pageIndex !== null) {
     try {
-      const cachedUrl = getStoryIllustration(storyId, Number(pageIndex));
+      const cachedUrl = getStoryIllustration(storyId, Number(pageIndex), chapterNum);
       if (cachedUrl && typeof cachedUrl === "string" && !cachedUrl.startsWith("data:image/svg+xml")) {
-        console.log(`[Illustrate] ⚡ SQLite Cache HIT: Story=${storyId} Page=${pageIndex}`);
+        console.log(`[Illustrate] ⚡ SQLite Cache HIT: Story=${storyId} Chapter=${chapterNum} Page=${pageIndex}`);
         const isJpeg = cachedUrl.startsWith("data:image/jpeg");
         const mime = isJpeg ? "image/jpeg" : "image/png";
         const base64Data = cachedUrl.replace(/^data:image\/\w+;base64,/, "");
@@ -49,8 +52,8 @@ export const illustrate = async (req, res) => {
       // 2. Persist newly generated illustration directly into SQLite
       if (storyId && pageIndex !== undefined && pageIndex !== null) {
         try {
-          saveStoryIllustration(storyId, Number(pageIndex), illustration.url, `Illustration for page ${Number(pageIndex) + 1}`);
-          console.log(`[Illustrate] 💾 Stored illustration in SQLite for story: ${storyId} (Page: ${pageIndex})`);
+          saveStoryIllustration(storyId, Number(pageIndex), illustration.url, `Illustration for page ${Number(pageIndex) + 1}`, chapterNum);
+          console.log(`[Illustrate] 💾 Stored illustration in SQLite for story: ${storyId} (Chapter: ${chapterNum}, Page: ${pageIndex})`);
         } catch (dbErr) {
           console.warn("[Illustrate] Could not save illustration to DB:", dbErr.message);
         }
@@ -71,7 +74,7 @@ export const illustrate = async (req, res) => {
   }
 
   // Graceful degradation: Serve rich bedtime watercolor SVG stream so no page is ever left blank
-  const svg = createBedtimeFallbackSvg(theme);
+  const svg = createBedtimeFallbackSvg(theme, chapterNum, Number(pageIndex) + 1);
   res.setHeader("Content-Type", "image/svg+xml");
   res.setHeader("Content-Length", Buffer.byteLength(svg));
   res.end(svg);

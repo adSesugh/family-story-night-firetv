@@ -15,19 +15,30 @@ function extractDeviceId(req) {
   );
 }
 
+function extractUserId(req) {
+  return (
+    req.query?.userId ||
+    req.query?.familyId ||
+    req.headers?.["x-user-id"] ||
+    req.body?.userId ||
+    null
+  );
+}
+
 /**
  * GET /api/history
- * Query: ?deviceId=...&limit=...
+ * Query: ?deviceId=...&userId=...&limit=...
  */
 export function getHistoryHandler(req, res) {
   try {
     const deviceId = extractDeviceId(req);
-    if (!deviceId) {
-      return res.status(400).json({ error: "deviceId is required" });
+    const userId = extractUserId(req);
+    if (!deviceId && !userId) {
+      return res.status(400).json({ error: "deviceId or userId is required" });
     }
 
     const limit = Math.min(Number(req.query.limit) || 50, 100);
-    const stories = getStories(deviceId, limit);
+    const stories = getStories(deviceId, limit, userId);
     return res.json({ stories });
   } catch (err) {
     console.error("[historyController] getHistory error:", err);
@@ -41,12 +52,13 @@ export function getHistoryHandler(req, res) {
 export function getStoryByIdHandler(req, res) {
   try {
     const deviceId = extractDeviceId(req);
+    const userId = extractUserId(req);
     const { id } = req.params;
-    if (!deviceId || !id) {
-      return res.status(400).json({ error: "deviceId and id are required" });
+    if ((!deviceId && !userId) || !id) {
+      return res.status(400).json({ error: "id and (deviceId or userId) are required" });
     }
 
-    const story = getStoryById(id, deviceId);
+    const story = getStoryById(id, deviceId, userId);
     if (!story) {
       return res.status(404).json({ error: "Story not found" });
     }
@@ -65,6 +77,7 @@ export function getStoryByIdHandler(req, res) {
 export function saveStoryHandler(req, res) {
   try {
     const deviceId = extractDeviceId(req);
+    const userId = extractUserId(req) || req.body?.userId;
     const story = req.body?.story || req.body;
 
     if (!deviceId) {
@@ -74,7 +87,7 @@ export function saveStoryHandler(req, res) {
       return res.status(400).json({ error: "Valid story object with an id is required" });
     }
 
-    const saved = saveStory(deviceId, story);
+    const saved = saveStory(deviceId, story, userId);
     return res.json({ success: true, story: saved });
   } catch (err) {
     console.error("[historyController] saveStory error:", err);

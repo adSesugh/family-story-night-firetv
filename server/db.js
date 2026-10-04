@@ -125,6 +125,25 @@ export function initDatabase(dbPath = process.env.DB_PATH) {
     // Ignore migration error
   }
 
+  // Auto-attribute unlinked stories and custom voices to registered family accounts
+  try {
+    db.exec(`
+      UPDATE stories 
+      SET user_id = (SELECT user_id FROM devices WHERE devices.device_id = stories.device_id)
+      WHERE user_id IS NULL AND EXISTS (SELECT 1 FROM devices WHERE devices.device_id = stories.device_id AND devices.user_id IS NOT NULL);
+
+      UPDATE stories 
+      SET user_id = 'family-' || REPLACE(device_id, 'fsn-tv-', '')
+      WHERE user_id IS NULL AND device_id LIKE 'fsn-tv-%';
+
+      UPDATE custom_voices
+      SET user_id = (SELECT user_id FROM devices WHERE devices.device_id = custom_voices.device_id)
+      WHERE user_id IS NULL AND EXISTS (SELECT 1 FROM devices WHERE devices.device_id = custom_voices.device_id AND devices.user_id IS NOT NULL);
+    `);
+  } catch (_e) {
+    // Ignore migration error
+  }
+
   return db;
 }
 
@@ -144,6 +163,66 @@ export function upsertDevice(deviceId, userId = null) {
   `);
   stmt.run(deviceId, userId, now, now);
   return { deviceId, userId };
+}
+
+export function getDevice(deviceId) {
+  if (!deviceId) return null;
+  try {
+    return db.prepare("SELECT * FROM devices WHERE device_id = ?").get(deviceId) || null;
+  } catch (err) {
+    console.error("[DB] Error getting device:", err);
+    return null;
+  }
+}
+
+export function getDeviceAlexaCode(deviceId) {
+  if (!deviceId) return null;
+  try {
+    const row = db.prepare("SELECT paired_alexa_code FROM devices WHERE device_id = ?").get(deviceId);
+    return row?.paired_alexa_code || null;
+  } catch (err) {
+    console.error("[DB] Error getting device Alexa code:", err);
+    return null;
+  }
+}
+
+export function saveDeviceAlexaCode(deviceId, code, userId = null) {
+  if (!deviceId || !code) return null;
+  try {
+    const now = new Date().toISOString();
+    db.prepare(`
+      INSERT INTO devices (device_id, user_id, paired_alexa_code, created_at, last_active_at)
+      VALUES (?, ?, ?, ?, ?)
+      ON CONFLICT(device_id) DO UPDATE SET
+        paired_alexa_code = excluded.paired_alexa_code,
+        user_id = COALESCE(excluded.user_id, devices.user_id),
+        last_active_at = excluded.last_active_at
+    `).run(deviceId, userId, code, now, now);
+    return code;
+  } catch (err) {
+    console.error("[DB] Error saving device Alexa code:", err);
+    return null;
+  }
+}
+
+export function findDeviceIdByAlexaCode(code) {
+  if (!code) return null;
+  try {
+    const row = db.prepare("SELECT device_id FROM devices WHERE paired_alexa_code = ?").get(code);
+    return row?.device_id || null;
+  } catch (err) {
+    console.error("[DB] Error finding device by Alexa code:", err);
+    return null;
+  }
+}
+
+export function getMostRecentActiveDeviceId() {
+  try {
+    const row = db.prepare("SELECT device_id, paired_alexa_code FROM devices ORDER BY last_active_at DESC LIMIT 1").get();
+    return row || null;
+  } catch (err) {
+    return null;
+  }
 }
 
 // --- Custom Voices Helpers ---
@@ -237,20 +316,13 @@ export function getCustomVoices({ userId = null, deviceId = null } = {}) {
   }
 
   let rows = [];
-  if (resolvedUserId && deviceId) {
+  if (resolvedUserId) {
     const stmt = db.prepare(`
       SELECT * FROM custom_voices
-      WHERE user_id = ? OR device_id = ?
+      WHERE user_id = ? OR (user_id IS NULL AND device_id = ?)
       ORDER BY updated_at DESC, created_at DESC
     `);
-    rows = stmt.all(resolvedUserId, deviceId);
-  } else if (resolvedUserId) {
-    const stmt = db.prepare(`
-      SELECT * FROM custom_voices
-      WHERE user_id = ?
-      ORDER BY updated_at DESC, created_at DESC
-    `);
-    rows = stmt.all(resolvedUserId);
+    rows = stmt.all(resolvedUserId, deviceId || "");
   } else if (deviceId) {
     const stmt = db.prepare(`
       SELECT * FROM custom_voices
@@ -292,17 +364,36 @@ export function clearVoiceNarrations(voiceId) {
 
 // --- Preferences Helpers ---
 export function getPreferences(deviceId, userId = null) {
-  if (!deviceId) return null;
-  const stmt = db.prepare(`SELECT * FROM preferences WHERE device_id = ?`);
-  const row = stmt.get(deviceId);
+  if (!deviceId && !userId) return null;
+
+  let row = null;
+  // If a family userId is provided, prioritize loading the shared family profile
+  if (userId) {
+    row = db.prepare(`SELECT * FROM preferences WHERE user_id = ? ORDER BY updated_at DESC LIMIT 1`).get(userId);
+  }
+  // Fallback to device-specific preferences ONLY if no userId was provided,
+  // or if the device-specific preferences row is unassigned or belongs to this userId.
+  // NEVER fall back to another family's preferences!
+  if (!row && deviceId) {
+    if (userId) {
+      row = db.prepare(`SELECT * FROM preferences WHERE device_id = ? AND (user_id = ? OR user_id IS NULL)`).get(deviceId, userId);
+    } else {
+      row = db.prepare(`SELECT * FROM preferences WHERE device_id = ?`).get(deviceId);
+    }
+  }
 
   const effectiveUserId = userId || row?.user_id || null;
   const dbCustomVoices = getCustomVoices({ userId: effectiveUserId, deviceId });
 
+  // Update devices table so this device is linked to the family account
+  if (deviceId && effectiveUserId) {
+    upsertDevice(deviceId, effectiveUserId);
+  }
+
   if (!row) {
     if (effectiveUserId && dbCustomVoices.length > 0) {
       return {
-        deviceId,
+        deviceId: deviceId || "default",
         userId: effectiveUserId,
         pinHash: null,
         parentSettings: null,
@@ -417,15 +508,58 @@ export function savePreferences(deviceId, prefs = {}) {
 }
 
 // --- Stories Helpers ---
-export function getStories(deviceId, limit = 50) {
-  if (!deviceId) return [];
-  const stmt = db.prepare(`
-    SELECT * FROM stories
-    WHERE device_id = ?
-    ORDER BY updated_at DESC, rowid DESC
-    LIMIT ?
-  `);
-  const rows = stmt.all(deviceId, limit);
+export function getStories(deviceId, limit = 50, userId = null) {
+  if (!deviceId && !userId) return [];
+
+  const normalizedDev = (deviceId || "").trim();
+  const normalizedUser = (userId || "").trim();
+
+  // 1. Resolve registered family userId for this device from the database
+  let effectiveUserId = normalizedUser || null;
+  let devRegisteredUserId = null;
+  if (normalizedDev) {
+    try {
+      const devRow = db.prepare("SELECT user_id FROM devices WHERE device_id = ?").get(normalizedDev);
+      if (devRow?.user_id) devRegisteredUserId = devRow.user_id;
+    } catch (_) {}
+  }
+
+  // If the passed userId is empty or is just the default auto-generated id for this device (family-<suffix>),
+  // and this device is already registered to a real family account in the DB, use the DB's family account!
+  const isDefaultGeneratedUser = normalizedDev && effectiveUserId === "family-" + normalizedDev.replace(/^fsn-tv-/, "");
+  if ((!effectiveUserId || isDefaultGeneratedUser) && devRegisteredUserId) {
+    effectiveUserId = devRegisteredUserId;
+  }
+
+  // If the user entered a device ID (e.g. fsn-tv-...) as their userId, find its linked family account
+  if (effectiveUserId && effectiveUserId.startsWith("fsn-tv-")) {
+    try {
+      const devRow = db.prepare("SELECT user_id FROM devices WHERE device_id = ?").get(effectiveUserId);
+      if (devRow?.user_id) effectiveUserId = devRow.user_id;
+    } catch (_) {}
+  }
+
+  let rows = [];
+  if (effectiveUserId) {
+    // When a family account is specified (or resolved from the device), load all stories belonging to that family account.
+    // Also include any legacy stories on this device that have no user_id assigned yet (user_id IS NULL).
+    // NEVER load stories that belong to another family account (user_id != effectiveUserId)!
+    const stmt = db.prepare(`
+      SELECT * FROM stories
+      WHERE user_id = ? OR (user_id IS NULL AND device_id = ?)
+      ORDER BY updated_at DESC, rowid DESC
+      LIMIT ?
+    `);
+    rows = stmt.all(effectiveUserId, normalizedDev || "", limit);
+  } else if (normalizedDev) {
+    const stmt = db.prepare(`
+      SELECT * FROM stories
+      WHERE device_id = ?
+      ORDER BY updated_at DESC, rowid DESC
+      LIMIT ?
+    `);
+    rows = stmt.all(normalizedDev, limit);
+  }
 
   return rows.map((row) => ({
     id: row.id,
@@ -448,10 +582,42 @@ export function getStories(deviceId, limit = 50) {
   }));
 }
 
-export function getStoryById(id, deviceId) {
-  if (!id || !deviceId) return null;
-  const stmt = db.prepare(`SELECT * FROM stories WHERE id = ? AND device_id = ?`);
-  const row = stmt.get(id, deviceId);
+export function getStoryById(id, deviceId, userId = null) {
+  if (!id || (!deviceId && !userId)) return null;
+
+  const normalizedDev = (deviceId || "").trim();
+  const normalizedUser = (userId || "").trim();
+
+  let effectiveUserId = normalizedUser || null;
+  let devRegisteredUserId = null;
+  if (normalizedDev) {
+    try {
+      const devRow = db.prepare("SELECT user_id FROM devices WHERE device_id = ?").get(normalizedDev);
+      if (devRow?.user_id) devRegisteredUserId = devRow.user_id;
+    } catch (_) {}
+  }
+  const isDefaultGeneratedUser = normalizedDev && effectiveUserId === "family-" + normalizedDev.replace(/^fsn-tv-/, "");
+  if ((!effectiveUserId || isDefaultGeneratedUser) && devRegisteredUserId) {
+    effectiveUserId = devRegisteredUserId;
+  }
+  if (effectiveUserId && effectiveUserId.startsWith("fsn-tv-")) {
+    try {
+      const devRow = db.prepare("SELECT user_id FROM devices WHERE device_id = ?").get(effectiveUserId);
+      if (devRow?.user_id) effectiveUserId = devRow.user_id;
+    } catch (_) {}
+  }
+
+  let row = null;
+  if (effectiveUserId) {
+    const stmt = db.prepare(`
+      SELECT * FROM stories
+      WHERE id = ? AND (user_id = ? OR (user_id IS NULL AND device_id = ?))
+    `);
+    row = stmt.get(id, effectiveUserId, normalizedDev || "");
+  } else if (normalizedDev) {
+    const stmt = db.prepare(`SELECT * FROM stories WHERE id = ? AND device_id = ?`);
+    row = stmt.get(id, normalizedDev);
+  }
   if (!row) return null;
 
   return {
@@ -475,11 +641,12 @@ export function getStoryById(id, deviceId) {
   };
 }
 
-export function saveStory(deviceId, story = {}) {
+export function saveStory(deviceId, story = {}, userId = null) {
   if (!deviceId) throw new Error("deviceId is required");
   if (!story.id) throw new Error("story.id is required");
 
-  upsertDevice(deviceId, story.userId);
+  const effectiveUserId = story.userId || userId || getDevice(deviceId)?.user_id || null;
+  upsertDevice(deviceId, effectiveUserId);
 
   const now = new Date().toISOString();
   const createdAt = story.generatedAt || story.createdAt || now;
@@ -544,6 +711,7 @@ export function saveStory(deviceId, story = {}) {
     )
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET
+      user_id = COALESCE(excluded.user_id, stories.user_id),
       chapter = excluded.chapter,
       lesson = excluded.lesson,
       choices_json = excluded.choices_json,
@@ -558,7 +726,7 @@ export function saveStory(deviceId, story = {}) {
   stmt.run(
     story.id,
     deviceId,
-    story.userId || null,
+    effectiveUserId,
     familyMembersJson,
     story.theme || "",
     story.category || "",
@@ -580,12 +748,58 @@ export function saveStory(deviceId, story = {}) {
 
 /**
  * Saves an illustration directly into a story in SQLite (persisting even if client localStorage is constrained).
+ * Supports chapter-specific illustration saving into chapters_json when chapter > 1.
  */
-export function saveStoryIllustration(storyId, pageIndex, illustrationUrl, alt = "") {
+export function saveStoryIllustration(storyId, pageIndex, illustrationUrl, alt = "", chapter = 1) {
   if (!storyId || pageIndex === undefined || pageIndex === null || !illustrationUrl) return null;
   const row = db.prepare("SELECT * FROM stories WHERE id = ?").get(storyId);
   if (!row) return null;
 
+  const chNum = Number(chapter) || 1;
+  const now = new Date().toISOString();
+
+  if (chNum > 1) {
+    let chapters = [];
+    try {
+      chapters = row.chapters_json ? JSON.parse(row.chapters_json) : [];
+    } catch {
+      chapters = [];
+    }
+
+    let chapterIndex = chapters.findIndex((c) => c.chapter === chNum);
+    if (chapterIndex === -1 && chapters[chNum - 1]) {
+      chapterIndex = chNum - 1;
+    }
+
+    if (chapterIndex !== -1 && chapters[chapterIndex]) {
+      const targetChapter = { ...chapters[chapterIndex] };
+      const illustrations = Array.isArray(targetChapter.illustrations) ? [...targetChapter.illustrations] : [];
+      illustrations[pageIndex] = illustrationUrl;
+      targetChapter.illustrations = illustrations;
+
+      if (Array.isArray(targetChapter.pages) && targetChapter.pages[pageIndex]) {
+        const rawPage = targetChapter.pages[pageIndex];
+        const text = typeof rawPage === "object" ? rawPage.text : rawPage;
+        const scene = typeof rawPage === "object" ? rawPage.scene : undefined;
+        targetChapter.pages[pageIndex] = {
+          text,
+          scene,
+          illustration: { url: illustrationUrl, alt: alt || `Illustration for page ${pageIndex + 1}` },
+        };
+      }
+
+      chapters[chapterIndex] = targetChapter;
+      db.prepare(`
+        UPDATE stories
+        SET chapters_json = ?, updated_at = ?
+        WHERE id = ?
+      `).run(JSON.stringify(chapters), now, storyId);
+
+      return getStoryById(storyId, row.device_id);
+    }
+  }
+
+  // Chapter 1 / Root fallback
   let illustrations = [];
   try {
     illustrations = row.illustrations_json ? JSON.parse(row.illustrations_json) : [];
@@ -610,7 +824,6 @@ export function saveStoryIllustration(storyId, pageIndex, illustrationUrl, alt =
     };
   }
 
-  const now = new Date().toISOString();
   db.prepare(`
     UPDATE stories
     SET illustrations_json = ?, pages_json = ?, updated_at = ?
@@ -622,17 +835,36 @@ export function saveStoryIllustration(storyId, pageIndex, illustrationUrl, alt =
 
 /**
  * Retrieves a cached illustration for a story page from SQLite if available.
+ * Checks chapters_json when chapter > 1 to avoid cross-chapter illustration collisions.
  */
-export function getStoryIllustration(storyId, pageIndex) {
+export function getStoryIllustration(storyId, pageIndex, chapter = 1) {
   if (!storyId || pageIndex === undefined || pageIndex === null) return null;
-  const row = db.prepare("SELECT illustrations_json FROM stories WHERE id = ?").get(storyId);
-  if (!row || !row.illustrations_json) return null;
-  try {
-    const illustrations = JSON.parse(row.illustrations_json);
-    return illustrations[pageIndex] || null;
-  } catch {
-    return null;
+  const row = db.prepare("SELECT illustrations_json, chapters_json FROM stories WHERE id = ?").get(storyId);
+  if (!row) return null;
+
+  const chNum = Number(chapter) || 1;
+  if (chNum > 1 && row.chapters_json) {
+    try {
+      const chapters = JSON.parse(row.chapters_json);
+      const targetChapter = chapters.find((c) => c.chapter === chNum) || chapters[chNum - 1];
+      if (targetChapter && Array.isArray(targetChapter.illustrations)) {
+        return targetChapter.illustrations[pageIndex] || null;
+      }
+    } catch {
+      // Fall through if chapter parsing fails
+    }
   }
+
+  if (chNum === 1 && row.illustrations_json) {
+    try {
+      const illustrations = JSON.parse(row.illustrations_json);
+      return illustrations[pageIndex] || null;
+    } catch {
+      return null;
+    }
+  }
+
+  return null;
 }
 
 export function deleteStory(id, deviceId) {
@@ -688,7 +920,7 @@ export function getNarration(textHash, voiceId) {
  * Persists synthesized voice audio and speech marks to SQLite.
  * Also associates with story and device if provided.
  */
-export function saveNarration({ storyId = null, deviceId = null, pageIndex = null, voiceId, textHash, audioData, speechMarks = [] }) {
+export function saveNarration({ storyId = null, deviceId = null, pageIndex = null, chapter = 1, voiceId, textHash, audioData, speechMarks = [] }) {
   if (!voiceId || !textHash || !audioData) {
     throw new Error("voiceId, textHash, and audioData are required");
   }
@@ -729,11 +961,20 @@ export function saveNarration({ storyId = null, deviceId = null, pageIndex = nul
       const story = getStoryById(storyId, deviceId);
       if (story) {
         const existingNarrations = story.narrations || {};
-        existingNarrations[pageIndex] = {
+        const chNum = Number(chapter) || 1;
+        const chKey = `ch${chNum}_${pageIndex}`;
+        existingNarrations[chKey] = {
           audio: audioData,
           speechMarks,
           voiceId,
         };
+        if (chNum === 1) {
+          existingNarrations[pageIndex] = {
+            audio: audioData,
+            speechMarks,
+            voiceId,
+          };
+        }
         const updateStmt = db.prepare(`UPDATE stories SET narrations_json = ?, updated_at = ? WHERE id = ? AND device_id = ?`);
         updateStmt.run(JSON.stringify(existingNarrations), now, storyId, deviceId);
       }

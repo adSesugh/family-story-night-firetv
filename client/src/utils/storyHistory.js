@@ -1,4 +1,5 @@
 import { StorageService } from "./storage";
+import { getUserId } from "./device";
 
 /**
  * @typedef {{ text: string, scene?: string, illustration?: { url: string, alt: string } | null }} StoryPage
@@ -43,9 +44,15 @@ export function isBiblicalStory(story) {
  * progressively compressing and trimming heavy base64 images so story text and metadata
  * are NEVER lost.
  */
-function safeSaveStories(stories) {
+function safeSaveStories(stories, userId = null) {
+  const targetKey = userId ? `${STORAGE_KEY}_${userId}` : STORAGE_KEY;
+
   // 1. First attempt: normal write
-  if (StorageService.setItem(STORAGE_KEY, { stories, version: 1 })) {
+  const normalPayload = { stories, version: 1 };
+  if (StorageService.setItem(targetKey, normalPayload)) {
+    if (targetKey !== STORAGE_KEY) {
+      StorageService.setItem(STORAGE_KEY, normalPayload);
+    }
     return true;
   }
 
@@ -80,7 +87,10 @@ function safeSaveStories(stories) {
       : s.chapters,
   }));
 
-  if (StorageService.setItem(STORAGE_KEY, { stories: lightenedStories, version: 1 })) {
+  if (StorageService.setItem(targetKey, { stories: lightenedStories, version: 1 })) {
+    if (targetKey !== STORAGE_KEY) {
+      StorageService.setItem(STORAGE_KEY, { stories: lightenedStories, version: 1 });
+    }
     return true;
   }
 
@@ -104,7 +114,10 @@ function safeSaveStories(stories) {
       : s.chapters,
   }));
 
-  if (StorageService.setItem(STORAGE_KEY, { stories: textOnlyStories, version: 1 })) {
+  if (StorageService.setItem(targetKey, { stories: textOnlyStories, version: 1 })) {
+    if (targetKey !== STORAGE_KEY) {
+      StorageService.setItem(STORAGE_KEY, { stories: textOnlyStories, version: 1 });
+    }
     return true;
   }
 
@@ -112,16 +125,24 @@ function safeSaveStories(stories) {
   let trimmed = [...textOnlyStories];
   while (trimmed.length > 1) {
     trimmed.shift(); // drop oldest
-    if (StorageService.setItem(STORAGE_KEY, { stories: trimmed, version: 1 })) {
+    if (StorageService.setItem(targetKey, { stories: trimmed, version: 1 })) {
+      if (targetKey !== STORAGE_KEY) {
+        StorageService.setItem(STORAGE_KEY, { stories: trimmed, version: 1 });
+      }
       return true;
     }
   }
 
   // 5. Final fallback: save at least the newest story
-  return StorageService.setItem(STORAGE_KEY, {
+  const fallbackPayload = {
     stories: [stories[stories.length - 1]],
     version: 1,
-  });
+  };
+  const ok = StorageService.setItem(targetKey, fallbackPayload);
+  if (targetKey !== STORAGE_KEY) {
+    StorageService.setItem(STORAGE_KEY, fallbackPayload);
+  }
+  return ok;
 }
 
 /**
@@ -131,9 +152,10 @@ function safeSaveStories(stories) {
  * @param {Omit<Story, 'id' | 'generatedAt'>} story
  * @returns {Story} The saved story (with id and generatedAt filled in)
  */
-export function saveStory(story) {
+export function saveStory(story, userId = null) {
   const isBible = isBiblicalStory(story);
   const resolvedCategory = isBible ? "bible" : story.category || "adventures";
+  const activeUserId = userId !== null ? userId : getUserId();
 
   const initialChapters =
     Array.isArray(story.chapters) && story.chapters.length > 0
@@ -156,7 +178,7 @@ export function saveStory(story) {
     generatedAt: story.generatedAt || new Date().toISOString(),
   };
 
-  const existing = loadHistory();
+  const existing = loadHistory(activeUserId);
 
   // Enforce cap: drop oldest entries (front of array) until we have room
   const trimmed =
@@ -164,7 +186,7 @@ export function saveStory(story) {
       ? existing.slice(existing.length - MAX_STORIES + 1)
       : existing;
 
-  safeSaveStories([...trimmed, saved]);
+  safeSaveStories([...trimmed, saved], activeUserId);
 
   return saved;
 }
@@ -177,9 +199,10 @@ export function saveStory(story) {
  * @param {Partial<Story>} updates
  * @returns {Story | null}
  */
-export function updateStory(id, updates) {
+export function updateStory(id, updates, userId = null) {
   try {
-    const stories = loadHistory();
+    const activeUserId = userId !== null ? userId : getUserId();
+    const stories = loadHistory(activeUserId);
     const index = stories.findIndex((s) => s.id === id);
     if (index === -1) return null;
 
@@ -191,7 +214,7 @@ export function updateStory(id, updates) {
     };
 
     stories[index] = updatedStory;
-    safeSaveStories(stories);
+    safeSaveStories(stories, activeUserId);
     return updatedStory;
   } catch {
     return null;
@@ -218,9 +241,11 @@ export function getStoryById(id) {
  *
  * @returns {Story[]}
  */
-export function loadHistory() {
+export function loadHistory(userId = null) {
   try {
-    const data = StorageService.getItem(STORAGE_KEY);
+    const activeUserId = userId !== null ? userId : getUserId();
+    const key = activeUserId ? `${STORAGE_KEY}_${activeUserId}` : STORAGE_KEY;
+    const data = StorageService.getItem(key) || StorageService.getItem(STORAGE_KEY);
     if (!data || !Array.isArray(data.stories)) return [];
     return data.stories.map((s) => {
       if (!Array.isArray(s.chapters) || s.chapters.length === 0) {
@@ -249,15 +274,19 @@ export function loadHistory() {
  *
  * @param {string} id
  */
-export function deleteStory(id) {
-  const stories = loadHistory().filter((s) => s.id !== id);
-  safeSaveStories(stories);
+export function deleteStory(id, userId = null) {
+  const activeUserId = userId !== null ? userId : getUserId();
+  const stories = loadHistory(activeUserId).filter((s) => s.id !== id);
+  safeSaveStories(stories, activeUserId);
 }
 
 /**
  * Remove all stories from history.
  */
-export function clearHistory() {
+export function clearHistory(userId = null) {
+  const activeUserId = userId !== null ? userId : getUserId();
+  const key = activeUserId ? `${STORAGE_KEY}_${activeUserId}` : STORAGE_KEY;
+  StorageService.removeItem(key);
   StorageService.removeItem(STORAGE_KEY);
 }
 
@@ -269,13 +298,17 @@ export function clearHistory() {
  * @param {Story} story
  * @returns {Promise<boolean>}
  */
-export async function syncStoryToServer(apiBase, deviceId, story) {
+export async function syncStoryToServer(apiBase, deviceId, story, userId = getUserId()) {
   if (!apiBase || !deviceId || !story?.id) return false;
   try {
     const res = await fetch(`${apiBase}/api/history`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ deviceId, story }),
+      headers: {
+        "Content-Type": "application/json",
+        "x-device-id": deviceId,
+        "x-user-id": userId || "",
+      },
+      body: JSON.stringify({ deviceId, userId, story }),
     });
     return res.ok;
   } catch (err) {
@@ -292,29 +325,33 @@ export async function syncStoryToServer(apiBase, deviceId, story) {
  * @param {string} deviceId
  * @returns {Promise<Story[]>}
  */
-export async function fetchStoriesFromServer(apiBase, deviceId) {
-  if (!apiBase || !deviceId) return loadHistory();
+export async function fetchStoriesFromServer(apiBase, deviceId, userId = getUserId()) {
+  if (!apiBase || (!deviceId && !userId)) return loadHistory(userId);
   try {
-    const res = await fetch(`${apiBase}/api/history?deviceId=${encodeURIComponent(deviceId)}`);
-    if (!res.ok) return loadHistory();
+    let url = `${apiBase}/api/history?deviceId=${encodeURIComponent(deviceId || "")}`;
+    if (userId) {
+      url += `&userId=${encodeURIComponent(userId)}`;
+    }
+    const res = await fetch(url, {
+      headers: {
+        "x-device-id": deviceId || "",
+        "x-user-id": userId || "",
+      },
+    });
+    if (!res.ok) return loadHistory(userId);
     const data = await res.json();
     if (Array.isArray(data.stories)) {
-      const local = loadHistory();
-      const localMap = new Map(local.map((s) => [s.id, s]));
-      for (const serverStory of data.stories) {
-        // If server story has illustrations or is newer, update local cache
-        localMap.set(serverStory.id, serverStory);
-      }
-      const merged = Array.from(localMap.values()).sort(
+      // Authoritative stories for this family account from SQLite database
+      const stories = data.stories.sort(
         (a, b) => new Date(b.updatedAt || b.generatedAt || 0) - new Date(a.updatedAt || a.generatedAt || 0)
       );
-      safeSaveStories(merged);
-      return merged;
+      safeSaveStories(stories, userId);
+      return stories;
     }
   } catch (err) {
     console.warn("[storyHistory] Could not fetch stories from SQLite backend:", err.message);
   }
-  return loadHistory();
+  return loadHistory(userId);
 }
 
 /**

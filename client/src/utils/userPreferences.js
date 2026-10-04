@@ -28,38 +28,84 @@ export async function fetchPreferencesFromServer(apiBase, deviceId, userId = get
       const prefs = data.preferences;
       // Sync parent settings if present
       if (prefs.parentSettings || prefs.pinHash) {
-        const currentParent = loadSettings();
         saveSettings({
-          pinHash: prefs.pinHash || currentParent.pinHash,
+          pinHash: prefs.pinHash || null,
           settings: {
-            ...currentParent.settings,
+            strictThemes: false,
+            timeLimitMinutes: 0,
+            readingLevels: ["3+", "5+", "8+"],
+            bedtimeThemeLocked: false,
             ...(prefs.parentSettings || {}),
+          },
+        });
+      } else {
+        saveSettings({
+          pinHash: null,
+          settings: {
+            strictThemes: false,
+            timeLimitMinutes: 0,
+            readingLevels: ["3+", "5+", "8+"],
+            bedtimeThemeLocked: false,
           },
         });
       }
 
-      // Sync custom voices from server into local storage for this family
-      if (Array.isArray(prefs.customVoices) && prefs.customVoices.length > 0) {
-        const localVoices = loadCustomVoices();
-        const mergedMap = new Map();
-        // Server voices first
-        for (const sv of prefs.customVoices) {
-          if (sv && sv.id) mergedMap.set(sv.id, sv);
-        }
-        // Preserve any local voices that were saved before sync
-        for (const lv of localVoices) {
-          if (lv && lv.id && !mergedMap.has(lv.id)) {
-            mergedMap.set(lv.id, lv);
-          }
-        }
-        const mergedList = Array.from(mergedMap.values());
-        if (typeof window !== "undefined" && window.localStorage) {
-          window.localStorage.setItem(CUSTOM_VOICES_STORAGE_KEY, JSON.stringify(mergedList));
-        }
+      if (prefs.voiceId) StorageService.setItem("familyStoryNight_voice", prefs.voiceId);
+      if (prefs.storyLength) {
+        StorageService.setItem("familyStoryNight_storyLength", prefs.storyLength);
+        StorageService.setItem("familyStoryNight_story_length", prefs.storyLength);
+      }
+      if (prefs.illustrationStyle) {
+        StorageService.setItem("familyStoryNight_illustrationStyle", prefs.illustrationStyle);
+        StorageService.setItem("familyStoryNight_illustration_style", prefs.illustrationStyle);
+      }
+      if (prefs.storyCategory) {
+        StorageService.setItem("familyStoryNight_category", normalizeCategory(prefs.storyCategory));
+      }
+
+      // Sync custom voices from server into local storage for this family.
+      // We set exactly this family's custom voices so previous account voices never leak.
+      const familyVoices = Array.isArray(prefs.customVoices) ? prefs.customVoices : [];
+      if (typeof window !== "undefined" && window.localStorage) {
+        window.localStorage.setItem(CUSTOM_VOICES_STORAGE_KEY, JSON.stringify(familyVoices));
       }
 
       StorageService.setItem(PREFERENCES_KEY, prefs);
       return prefs;
+    } else if (userId) {
+      // Default clean preferences for newly linked family account
+      const defaultPrefs = {
+        deviceId,
+        userId,
+        voiceId: "Joanna",
+        storyLength: 6,
+        themeIndex: 0,
+        storyCategory: "adventures",
+        illustrationStyle: "watercolor",
+        customVoices: [],
+        pinHash: null,
+        parentSettings: null,
+      };
+      saveSettings({
+        pinHash: null,
+        settings: {
+          strictThemes: false,
+          timeLimitMinutes: 0,
+          readingLevels: ["3+", "5+", "8+"],
+          bedtimeThemeLocked: false,
+        },
+      });
+      StorageService.setItem("familyStoryNight_voice", "Joanna");
+      StorageService.setItem("familyStoryNight_storyLength", 6);
+      StorageService.setItem("familyStoryNight_story_length", 6);
+      StorageService.setItem("familyStoryNight_illustrationStyle", "watercolor");
+      StorageService.setItem("familyStoryNight_illustration_style", "watercolor");
+      StorageService.setItem("familyStoryNight_category", "adventures");
+      if (typeof window !== "undefined" && window.localStorage) {
+        window.localStorage.setItem(CUSTOM_VOICES_STORAGE_KEY, JSON.stringify([]));
+      }
+      StorageService.setItem(PREFERENCES_KEY, defaultPrefs);
+      return defaultPrefs;
     }
   } catch (err) {
     console.warn("[userPreferences] Could not fetch preferences from SQLite server:", err.message);

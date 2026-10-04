@@ -43,6 +43,19 @@ export function getDeviceId() {
 }
 
 /**
+ * Updates the persistent Fire TV device identifier.
+ *
+ * @param {string} deviceId
+ * @returns {string}
+ */
+export function setDeviceId(deviceId) {
+  if (!deviceId) return getDeviceId();
+  const cleanId = String(deviceId).trim();
+  StorageService.setItem("familyStoryNight_device_id", cleanId);
+  return cleanId;
+}
+
+/**
  * Returns a persistent User / Family account identifier.
  * Stored in local storage and shared across all children's devices
  * so custom voices and preferences sync across the family.

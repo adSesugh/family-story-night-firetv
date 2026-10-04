@@ -12,50 +12,103 @@ const bedrockImage = new BedrockRuntimeClient({ region: IMAGE_REGION });
 /**
  * Creates a beautiful SVG watercolor bedtime scene used as an emergency fallback
  * if AI image generation is unavailable or exhausted.
+ * Creates a high-DPI (1024x1280) bedtime watercolor SVG as a crisp fallback.
+ * Uses chapter-specific color harmonies and explicit pixel dimensions so vectors never blur.
+ *
  * @param {string} theme
+ * @param {number} [chapter=1]
+ * @param {number} [pageNum=1]
  * @returns {string} SVG XML string
  */
-export function createBedtimeFallbackSvg(theme = "Bedtime Adventure") {
-  const safeTheme = String(theme).replace(/[<>&"]/g, "").slice(0, 40);
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 800" width="100%" height="100%">
+export function createBedtimeFallbackSvg(theme = "Bedtime Adventure", chapter = 1, pageNum = 1) {
+  const safeTheme = String(theme).replace(/[<>&"]/g, "").slice(0, 36);
+  const chNum = Number(chapter) || 1;
+  const pNum = Number(pageNum) || 1;
+
+  let skyTop = "#080f24";
+  let skyMid = "#162244";
+  let skyBottom = "#2f2249";
+  let hillBackTop = "#1f2c45";
+  let hillBackBottom = "#0d1624";
+  let hillFrontTop = "#131e33";
+  let hillFrontBottom = "#070c14";
+  let moonTint = "#fff8db";
+  let moonGlow = "#fcd34d";
+  let starColor = "#fef08a";
+  let horizonWarmth = "#e8a33d";
+
+  if (chNum === 2) {
+    // Chapter 2: Enchanted starlit aurora & teal woodland depth
+    skyTop = "#05161b";
+    skyMid = "#0f2b34";
+    skyBottom = "#1f3b45";
+    hillBackTop = "#16343b";
+    hillBackBottom = "#09191d";
+    hillFrontTop = "#0d2328";
+    hillFrontBottom = "#040d0f";
+    moonTint = "#f0fdf4";
+    moonGlow = "#6ee7b7";
+    starColor = "#a7f3d0";
+    horizonWarmth = "#34d399";
+  } else if (chNum >= 3) {
+    // Chapter 3+: Celestial royal indigo, velvet amethyst & rose twilight
+    skyTop = "#120921";
+    skyMid = "#24133b";
+    skyBottom = "#441d4f";
+    hillBackTop = "#331843";
+    hillBackBottom = "#16071e";
+    hillFrontTop = "#220e2e";
+    hillFrontBottom = "#0b0310";
+    moonTint = "#fff1f2";
+    moonGlow = "#f472b6";
+    starColor = "#fbcfe8";
+    horizonWarmth = "#fb7185";
+  }
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1280" width="1024" height="1280" shape-rendering="geometricPrecision" text-rendering="geometricPrecision">
   <defs>
-    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#0a1128"/>
-      <stop offset="50%" stop-color="#1c2541"/>
-      <stop offset="85%" stop-color="#3a506b"/>
-      <stop offset="100%" stop-color="#5c4d7d"/>
+    <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="${skyTop}"/>
+      <stop offset="55%" stop-color="${skyMid}"/>
+      <stop offset="100%" stop-color="${skyBottom}"/>
     </linearGradient>
-    <radialGradient id="moonGlow" cx="75%" cy="20%" r="40%">
-      <stop offset="0%" stop-color="#fff8e7" stop-opacity="1"/>
-      <stop offset="25%" stop-color="#fed766" stop-opacity="0.8"/>
-      <stop offset="60%" stop-color="#f4d35e" stop-opacity="0.2"/>
-      <stop offset="100%" stop-color="#1c2541" stop-opacity="0"/>
+    <radialGradient id="celestialGlow" cx="72%" cy="22%" r="48%">
+      <stop offset="0%" stop-color="${moonTint}" stop-opacity="1"/>
+      <stop offset="28%" stop-color="${moonGlow}" stop-opacity="0.85"/>
+      <stop offset="65%" stop-color="${horizonWarmth}" stop-opacity="0.25"/>
+      <stop offset="100%" stop-color="${skyMid}" stop-opacity="0"/>
     </radialGradient>
-    <linearGradient id="hill1" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#2a3b5c"/>
-      <stop offset="100%" stop-color="#111d33"/>
+    <linearGradient id="hillBack" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="${hillBackTop}"/>
+      <stop offset="100%" stop-color="${hillBackBottom}"/>
     </linearGradient>
-    <linearGradient id="hill2" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#1d2d44"/>
-      <stop offset="100%" stop-color="#0d1b2a"/>
+    <linearGradient id="hillFront" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="${hillFrontTop}"/>
+      <stop offset="100%" stop-color="${hillFrontBottom}"/>
     </linearGradient>
   </defs>
-  <rect width="640" height="800" fill="url(#sky)"/>
-  <circle cx="480" cy="180" r="140" fill="url(#moonGlow)"/>
-  <circle cx="480" cy="180" r="45" fill="#fffdfa"/>
-  <!-- Gentle stars -->
-  <g fill="#ffeaa7" opacity="0.85">
-    <circle cx="100" cy="90" r="2.5"/><circle cx="180" cy="160" r="1.5"/><circle cx="260" cy="70" r="2"/><circle cx="340" cy="130" r="2.5"/>
-    <circle cx="80" cy="220" r="2"/><circle cx="210" cy="260" r="1.5"/><circle cx="580" cy="90" r="2"/><circle cx="540" cy="300" r="2"/>
-    <circle cx="390" cy="240" r="2"/><circle cx="130" cy="340" r="1.8"/><circle cx="310" cy="320" r="2.2"/>
+  <!-- Crisp Vector Sky Background -->
+  <rect width="1024" height="1280" fill="url(#skyGrad)"/>
+  <!-- Glowing Celestial Moon -->
+  <circle cx="740" cy="280" r="220" fill="url(#celestialGlow)"/>
+  <circle cx="740" cy="280" r="68" fill="#fffdfa"/>
+  <circle cx="724" cy="272" r="62" fill="${moonTint}" opacity="0.3"/>
+  <!-- Twinkling Constellations (Ultra-sharp vector circles) -->
+  <g fill="${starColor}" opacity="0.9">
+    <circle cx="160" cy="140" r="3.5"/><circle cx="320" cy="220" r="2.8"/><circle cx="480" cy="120" r="4"/>
+    <circle cx="120" cy="320" r="2.5"/><circle cx="400" cy="360" r="3"/><circle cx="900" cy="180" r="3.8"/>
+    <circle cx="620" cy="340" r="3.2"/><circle cx="220" cy="500" r="3.6"/><circle cx="850" cy="420" r="2.8"/>
+    <circle cx="280" cy="260" r="2"/><circle cx="560" cy="200" r="2.4"/><circle cx="70" cy="180" r="3"/>
+    <circle cx="960" cy="300" r="2.6"/><circle cx="440" cy="480" r="3.2"/><circle cx="680" cy="460" r="2.2"/>
   </g>
-  <!-- Distant dreamy mountains -->
-  <path d="M-20,540 Q160,420 340,510 T660,470 L660,820 L-20,820 Z" fill="url(#hill1)" opacity="0.7"/>
-  <path d="M-20,620 Q200,530 420,610 T660,590 L660,820 L-20,820 Z" fill="url(#hill2)"/>
-  <!-- Cozy glow on horizon -->
-  <ellipse cx="320" cy="780" rx="280" ry="80" fill="#e8a33d" opacity="0.18"/>
-  <!-- Theme caption watermark -->
-  <text x="320" y="740" text-anchor="middle" font-family="Georgia, serif" font-style="italic" font-size="20" fill="#fdf0d5" opacity="0.65">✦ ${safeTheme} ✦</text>
+  <!-- Rolling Bedtime Hills -->
+  <path d="M-30,840 Q280,660 580,800 T1060,740 L1060,1320 L-30,1320 Z" fill="url(#hillBack)" opacity="0.8"/>
+  <path d="M-30,960 Q340,820 690,950 T1060,910 L1060,1320 L-30,1320 Z" fill="url(#hillFront)"/>
+  <!-- Soft Warm Horizon Glow -->
+  <ellipse cx="512" cy="1240" rx="460" ry="140" fill="${horizonWarmth}" opacity="0.2"/>
+  <!-- Theme & Chapter Watermark -->
+  <text x="512" y="1160" text-anchor="middle" font-family="Georgia, serif" font-style="italic" font-size="34" fill="#fef3c7" opacity="0.88">✦ ${safeTheme}${chNum > 1 ? ` · Chapter ${chNum}` : ""} ✦</text>
+  <text x="512" y="1210" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="600" font-size="18" letter-spacing="4" fill="${horizonWarmth}" opacity="0.8">PAGE ${pNum}</text>
 </svg>`;
 }
 

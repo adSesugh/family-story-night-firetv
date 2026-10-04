@@ -365,12 +365,12 @@ export async function handleAlexaWebhook(req, res) {
  */
 export async function postSession(req, res) {
   try {
-    const { sessionId } = req.body || {};
+    const { sessionId, preferredCode } = req.body || {};
     if (!sessionId) {
       return res.status(400).json({ error: "sessionId is required" });
     }
 
-    const sessionData = alexaSyncService.createOrTouchSession(sessionId);
+    const sessionData = alexaSyncService.createOrTouchSession(sessionId, preferredCode);
     return res.json(sessionData);
   } catch (err) {
     console.error("Error creating/refreshing Alexa session:", err);

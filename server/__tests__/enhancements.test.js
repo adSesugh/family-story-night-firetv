@@ -121,3 +121,61 @@ describe("Feature 4: Story Length Options (Server Task 11.3)", () => {
     expect(res.maxTokens).toBe(1050);
   });
 });
+
+import { createBedtimeFallbackSvg } from "../services/imageService.js";
+import { saveStoryIllustration, getStoryIllustration, saveStory } from "../db.js";
+
+describe("High-DPI Vector Fallback & Chapter Isolation", () => {
+  it("generates 1024x1280 high-resolution vector SVG with chapter-specific color harmonies", () => {
+    const ch1Svg = createBedtimeFallbackSvg("Bedtime Adventure", 1, 1);
+    const ch2Svg = createBedtimeFallbackSvg("Bedtime Adventure", 2, 1);
+    const ch3Svg = createBedtimeFallbackSvg("Bedtime Adventure", 3, 2);
+
+    // Explicit dimensions ensure browser never defaults to 300x150
+    expect(ch1Svg).toContain('viewBox="0 0 1024 1280"');
+    expect(ch1Svg).toContain('width="1024" height="1280"');
+
+    // Chapter 2 has Chapter 2 watermark and aurora teal colors
+    expect(ch2Svg).toContain("Chapter 2");
+    expect(ch2Svg).toContain("#05161b");
+    expect(ch2Svg).toContain("#34d399");
+
+    // Chapter 3 has Chapter 3 watermark and celestial rose colors
+    expect(ch3Svg).toContain("Chapter 3");
+    expect(ch3Svg).toContain("#120921");
+    expect(ch3Svg).toContain("#fb7185");
+    expect(ch3Svg).toContain("PAGE 2");
+  });
+
+  it("keeps chapter 1 and chapter 2 illustrations isolated in SQLite", () => {
+    const testStoryId = `story-ch-test-${Date.now()}`;
+    const testDeviceId = "device-test-ch";
+
+    saveStory(testDeviceId, {
+      id: testStoryId,
+      familyMembers: ["Maya"],
+      theme: "Bedtime Stars",
+      pages: [{ text: "Page 1 Ch 1" }],
+      illustrations: ["data:image/png;base64,ch1-page0"],
+      chapters: [
+        { chapter: 1, pages: [{ text: "Page 1 Ch 1" }], illustrations: ["data:image/png;base64,ch1-page0"] },
+        { chapter: 2, pages: [{ text: "Page 1 Ch 2" }], illustrations: ["data:image/png;base64,ch2-page0"] },
+      ],
+    });
+
+    // Verify Chapter 1 retrieves ch1 illustration
+    const ch1Illust = getStoryIllustration(testStoryId, 0, 1);
+    expect(ch1Illust).toBe("data:image/png;base64,ch1-page0");
+
+    // Verify Chapter 2 retrieves ch2 illustration
+    const ch2Illust = getStoryIllustration(testStoryId, 0, 2);
+    expect(ch2Illust).toBe("data:image/png;base64,ch2-page0");
+
+    // Update Chapter 2 Page 0
+    saveStoryIllustration(testStoryId, 0, "data:image/png;base64,ch2-page0-updated", "Updated Ch2", 2);
+
+    expect(getStoryIllustration(testStoryId, 0, 2)).toBe("data:image/png;base64,ch2-page0-updated");
+    // Chapter 1 must remain untouched
+    expect(getStoryIllustration(testStoryId, 0, 1)).toBe("data:image/png;base64,ch1-page0");
+  });
+});

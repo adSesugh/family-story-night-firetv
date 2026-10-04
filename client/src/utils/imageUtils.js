@@ -45,6 +45,12 @@ export async function blobToDataUrl(blob) {
 export async function compressBlobToDataUrl(blob, maxWidth = 1024, quality = 0.88) {
   if (!blob) return null;
 
+  // SVGs are vector graphics: NEVER rasterize to canvas!
+  // Rasterizing SVG to a canvas destroys infinite vector resolution and degrades into a blurry raster image.
+  if (blob.type === "image/svg+xml") {
+    return await blobToDataUrl(blob);
+  }
+
   // If the blob is already reasonably compact (<= 250KB) and in a web-friendly format, preserve it directly without re-encoding loss
   if (blob.size && blob.size <= 250 * 1024 && (blob.type === "image/webp" || blob.type === "image/jpeg")) {
     const rawDataUrl = await blobToDataUrl(blob);
@@ -112,53 +118,104 @@ export async function compressBlobToDataUrl(blob, maxWidth = 1024, quality = 0.8
 }
 
 /**
- * Creates a theme-tailored watercolor SVG Data URL as a guaranteed illustration fallback.
+ * Creates a theme-tailored watercolor SVG Data URL as a guaranteed, ultra-crisp illustration fallback.
+ * Uses high-resolution dimensions (1024x1280) and chapter-aware palette harmonies so vectors never blur on 1080p/4K TVs.
  *
  * @param {string} [theme="Bedtime Adventure"]
  * @param {number} [pageNum=1]
+ * @param {number} [chapter=1]
  * @returns {string} Data URL containing SVG illustration
  */
-export function createFallbackIllustrationUrl(theme = "Bedtime Adventure", pageNum = 1) {
+export function createFallbackIllustrationUrl(theme = "Bedtime Adventure", pageNum = 1, chapter = 1) {
   const safeTheme = String(theme).replace(/[<>&"]/g, "").slice(0, 32);
-  const hueShift = (Number(pageNum) * 45) % 360;
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 800" width="100%" height="100%">
+  const chNum = Number(chapter) || 1;
+  const pNum = Number(pageNum) || 1;
+
+  // Chapter-specific harmonious bedtime palettes
+  let skyTop = "#080f24";
+  let skyMid = "#162244";
+  let skyBottom = "#2f2249";
+  let hillBackTop = "#1f2c45";
+  let hillBackBottom = "#0d1624";
+  let hillFrontTop = "#131e33";
+  let hillFrontBottom = "#070c14";
+  let moonTint = "#fff8db";
+  let moonGlow = "#fcd34d";
+  let starColor = "#fef08a";
+  let horizonWarmth = "#e8a33d";
+
+  if (chNum === 2) {
+    // Chapter 2: Enchanted starlit aurora & teal woodland depth
+    skyTop = "#05161b";
+    skyMid = "#0f2b34";
+    skyBottom = "#1f3b45";
+    hillBackTop = "#16343b";
+    hillBackBottom = "#09191d";
+    hillFrontTop = "#0d2328";
+    hillFrontBottom = "#040d0f";
+    moonTint = "#f0fdf4";
+    moonGlow = "#6ee7b7";
+    starColor = "#a7f3d0";
+    horizonWarmth = "#34d399";
+  } else if (chNum >= 3) {
+    // Chapter 3+: Celestial royal indigo, velvet amethyst & rose twilight
+    skyTop = "#120921";
+    skyMid = "#24133b";
+    skyBottom = "#441d4f";
+    hillBackTop = "#331843";
+    hillBackBottom = "#16071e";
+    hillFrontTop = "#220e2e";
+    hillFrontBottom = "#0b0310";
+    moonTint = "#fff1f2";
+    moonGlow = "#f472b6";
+    starColor = "#fbcfe8";
+    horizonWarmth = "#fb7185";
+  }
+
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1280" width="1024" height="1280" shape-rendering="geometricPrecision" text-rendering="geometricPrecision">
     <defs>
       <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="#0c122b"/>
-        <stop offset="60%" stop-color="#19284d"/>
-        <stop offset="100%" stop-color="#3c305c"/>
+        <stop offset="0%" stop-color="${skyTop}"/>
+        <stop offset="55%" stop-color="${skyMid}"/>
+        <stop offset="100%" stop-color="${skyBottom}"/>
       </linearGradient>
-      <radialGradient id="celestialGlow" cx="70%" cy="22%" r="45%">
-        <stop offset="0%" stop-color="#fff8db" stop-opacity="1"/>
-        <stop offset="25%" stop-color="#fcd34d" stop-opacity="0.85"/>
-        <stop offset="65%" stop-color="#f59e0b" stop-opacity="0.2"/>
-        <stop offset="100%" stop-color="#19284d" stop-opacity="0"/>
+      <radialGradient id="celestialGlow" cx="72%" cy="22%" r="48%">
+        <stop offset="0%" stop-color="${moonTint}" stop-opacity="1"/>
+        <stop offset="28%" stop-color="${moonGlow}" stop-opacity="0.85"/>
+        <stop offset="65%" stop-color="${horizonWarmth}" stop-opacity="0.25"/>
+        <stop offset="100%" stop-color="${skyMid}" stop-opacity="0"/>
       </radialGradient>
       <linearGradient id="hillBack" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="#243452"/>
-        <stop offset="100%" stop-color="#0e1726"/>
+        <stop offset="0%" stop-color="${hillBackTop}"/>
+        <stop offset="100%" stop-color="${hillBackBottom}"/>
       </linearGradient>
       <linearGradient id="hillFront" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="#17243b"/>
-        <stop offset="100%" stop-color="#070c14"/>
+        <stop offset="0%" stop-color="${hillFrontTop}"/>
+        <stop offset="100%" stop-color="${hillFrontBottom}"/>
       </linearGradient>
     </defs>
-    <rect width="640" height="800" fill="url(#skyGrad)"/>
-    <circle cx="460" cy="180" r="130" fill="url(#celestialGlow)"/>
-    <circle cx="460" cy="180" r="42" fill="#fffdfa"/>
-    <!-- Twinkling Stars -->
-    <g fill="#fef08a" opacity="0.85">
-      <circle cx="110" cy="90" r="2.5"/><circle cx="210" cy="140" r="2"/><circle cx="310" cy="80" r="2.8"/>
-      <circle cx="80" cy="210" r="1.8"/><circle cx="260" cy="240" r="2.2"/><circle cx="560" cy="110" r="2.5"/>
-      <circle cx="390" cy="220" r="2.4"/><circle cx="140" cy="330" r="2.6"/><circle cx="530" cy="270" r="2"/>
+    <!-- Crisp Vector Sky Background -->
+    <rect width="1024" height="1280" fill="url(#skyGrad)"/>
+    <!-- Glowing Celestial Moon -->
+    <circle cx="740" cy="280" r="220" fill="url(#celestialGlow)"/>
+    <circle cx="740" cy="280" r="68" fill="#fffdfa"/>
+    <circle cx="724" cy="272" r="62" fill="${moonTint}" opacity="0.3"/>
+    <!-- Twinkling Constellations (Ultra-sharp vector circles) -->
+    <g fill="${starColor}" opacity="0.9">
+      <circle cx="160" cy="140" r="3.5"/><circle cx="320" cy="220" r="2.8"/><circle cx="480" cy="120" r="4"/>
+      <circle cx="120" cy="320" r="2.5"/><circle cx="400" cy="360" r="3"/><circle cx="900" cy="180" r="3.8"/>
+      <circle cx="620" cy="340" r="3.2"/><circle cx="220" cy="500" r="3.6"/><circle cx="850" cy="420" r="2.8"/>
+      <circle cx="280" cy="260" r="2"/><circle cx="560" cy="200" r="2.4"/><circle cx="70" cy="180" r="3"/>
+      <circle cx="960" cy="300" r="2.6"/><circle cx="440" cy="480" r="3.2"/><circle cx="680" cy="460" r="2.2"/>
     </g>
-    <!-- Bedtime Rolling Hills -->
-    <path d="M-20,530 Q170,410 360,500 T660,460 L660,820 L-20,820 Z" fill="url(#hillBack)" opacity="0.75"/>
-    <path d="M-20,610 Q210,510 430,600 T660,570 L660,820 L-20,820 Z" fill="url(#hillFront)"/>
-    <ellipse cx="320" cy="780" rx="280" ry="90" fill="#e8a33d" opacity="0.18"/>
+    <!-- Rolling Bedtime Hills -->
+    <path d="M-30,840 Q280,660 580,800 T1060,740 L1060,1320 L-30,1320 Z" fill="url(#hillBack)" opacity="0.8"/>
+    <path d="M-30,960 Q340,820 690,950 T1060,910 L1060,1320 L-30,1320 Z" fill="url(#hillFront)"/>
+    <!-- Soft Warm Horizon Glow -->
+    <ellipse cx="512" cy="1240" rx="460" ry="140" fill="${horizonWarmth}" opacity="0.2"/>
     <!-- Theme & Chapter Watermark -->
-    <text x="320" y="730" text-anchor="middle" font-family="Georgia, serif" font-style="italic" font-size="22" fill="#fef3c7" opacity="0.8">✦ ${safeTheme} ✦</text>
-    <text x="320" y="760" text-anchor="middle" font-family="sans-serif" font-size="12" letter-spacing="2" fill="#e8a33d" opacity="0.7">PAGE ${pageNum}</text>
+    <text x="512" y="1160" text-anchor="middle" font-family="Georgia, serif" font-style="italic" font-size="34" fill="#fef3c7" opacity="0.88">✦ ${safeTheme}${chNum > 1 ? ` · Chapter ${chNum}` : ""} ✦</text>
+    <text x="512" y="1210" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="600" font-size="18" letter-spacing="4" fill="${horizonWarmth}" opacity="0.8">PAGE ${pNum}</text>
   </svg>`;
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 }

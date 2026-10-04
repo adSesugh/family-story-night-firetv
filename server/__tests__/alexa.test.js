@@ -74,6 +74,50 @@ describe("Alexa Sync Service & Webhook Controller", () => {
       expect(commands.length).toBe(1);
       expect(commands[0].type).toBe("START_STORY");
     });
+
+    it("persists pairing code across memory resets and restores identical code", () => {
+      const s1 = alexaSyncService.createOrTouchSession("persistent-tv-device-1");
+      const code1 = s1.pairingCode;
+      expect(code1).toMatch(/^\d{4}$/);
+
+      // Simulate server restart or memory clear
+      alexaSyncService.reset();
+
+      // Device reconnects with same sessionId
+      const s2 = alexaSyncService.createOrTouchSession("persistent-tv-device-1");
+      expect(s2.pairingCode).toBe(code1);
+    });
+
+    it("recovers session from SQLite when Alexa sends command to a persistent code after server reset", () => {
+      const session = alexaSyncService.createOrTouchSession("living-room-tv");
+      const code = session.pairingCode;
+
+      // Simulate server restart / memory clear
+      alexaSyncService.reset();
+
+      // Alexa targets the persistent 4-digit code
+      const queueResult = alexaSyncService.queueCommand(code, {
+        type: "START_STORY",
+      });
+
+      expect(queueResult.success).toBe(true);
+      expect(queueResult.sessionId).toBe("living-room-tv");
+      expect(queueResult.pairingCode).toBe(code);
+
+      const commands = alexaSyncService.consumeCommands("living-room-tv");
+      expect(commands.length).toBe(1);
+      expect(commands[0].type).toBe("START_STORY");
+    });
+
+    it("honors client preferredCode if provided and persists it", () => {
+      const session = alexaSyncService.createOrTouchSession("custom-tv", "7788");
+      expect(session.pairingCode).toBe("7788");
+
+      alexaSyncService.reset();
+
+      const restored = alexaSyncService.createOrTouchSession("custom-tv");
+      expect(restored.pairingCode).toBe("7788");
+    });
   });
 
   describe("Alexa Webhook Controller", () => {

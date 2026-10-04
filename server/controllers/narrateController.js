@@ -33,10 +33,10 @@ export function convertPollyMarksToCharIndices(text, marks) {
 
 export const narrate = async (req, res) => {
   try {
-    const { text, voiceId, baseVoice, speechMarks, storyId, pageIndex, deviceId: bodyDeviceId } = req.body;
+    const { text, voiceId, baseVoice, speechMarks, storyId, pageIndex, chapter, deviceId: bodyDeviceId } = req.body;
     const deviceId = bodyDeviceId || req.headers["x-device-id"] || req.query.deviceId || null;
 
-    console.log(`[narrate] Request received - voiceId: ${voiceId || "default"}, baseVoice: ${baseVoice || "none"}, textLength: ${text ? text.length : 0}, speechMarks: ${!!speechMarks}, storyId: ${storyId || "none"}`);
+    console.log(`[narrate] Request received - voiceId: ${voiceId || "default"}, baseVoice: ${baseVoice || "none"}, chapter: ${chapter || 1}, textLength: ${text ? text.length : 0}, speechMarks: ${!!speechMarks}, storyId: ${storyId || "none"}`);
 
     if (!text) return res.status(400).json({ error: "text is required" });
 
@@ -144,6 +144,7 @@ export const narrate = async (req, res) => {
               audioData: kokoroResult.audioData,
               speechMarks: kokoroResult.speechMarks,
               pageIndex,
+              chapter: chapter || 1,
             });
           } catch (dbErr) {
             console.warn("Could not cache custom voice narration in DB:", dbErr.message);
@@ -228,6 +229,7 @@ export const narrate = async (req, res) => {
           storyId,
           deviceId,
           pageIndex,
+          chapter: chapter || 1,
           voiceId: lookupVoice,
           textHash,
           audioData: audioDataUrl,
@@ -258,6 +260,7 @@ export const narrate = async (req, res) => {
         storyId,
         deviceId,
         pageIndex,
+        chapter: chapter || 1,
         voiceId: selectedVoice,
         textHash,
         audioData: audioDataUrl,

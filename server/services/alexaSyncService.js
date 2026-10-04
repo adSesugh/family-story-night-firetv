@@ -1,6 +1,14 @@
+import {
+  getDeviceAlexaCode,
+  saveDeviceAlexaCode,
+  findDeviceIdByAlexaCode,
+  getMostRecentActiveDeviceId,
+} from "../db.js";
+
 /**
  * Alexa Voice Synchronization Service
  * Manages active Fire TV voice pairing sessions and real-time command queues.
+ * Supports persistent device pairing codes across server restarts and auto-routing.
  */
 
 class AlexaSyncService {
@@ -9,7 +17,17 @@ class AlexaSyncService {
     this.codeToSession = new Map(); // pairingCode -> sessionId
   }
 
-  generatePairingCode() {
+  derivePairingCode(sessionId) {
+    if (!sessionId) return this.generateRandomPairingCode();
+    let hash = 0;
+    for (let i = 0; i < sessionId.length; i++) {
+      hash = (hash << 5) - hash + sessionId.charCodeAt(i);
+      hash |= 0;
+    }
+    return (1000 + (Math.abs(hash) % 9000)).toString();
+  }
+
+  generateRandomPairingCode() {
     let code;
     let attempts = 0;
     do {
@@ -19,7 +37,14 @@ class AlexaSyncService {
     return code;
   }
 
-  createOrTouchSession(sessionId) {
+  generatePairingCode(sessionId = null) {
+    if (sessionId) {
+      return this.derivePairingCode(sessionId);
+    }
+    return this.generateRandomPairingCode();
+  }
+
+  createOrTouchSession(sessionId, preferredCode = null) {
     if (!sessionId) {
       throw new Error("sessionId is required");
     }
@@ -36,7 +61,33 @@ class AlexaSyncService {
       };
     }
 
-    const pairingCode = this.generatePairingCode();
+    // 1. Check if device already has a persistent code in SQLite
+    let pairingCode = getDeviceAlexaCode(sessionId);
+
+    // 2. If no code in DB, check preferredCode from client (if valid 4 digits)
+    if (!pairingCode && preferredCode && /^\d{4}$/.test(preferredCode)) {
+      pairingCode = preferredCode;
+    }
+
+    // 3. If still no code, derive a deterministic 4-digit code from the persistent sessionId
+    if (!pairingCode) {
+      pairingCode = this.derivePairingCode(sessionId);
+    }
+
+    // Ensure the pairing code is not currently occupied in memory by another session
+    if (this.codeToSession.has(pairingCode) && this.codeToSession.get(pairingCode) !== sessionId) {
+      let codeNum = parseInt(pairingCode, 10);
+      let attempts = 0;
+      while (this.codeToSession.has(pairingCode) && this.codeToSession.get(pairingCode) !== sessionId && attempts < 100) {
+        codeNum = 1000 + ((codeNum - 1000 + 1) % 9000);
+        pairingCode = codeNum.toString();
+        attempts++;
+      }
+    }
+
+    // Persist code in SQLite so it never changes across server restarts
+    saveDeviceAlexaCode(sessionId, pairingCode);
+
     session = {
       sessionId,
       pairingCode,
@@ -57,18 +108,28 @@ class AlexaSyncService {
   findActiveSession(target) {
     this.cleanupStaleSessions();
 
-    // 1. Direct match by pairing code
+    // 1. Direct match by pairing code in memory
     if (target && this.codeToSession.has(target)) {
       const sessionId = this.codeToSession.get(target);
       return this.sessions.get(sessionId) || null;
     }
 
-    // 2. Direct match by sessionId
+    // 2. Direct match by sessionId in memory
     if (target && this.sessions.has(target)) {
       return this.sessions.get(target);
     }
 
-    // 3. If no target specified or not found, fall back to the most recent active session
+    // 3. Fallback: Lookup persistent pairing code in SQLite
+    // (Recovers sessions after server restarts or when TV was idle)
+    if (target && /^\d{4}$/.test(target)) {
+      const dbDeviceId = findDeviceIdByAlexaCode(target);
+      if (dbDeviceId) {
+        this.createOrTouchSession(dbDeviceId, target);
+        return this.sessions.get(dbDeviceId) || null;
+      }
+    }
+
+    // 4. If no target specified or not found, fall back to the most recent active session
     // This allows zero-friction voice commands ("Alexa, tell Family Story Night to start the story")
     if (this.sessions.size > 0) {
       let mostRecent = null;
@@ -78,6 +139,13 @@ class AlexaSyncService {
         }
       }
       return mostRecent;
+    }
+
+    // 5. Fallback: resurrect most recently active device from SQLite if memory is empty
+    const recentDbDevice = getMostRecentActiveDeviceId();
+    if (recentDbDevice?.device_id) {
+      this.createOrTouchSession(recentDbDevice.device_id, recentDbDevice.paired_alexa_code);
+      return this.sessions.get(recentDbDevice.device_id) || null;
     }
 
     return null;

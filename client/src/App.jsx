@@ -18,15 +18,15 @@ import { blobToDataUrl, compressBlobToDataUrl, createFallbackIllustrationUrl } f
 import { playBedtimeLullabyChime } from "./utils/audioChimes";
 import { useAlexaVoiceSync } from "./utils/useAlexaVoiceSync";
 import { moveFocus, focusFirst } from "./utils/spatialNav";
-import { getDeviceId, getUserId } from "./utils/device";
+import { getDeviceId, getUserId, setUserId } from "./utils/device";
 import { fetchPreferencesFromServer, syncPreferencesToServer } from "./utils/userPreferences";
 import { normalizeSpeechMarks, getActiveSpeechMarkAtTime } from "./utils/speechMarks";
 
 import { THEME_CATEGORIES, DEFAULT_CATEGORY_ID, THEMES, normalizeCategory } from "./constants/themes";
 import { VOICES } from "./constants/voices";
 import FamilyVoiceStudioModal from "./components/FamilyVoiceStudioModal";
+import { API_BASE } from "./utils/apiBase";
 
-const API_BASE = (import.meta.env.VITE_API_BASE || "http://localhost:4000").trim().replace(/\/+$/, "");
 const AUDIO_PLAYBACK_LEAD_MS = 0; // Exact audio word synchronization (no premature highlighting)
 
 export default function App() {
@@ -103,17 +103,27 @@ export default function App() {
   useEffect(() => {
     setHistory(loadHistory());
     const deviceId = getDeviceId();
+    const currentUserId = getUserId();
 
     // Fetch server stories from SQLite database
-    fetchStoriesFromServer(API_BASE, deviceId).then((serverStories) => {
-      if (Array.isArray(serverStories) && serverStories.length > 0) {
+    fetchStoriesFromServer(API_BASE, deviceId, currentUserId).then((serverStories) => {
+      if (Array.isArray(serverStories)) {
         setHistory(serverStories);
       }
     });
 
     // Fetch user preferences from SQLite database (syncs cross-device by userId)
-    fetchPreferencesFromServer(API_BASE, deviceId, getUserId()).then((prefs) => {
+    fetchPreferencesFromServer(API_BASE, deviceId, currentUserId).then((prefs) => {
       if (prefs) {
+        if (prefs.userId && prefs.userId !== currentUserId) {
+          setUserId(prefs.userId);
+          // If server preference linked to a family account, fetch stories for that family account
+          fetchStoriesFromServer(API_BASE, deviceId, prefs.userId).then((serverStories) => {
+            if (Array.isArray(serverStories)) {
+              setHistory(serverStories);
+            }
+          });
+        }
         if (prefs.voiceId) setVoice(prefs.voiceId);
         if (prefs.storyLength) setStoryLength(prefs.storyLength);
         if (prefs.illustrationStyle) setIllustrationStyle(prefs.illustrationStyle);
@@ -182,11 +192,13 @@ export default function App() {
   const narrationMemoryCacheRef = useRef(new Map());
   const inFlightNarrationsRef = useRef(new Map());
   const currentAudioPageIndexRef = useRef(null);
+  const currentAudioChapterRef = useRef(null);
 
   // Pre-fetches narration in the background so reading begins instantly on page turns without pauses
-  const prefetchNarration = useCallback(async ({ text, pageIdx, targetVoice, baseVoice, storyId }) => {
+  const prefetchNarration = useCallback(async ({ text, pageIdx, chapterNum = 1, targetVoice, baseVoice, storyId }) => {
     if (!text || typeof text !== "string" || !text.trim()) return null;
-    const cacheKey = `${storyId || "temp"}_${pageIdx}_${targetVoice}`;
+    const resolvedChapter = Number(chapterNum) || 1;
+    const cacheKey = `${storyId || "temp"}_ch${resolvedChapter}_${pageIdx}_${targetVoice}`;
     if (narrationMemoryCacheRef.current.has(cacheKey)) {
       return narrationMemoryCacheRef.current.get(cacheKey);
     }
@@ -216,6 +228,7 @@ export default function App() {
             speechMarks: true,
             storyId: storyId || undefined,
             pageIndex: pageIdx,
+            chapter: resolvedChapter,
             deviceId: getDeviceId(),
           }),
         });
@@ -317,6 +330,7 @@ export default function App() {
             const rawPage = storyPages[idx];
             const pageText = typeof rawPage === "object" ? rawPage.text : rawPage;
             const pageScene = typeof rawPage === "object" ? rawPage.scene : undefined;
+            const currentChapterNum = (Number(targetChapterIndex) || 0) + 1;
             const res = await fetch(`${API_BASE}/illustrate`, {
               method: "POST",
               headers: {
@@ -331,6 +345,7 @@ export default function App() {
                 illustrationStyle,
                 storyId: savedStoryId,
                 pageIndex: idx,
+                chapter: currentChapterNum,
                 deviceId: getDeviceId(),
               }),
             });
@@ -353,7 +368,8 @@ export default function App() {
 
         // Guaranteed fallback if fetch failed so the page is never left empty
         if (!displayUrl) {
-          const fallback = createFallbackIllustrationUrl(activeTheme, idx + 1);
+          const currentChapterNum = (Number(targetChapterIndex) || 0) + 1;
+          const fallback = createFallbackIllustrationUrl(activeTheme, idx + 1, currentChapterNum);
           displayUrl = fallback;
           storedUrl = fallback;
         }
@@ -421,18 +437,22 @@ export default function App() {
           });
 
           const updated = updateStory(savedStoryId, {
-            illustrations: currentStoredUrls,
-            pages: storyPages.map((p, i) => {
-              const text = typeof p === "object" ? p.text : p;
-              const scene = typeof p === "object" ? p.scene : undefined;
-              return currentStoredUrls[i]
-                ? {
-                  text,
-                  scene,
-                  illustration: { url: currentStoredUrls[i], alt: `Illustration for page ${i + 1}` },
+            ...(targetChapterIndex === 0
+              ? {
+                  illustrations: currentStoredUrls,
+                  pages: storyPages.map((p, i) => {
+                    const text = typeof p === "object" ? p.text : p;
+                    const scene = typeof p === "object" ? p.scene : undefined;
+                    return currentStoredUrls[i]
+                      ? {
+                        text,
+                        scene,
+                        illustration: { url: currentStoredUrls[i], alt: `Illustration for page ${i + 1}` },
+                      }
+                      : { text, scene };
+                  }),
                 }
-                : { text, scene };
-            }),
+              : {}),
             chapters: updatedChapters.length > 0 ? updatedChapters : undefined,
           });
           if (updated) {
@@ -655,6 +675,7 @@ export default function App() {
       } catch (e) { }
     }
     currentAudioPageIndexRef.current = null;
+    currentAudioChapterRef.current = null;
     setActiveSpeechMark(null);
     setIsNarrating(false);
     setPendingAudioPlay(null);
@@ -678,6 +699,11 @@ export default function App() {
         audioRef.current.removeAttribute("src");
       } catch (e) { }
     }
+    currentAudioPageIndexRef.current = null;
+    currentAudioChapterRef.current = null;
+    setActiveSpeechMark(null);
+    setIsNarrating(false);
+    setPendingAudioPlay(null);
     setHistory(loadHistory());
     setScreen("history");
   }, []);
@@ -693,6 +719,11 @@ export default function App() {
         audioRef.current.removeAttribute("src");
       } catch (e) { }
     }
+    currentAudioPageIndexRef.current = null;
+    currentAudioChapterRef.current = null;
+    setActiveSpeechMark(null);
+    setIsNarrating(false);
+    setPendingAudioPlay(null);
     primeAudio();
     setCurrentStoryId(story.id || null);
     setActiveStoryMetadata({
@@ -746,8 +777,14 @@ export default function App() {
       try {
         audioRef.current.pause();
         audioRef.current.removeAttribute("src");
+        audioRef.current.load();
       } catch (e) { }
     }
+    currentAudioPageIndexRef.current = null;
+    currentAudioChapterRef.current = null;
+    setActiveSpeechMark(null);
+    setIsNarrating(false);
+    setPendingAudioPlay(null);
     primeAudio();
     const nextIdx = activeChapterIndex + 1;
     const nextChapterData = activeStoryChapters[nextIdx];
@@ -778,6 +815,22 @@ export default function App() {
       const currentSessionId = ++illustrationSessionRef.current;
       setActiveChoiceTitle(selectedChoice);
 
+      if (turnTimerRef.current) {
+        clearTimeout(turnTimerRef.current);
+        turnTimerRef.current = null;
+      }
+      if (audioRef.current) {
+        try {
+          audioRef.current.pause();
+          audioRef.current.removeAttribute("src");
+          audioRef.current.load();
+        } catch (e) { }
+      }
+      currentAudioPageIndexRef.current = null;
+      currentAudioChapterRef.current = null;
+      setActiveSpeechMark(null);
+      setIsNarrating(false);
+      setPendingAudioPlay(null);
       primeAudio();
       setScreen("loading");
 
@@ -984,6 +1037,35 @@ export default function App() {
       storyLength: updated?.settings?.storyLength,
       illustrationStyle: updated?.settings?.illustrationStyle,
     });
+  }, []);
+
+  const handleFamilyIdChange = useCallback(async (newFamilyId, loadedPrefs = null) => {
+    const deviceId = getDeviceId();
+    let prefs = loadedPrefs;
+    if (!prefs) {
+      prefs = await fetchPreferencesFromServer(API_BASE, deviceId, newFamilyId);
+    }
+    if (prefs) {
+      if (prefs.voiceId) setVoice(prefs.voiceId);
+      if (prefs.storyLength) setStoryLength(prefs.storyLength);
+      if (prefs.illustrationStyle) setIllustrationStyle(prefs.illustrationStyle);
+      if (prefs.themeIndex !== undefined) setThemeIndex(prefs.themeIndex);
+      if (prefs.storyCategory) {
+        const norm = normalizeCategory(prefs.storyCategory);
+        setCategory(norm);
+        StorageService.setItem("familyStoryNight_category", norm);
+      }
+      setParentSettings(loadSettings());
+    }
+
+    try {
+      const familyStories = await fetchStoriesFromServer(API_BASE, deviceId, newFamilyId);
+      if (Array.isArray(familyStories)) {
+        setHistory(familyStories);
+      }
+    } catch (e) {
+      console.warn("Could not fetch stories for new family ID:", e);
+    }
   }, []);
 
   const handleStoryLengthChange = useCallback((newLength) => {
@@ -1241,12 +1323,14 @@ export default function App() {
     speechMarksRef.current = [];
     setActiveSpeechMark(null);
 
-    const memKey = `${currentStoryId || "temp"}_${pageIndex}_${voice}`;
+    const resolvedChapter = Number(chapter) || 1;
+    const memKey = `${currentStoryId || "temp"}_ch${resolvedChapter}_${pageIndex}_${voice}`;
 
     const playAudioItem = (audioUrl, marks) => {
       if (audioRef.current && !cancelled && audioUrl) {
         setIsLoadingNarration(false);
         currentAudioPageIndexRef.current = pageIndex;
+        currentAudioChapterRef.current = resolvedChapter;
         speechMarksRef.current = normalizeSpeechMarks(marks || [], textToNarrate);
         setActiveSpeechMark(null);
         isPrimingAudioRef.current = false;
@@ -1282,7 +1366,7 @@ export default function App() {
               const nextP = pages[nextIdx];
               nextText = typeof nextP === "object" ? nextP.text : nextP;
             } else if (nextIdx === pages.length && lesson) {
-              const lessonPrefix = Number(chapter) > 1 ? `Chapter ${chapter} lesson:` : "Lesson to learn:";
+              const lessonPrefix = resolvedChapter > 1 ? `Chapter ${resolvedChapter} lesson:` : "Lesson to learn:";
               nextText = `The End. ${lessonPrefix} ${lesson}`;
             }
 
@@ -1290,6 +1374,7 @@ export default function App() {
               prefetchNarration({
                 text: nextText.trim(),
                 pageIdx: nextIdx,
+                chapterNum: resolvedChapter,
                 targetVoice: voice,
                 baseVoice: effectiveBase,
                 storyId: currentStoryId,
@@ -1325,7 +1410,16 @@ export default function App() {
           try {
             const historyList = loadHistory();
             const targetStory = historyList.find((s) => s.id === currentStoryId);
-            const savedNarration = targetStory?.narrations?.[pageIndex];
+            const chapterNarrationKey = `ch${resolvedChapter}_${pageIndex}`;
+            const targetChapterObj = Array.isArray(targetStory?.chapters)
+              ? (targetStory.chapters[activeChapterIndex] || targetStory.chapters.find((c) => Number(c.chapter) === resolvedChapter))
+              : null;
+
+            const savedNarration =
+              targetChapterObj?.narrations?.[pageIndex] ||
+              targetStory?.narrations?.[chapterNarrationKey] ||
+              (resolvedChapter === 1 ? targetStory?.narrations?.[pageIndex] : null);
+
             if (savedNarration?.audio && (savedNarration.voiceId === voice || (!savedNarration.voiceId && voice === "Joanna"))) {
               let audioUrl = savedNarration.audio;
               if (typeof audioUrl === "string" && audioUrl.startsWith("data:") && typeof URL.createObjectURL === "function") {
@@ -1365,6 +1459,7 @@ export default function App() {
         const narrationResult = await prefetchNarration({
           text: textToNarrate,
           pageIdx: pageIndex,
+          chapterNum: resolvedChapter,
           targetVoice: voice,
           baseVoice: effectiveBaseVoice,
           storyId: currentStoryId,
@@ -1381,18 +1476,51 @@ export default function App() {
               const historyList = loadHistory();
               const target = historyList.find((s) => s.id === currentStoryId);
               if (target) {
+                const chapterKey = `ch${resolvedChapter}_${pageIndex}`;
+                const existingChapters = target.chapters || [];
+                const updatedChapters = existingChapters.map((ch, cIdx) => {
+                  const isMatch = Number(ch.chapter) === resolvedChapter || cIdx === activeChapterIndex;
+                  if (isMatch) {
+                    return {
+                      ...ch,
+                      narrations: {
+                        ...(ch.narrations || {}),
+                        [pageIndex]: {
+                          audio: narrationResult.rawAudio,
+                          speechMarks: narrationResult.speechMarks || [],
+                          voiceId: voice,
+                        },
+                      },
+                    };
+                  }
+                  return ch;
+                });
+
                 const updatedNarrations = {
                   ...(target.narrations || {}),
-                  [pageIndex]: {
+                  [chapterKey]: {
                     audio: narrationResult.rawAudio,
                     speechMarks: narrationResult.speechMarks || [],
                     voiceId: voice,
                   },
+                  ...(resolvedChapter === 1 ? {
+                    [pageIndex]: {
+                      audio: narrationResult.rawAudio,
+                      speechMarks: narrationResult.speechMarks || [],
+                      voiceId: voice,
+                    },
+                  } : {}),
                 };
-                updateStory(currentStoryId, { narrations: updatedNarrations });
+
+                const storyUpdates = {
+                  narrations: updatedNarrations,
+                  ...(updatedChapters.length > 0 ? { chapters: updatedChapters } : {}),
+                };
+
+                updateStory(currentStoryId, storyUpdates);
                 syncStoryToServer(API_BASE, getDeviceId(), {
                   ...target,
-                  narrations: updatedNarrations,
+                  ...storyUpdates,
                 });
               }
             } catch (e) {
@@ -1412,7 +1540,7 @@ export default function App() {
       cancelled = true;
       setIsLoadingNarration(false);
     };
-  }, [screen, pageIndex, pages, voice, lesson, networkRetryKey, currentStoryId, prefetchNarration]);
+  }, [screen, pageIndex, pages, chapter, activeChapterIndex, voice, lesson, networkRetryKey, currentStoryId, prefetchNarration]);
 
   // Play audio immediately when ready - do not hold up reading aloud for slow background illustrations
   useEffect(() => {
@@ -1444,11 +1572,12 @@ export default function App() {
         return;
       }
 
-      // CRITICAL: Only advance the page if the audio that just finished truly belongs to this page
-      if (currentAudioPageIndexRef.current !== pageIndex) {
+      // CRITICAL: Only advance the page if the audio that just finished truly belongs to this page and chapter
+      if (currentAudioPageIndexRef.current !== pageIndex || currentAudioChapterRef.current !== (Number(chapter) || 1)) {
         return;
       }
       currentAudioPageIndexRef.current = null;
+      currentAudioChapterRef.current = null;
 
       if (turnTimerRef.current) {
         clearTimeout(turnTimerRef.current);
@@ -1483,7 +1612,7 @@ export default function App() {
         turnTimerRef.current = null;
       }
     };
-  }, [screen, pageIndex, pages.length, turnTo, lesson, choices]);
+  }, [screen, pageIndex, pages.length, chapter, turnTo, lesson, choices]);
 
   const hasPlayedLullabyChimeRef = useRef(false);
 
@@ -1919,12 +2048,13 @@ export default function App() {
       )}
       {screen === "loading" && <LoadingScreen chapter={chapter} choice={activeChoiceTitle} />}
       {screen === "history" && (
-        <HistoryScreen onSelect={handleSelectStory} onBack={handleBackFromHistory} />
+        <HistoryScreen history={history} onSelect={handleSelectStory} onBack={handleBackFromHistory} />
       )}
       {screen === "settings" && (
         <SettingsScreen
           onBack={handleBackFromSettings}
           onSettingsChange={handleSettingsChange}
+          onFamilyIdChange={handleFamilyIdChange}
           voice={voice}
           setVoice={handleVoiceChange}
           voices={serverVoices}

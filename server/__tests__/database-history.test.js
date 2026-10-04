@@ -363,6 +363,97 @@ describe("SQLite Flat DB: Story History, Illustrations & Preferences", () => {
       deleteCustomVoiceHandler(delVoiceReq, delVoiceRes);
       expect(delVoiceRes.body.success).toBe(true);
     });
+
+    it("loads all preferences and stories relating to a family account ID when another device links to it", () => {
+      const familyId = "family-smiths-" + Date.now();
+      const device1 = "firetv-device-livingroom-" + Date.now();
+      const device2 = "firetv-device-bedroom-" + Date.now();
+
+      // 1. Device 1 sets up preferences under familyId
+      savePreferences(device1, {
+        voiceId: "Ruth",
+        storyLength: 7,
+        themeIndex: 3,
+        storyCategory: "fantasy",
+        illustrationStyle: "watercolor",
+        pinHash: "5555",
+        parentSettings: { bedtimeLock: true },
+        userId: familyId,
+      });
+
+      // 1b. Device 1 creates stories under this familyId
+      const story1 = {
+        id: "family-story-1-" + Date.now(),
+        familyMembers: ["Alice", "Bob"],
+        theme: "Moonlight Kingdom",
+        category: "fantasy",
+        firstPage: "Alice and Bob gazed at the moon.",
+        pages: [{ text: "Alice and Bob gazed at the moon." }],
+        illustrations: [{ url: "https://example.com/moon.webp" }],
+      };
+      saveStory(device1, story1, familyId);
+
+      // 2. Now Device 2 joins the family by changing its family account ID to familyId
+      // Querying preferences for Device 2 with familyId should return the family's settings!
+      const loadedPrefs = getPreferences(device2, familyId);
+      expect(loadedPrefs).toBeDefined();
+      expect(loadedPrefs.voiceId).toBe("Ruth");
+      expect(loadedPrefs.storyLength).toBe(7);
+      expect(loadedPrefs.illustrationStyle).toBe("watercolor");
+      expect(loadedPrefs.pinHash).toBe("5555");
+      expect(loadedPrefs.parentSettings.bedtimeLock).toBe(true);
+
+      // Querying stories for Device 2 with familyId should return all stories from the family!
+      const familyStories = getStories(device2, 50, familyId);
+      expect(familyStories.some((s) => s.id === story1.id)).toBe(true);
+
+      // Getting story by ID for Device 2 with familyId
+      const singleStory = getStoryById(story1.id, device2, familyId);
+      expect(singleStory).toBeDefined();
+      expect(singleStory.id).toBe(story1.id);
+      expect(singleStory.theme).toBe("Moonlight Kingdom");
+
+      // Cleanup
+      db.prepare(`DELETE FROM stories WHERE user_id = ? OR device_id IN (?, ?)`).run(familyId, device1, device2);
+      db.prepare(`DELETE FROM preferences WHERE user_id = ? OR device_id IN (?, ?)`).run(familyId, device1, device2);
+      db.prepare(`DELETE FROM devices WHERE user_id = ? OR device_id IN (?, ?)`).run(familyId, device1, device2);
+    });
+
+    it("ensures swapping accounts on the same device isolates stories and does not leak previous account records", () => {
+      const deviceId = "shared-firetv-" + Date.now();
+      const accountA = "family-alpha-" + Date.now();
+      const accountB = "family-beta-" + Date.now();
+
+      // 1. Device uses Account A and saves a story
+      const storyA = {
+        id: "alpha-story-" + Date.now(),
+        theme: "Alpha Rocket",
+        pages: [{ text: "Rocket blast off!" }],
+      };
+      saveStory(deviceId, storyA, accountA);
+
+      // 2. Device swaps to Account B and saves a story for Account B
+      const storyB = {
+        id: "beta-story-" + Date.now(),
+        theme: "Beta Castle",
+        pages: [{ text: "Once upon a castle..." }],
+      };
+      saveStory(deviceId, storyB, accountB);
+
+      // 3. Querying stories for Account B on this same device must ONLY return Account B's stories
+      const storiesB = getStories(deviceId, 50, accountB);
+      expect(storiesB.some((s) => s.id === storyB.id)).toBe(true);
+      expect(storiesB.some((s) => s.id === storyA.id)).toBe(false);
+
+      // 4. Querying stories for Account A must ONLY return Account A's stories
+      const storiesA = getStories(deviceId, 50, accountA);
+      expect(storiesA.some((s) => s.id === storyA.id)).toBe(true);
+      expect(storiesA.some((s) => s.id === storyB.id)).toBe(false);
+
+      // Cleanup
+      db.prepare(`DELETE FROM stories WHERE user_id IN (?, ?)`).run(accountA, accountB);
+      db.prepare(`DELETE FROM devices WHERE device_id = ?`).run(deviceId);
+    });
   });
 });
 

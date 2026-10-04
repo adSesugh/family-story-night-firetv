@@ -146,4 +146,38 @@ describe("Alexa Voice Synchronization (Client)", () => {
     expect(screen.getByText(/Alexa Code:/i)).toBeInTheDocument();
     expect(screen.getByText("5842")).toBeInTheDocument();
   });
+
+  it("initializes immediately with cached pairing code from StorageService and persists returned code", async () => {
+    const { StorageService } = await import("../utils/storage");
+    StorageService.setItem("familyStoryNight_alexa_code", "4321");
+
+    let requestPayload = null;
+    global.fetch = jest.fn((url, options) => {
+      if (url.includes("/alexa/session")) {
+        requestPayload = JSON.parse(options.body);
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ sessionId: "test-device", pairingCode: "4321" }),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ events: [] }),
+      });
+    });
+
+    const { result } = renderHook(() =>
+      useAlexaVoiceSync({ apiBase: "http://localhost:4000", pollIntervalMs: 500 })
+    );
+
+    // Initial state should immediately have the cached code
+    expect(result.current.pairingCode).toBe("4321");
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(requestPayload).toMatchObject({ preferredCode: "4321" });
+    expect(StorageService.getItem("familyStoryNight_alexa_code")).toBe("4321");
+  });
 });
