@@ -2096,14 +2096,8 @@ export default function App() {
           onFocusIndexChange={setConclusionFocusIndex}
           activeSpeechMark={activeSpeechMark}
           windDown={
-            (() => {
-              const isEnabled = (parentSettings?.settings?.bedtimeWindDown ?? true) &&
-                (chapter > 1 || pageIndex >= 2 || pageIndex >= (pages ? pages.length - 1 : 0));
-              if (isEnabled) {
-                console.log('[Wind-Down] ACTIVE on page', pageIndex, 'of', pages?.length);
-              }
-              return isEnabled;
-            })()
+            (parentSettings?.settings?.bedtimeWindDown ?? true) &&
+            (chapter > 1 || pageIndex >= 2 || pageIndex >= (pages ? pages.length - 1 : 0))
           }
         />
       )}
