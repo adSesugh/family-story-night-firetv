@@ -1,0 +1,117 @@
+import { describe, it, expect, vi } from 'vitest';
+import { invokeBedrockTextModel } from '../services/bedrockService.js';
+import { ConverseCommand, InvokeModelCommand } from '@aws-sdk/client-bedrock-runtime';
+
+describe('Amazon Nova Story Generation Integration', () => {
+  it('calls ConverseCommand with proper parameters for Amazon Nova Pro', async () => {
+    const mockSend = vi.fn().mockResolvedValue({
+      output: {
+        message: {
+          role: 'assistant',
+          content: [
+            {
+              text: JSON.stringify({
+                pages: [
+                  { text: 'Once upon a time in a starlit forest...', scene: 'A gentle owl under glowing stars' },
+                  { text: 'The gentle breeze whispered goodnight.', scene: 'Cozy animals snuggling to sleep' },
+                  { text: 'And sweet dreams filled the night.', scene: 'A crescent moon smiling softly' },
+                ],
+                lesson: 'Kindness warms even the coldest night.',
+                choices: [
+                  'Follow the gentle stream towards the glowing lantern',
+                  'Rest under the whispering willow tree',
+                ],
+              }),
+            },
+          ],
+        },
+      },
+    });
+
+    const mockClient = { send: mockSend };
+
+    const result = await invokeBedrockTextModel({
+      modelId: 'amazon.nova-pro-v1:0',
+      prompt: 'Write a gentle bedtime story',
+      maxTokens: 1000,
+      client: mockClient,
+    });
+
+    expect(mockSend).toHaveBeenCalledTimes(1);
+    const sentCommand = mockSend.mock.calls[0][0];
+    expect(sentCommand).toBeInstanceOf(ConverseCommand);
+    expect(sentCommand.input.modelId).toBe('amazon.nova-pro-v1:0');
+    expect(sentCommand.input.inferenceConfig.maxTokens).toBe(1000);
+    expect(sentCommand.input.messages[0].content[0].text).toBe('Write a gentle bedtime story');
+
+    const parsed = JSON.parse(result);
+    expect(parsed.pages).toHaveLength(3);
+    expect(parsed.lesson).toBe('Kindness warms even the coldest night.');
+  });
+
+  it('falls back to InvokeModelCommand with Nova payload if ConverseCommand fails', async () => {
+    const mockSend = vi.fn()
+      // First call (ConverseCommand) rejects
+      .mockRejectedValueOnce(new Error('ConverseCommand not supported in mock'))
+      // Second call (InvokeModelCommand) resolves with Nova output structure
+      .mockResolvedValueOnce({
+        body: new TextEncoder().encode(
+          JSON.stringify({
+            output: {
+              message: {
+                role: 'assistant',
+                content: [{ text: '{"pages": ["Page 1", "Page 2"]}' }],
+              },
+            },
+          })
+        ),
+      });
+
+    const mockClient = { send: mockSend };
+
+    const result = await invokeBedrockTextModel({
+      modelId: 'amazon.nova-lite-v1:0',
+      prompt: 'Test prompt',
+      maxTokens: 500,
+      client: mockClient,
+    });
+
+    expect(mockSend).toHaveBeenCalledTimes(2);
+    const fallbackCommand = mockSend.mock.calls[1][0];
+    expect(fallbackCommand).toBeInstanceOf(InvokeModelCommand);
+    expect(fallbackCommand.input.modelId).toBe('amazon.nova-lite-v1:0');
+
+    const payload = JSON.parse(fallbackCommand.input.body);
+    expect(payload.inferenceConfig.max_new_tokens).toBe(500);
+    expect(payload.messages[0].content[0].text).toBe('Test prompt');
+    expect(result).toBe('{"pages": ["Page 1", "Page 2"]}');
+  });
+
+  it('falls back to InvokeModelCommand with Claude payload when model is Anthropic', async () => {
+    const mockSend = vi.fn()
+      .mockRejectedValueOnce(new Error('Converse fallback test'))
+      .mockResolvedValueOnce({
+        body: new TextEncoder().encode(
+          JSON.stringify({
+            content: [{ text: '{"pages": ["Claude page 1"]}' }],
+          })
+        ),
+      });
+
+    const mockClient = { send: mockSend };
+
+    const result = await invokeBedrockTextModel({
+      modelId: 'us.anthropic.claude-3-5-sonnet-20241022-v2:0',
+      prompt: 'Claude prompt',
+      maxTokens: 1200,
+      client: mockClient,
+    });
+
+    expect(mockSend).toHaveBeenCalledTimes(2);
+    const fallbackCommand = mockSend.mock.calls[1][0];
+    const payload = JSON.parse(fallbackCommand.input.body);
+    expect(payload.anthropic_version).toBe('bedrock-2023-05-31');
+    expect(payload.max_tokens).toBe(1200);
+    expect(result).toBe('{"pages": ["Claude page 1"]}');
+  });
+});

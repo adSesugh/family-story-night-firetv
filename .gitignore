@@ -11,3 +11,4 @@ voice-service/.venv/
 voice-service/.venv_xtts/
 voice-service/__pycache__/
 voice-service/voices/
+HACKATHON_SUBMISSION.md

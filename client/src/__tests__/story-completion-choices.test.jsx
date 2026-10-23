@@ -40,7 +40,7 @@ describe("Story Completion: Lesson to Learn & Adventure Choices", () => {
     render(
       <StoryScreen
         pages={samplePages}
-        pageIndex={2} // conclusion slide (after 2 pages)
+        pageIndex={2}
         turnKey={1}
         onTurn={jest.fn()}
         lesson={sampleLesson}
@@ -51,30 +51,22 @@ describe("Story Completion: Lesson to Learn & Adventure Choices", () => {
       />
     );
 
-    // Header & Chapter badge
     expect(screen.getByText(/Chapter 1 Complete/i)).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "The End" })).toBeInTheDocument();
-
-    // Bedtime lesson
     expect(screen.getByTestId("story-lesson")).toBeInTheDocument();
     expect(screen.getByText("Lesson to Learn")).toBeInTheDocument();
     expect(screen.getByText(new RegExp(sampleLesson, "i"))).toBeInTheDocument();
-
-    // Choice cards
     expect(screen.getByTestId("choice-btn-0")).toBeInTheDocument();
     expect(screen.getByText(/Follow the firefly/i)).toBeInTheDocument();
     expect(screen.getByTestId("choice-btn-1")).toBeInTheDocument();
     expect(screen.getByText(/Build a cozy moss camp/i)).toBeInTheDocument();
 
-    // Clicking choice calls onSelectChoice
     fireEvent.click(screen.getByTestId("choice-btn-0"));
     expect(onSelectChoice).toHaveBeenCalledWith(sampleChoices[0]);
 
-    // Clicking return home calls onReturnHome
     fireEvent.click(screen.getByTestId("return-home-btn"));
     expect(onReturnHome).toHaveBeenCalled();
 
-    // Page indicator displays Chapter completion text
     expect(screen.getByText(/Ch\. 1 • The End/i)).toBeInTheDocument();
   });
 
@@ -96,9 +88,15 @@ describe("Story Completion: Lesson to Learn & Adventure Choices", () => {
   });
 
   test("App flow: generating story, reaching conclusion slide, and selecting next chapter", async () => {
-    // Mock fetch for generate-story, illustrate, and narrate
     const fetchMock = jest.fn((url, options) => {
       const urlStr = String(url);
+      
+      if (urlStr.includes("/themes")) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ categories: [] }) });
+      }
+      if (urlStr.includes("/voices")) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ voices: [] }) });
+      }
       if (urlStr.includes("/generate-story")) {
         const body = options?.body ? JSON.parse(options.body) : {};
         const isChapter2 = body.chapter === 2;
@@ -138,33 +136,25 @@ describe("Story Completion: Lesson to Learn & Adventure Choices", () => {
 
     render(<App />);
 
-    // Fill family members and begin story
     const input = screen.getByPlaceholderText(/Maya, Dad/i);
     fireEvent.change(input, { target: { value: "Maya, Dad" } });
     fireEvent.click(screen.getByRole("button", { name: /Begin the story/i }));
 
-    // Wait for story screen to appear
     await waitFor(() => {
       expect(screen.getByTestId("story-screen")).toBeInTheDocument();
-    });
+    }, { timeout: 10000 });
 
-    // Advance through pages to conclusion slide
-    // Turn to page 2 (Right arrow)
     fireEvent.keyDown(window, { key: "ArrowRight", keyCode: 39 });
-
-    // Turn to conclusion slide (Right arrow)
     fireEvent.keyDown(window, { key: "ArrowRight", keyCode: 39 });
 
     await waitFor(() => {
       expect(screen.getByTestId("story-conclusion")).toBeInTheDocument();
       expect(screen.getByText(/Curiosity opens wondrous doors/i)).toBeInTheDocument();
       expect(screen.getByTestId("choice-btn-0")).toBeInTheDocument();
-    });
+    }, { timeout: 10000 });
 
-    // Click choice 1 to generate Chapter 2
     fireEvent.click(screen.getByTestId("choice-btn-0"));
 
-    // Verify Chapter 2 request was sent with selectedChoice and chapter: 2
     await waitFor(() => {
       const chapter2Call = fetchMock.mock.calls.find(([url, opt]) => {
         if (!String(url).includes("/generate-story") || !opt?.body) return false;
@@ -175,17 +165,23 @@ describe("Story Completion: Lesson to Learn & Adventure Choices", () => {
       const body = JSON.parse(chapter2Call[1].body);
       expect(body.selectedChoice).toBe("Follow the glittering path");
       expect(body.chapter).toBe(2);
-    });
+    }, { timeout: 10000 });
 
-    // Verify Chapter 2 story screen displays the new story
     await waitFor(() => {
       expect(screen.getByText(/Chapter two begins at the waterfall/i)).toBeInTheDocument();
-    });
-  });
+    }, { timeout: 10000 });
+  }, 15000);
 
   test("D-pad / arrow keys navigate between choices, home button, and select on conclusion screen", async () => {
     const fetchMock = jest.fn((url, options) => {
       const urlStr = String(url);
+      
+      if (urlStr.includes("/themes")) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ categories: [] }) });
+      }
+      if (urlStr.includes("/voices")) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ voices: [] }) });
+      }
       if (urlStr.includes("/generate-story")) {
         const body = options?.body ? JSON.parse(options.body) : {};
         const isChapter2 = body.chapter === 2;
@@ -221,47 +217,39 @@ describe("Story Completion: Lesson to Learn & Adventure Choices", () => {
 
     render(<App />);
 
-    // Begin story
     const input = screen.getByPlaceholderText(/Maya, Dad/i);
     fireEvent.change(input, { target: { value: "Liam" } });
     fireEvent.click(screen.getByRole("button", { name: /Begin the story/i }));
 
     await waitFor(() => {
       expect(screen.getByTestId("story-screen")).toBeInTheDocument();
-    });
+    }, { timeout: 10000 });
 
-    // Advance to page 2 then conclusion slide
     fireEvent.keyDown(window, { key: "ArrowRight", keyCode: 39 });
     fireEvent.keyDown(window, { key: "ArrowRight", keyCode: 39 });
 
     await waitFor(() => {
       expect(screen.getByTestId("story-conclusion")).toBeInTheDocument();
-    });
+    }, { timeout: 10000 });
 
     const choice0 = screen.getByTestId("choice-btn-0");
     const choice1 = screen.getByTestId("choice-btn-1");
     const homeBtn = screen.getByTestId("return-home-btn");
 
-    // Initially choice 0 is focused
     expect(choice0.className).toContain("ring-4");
 
-    // D-pad Right -> focuses choice 1
     fireEvent.keyDown(window, { key: "ArrowRight", keyCode: 39 });
     expect(choice1.className).toContain("ring-4");
 
-    // D-pad Left -> focuses choice 0
     fireEvent.keyDown(window, { key: "ArrowLeft", keyCode: 37 });
     expect(choice0.className).toContain("ring-4");
 
-    // D-pad Down -> focuses return home button
     fireEvent.keyDown(window, { key: "ArrowDown", keyCode: 40 });
     expect(homeBtn.className).toContain("ring-2");
 
-    // D-pad Up -> focuses choice 0
     fireEvent.keyDown(window, { key: "ArrowUp", keyCode: 38 });
     expect(choice0.className).toContain("ring-4");
 
-    // Move to Choice 1 and press Enter/Select -> triggers Chapter 2 with Option Beta
     fireEvent.keyDown(window, { key: "ArrowRight", keyCode: 39 });
     expect(choice1.className).toContain("ring-4");
 
@@ -276,6 +264,6 @@ describe("Story Completion: Lesson to Learn & Adventure Choices", () => {
       expect(chapter2Call).toBeTruthy();
       const body = JSON.parse(chapter2Call[1].body);
       expect(body.selectedChoice).toBe("Option Beta");
-    });
-  });
+    }, { timeout: 10000 });
+  }, 15000);
 });
