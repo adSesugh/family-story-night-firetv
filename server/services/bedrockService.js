@@ -165,8 +165,11 @@ Return ONLY a valid JSON object with this exact structure:
   // Parse response based on model type
   let text = "{}";
   if (isNovaModel) {
-    // Amazon Nova returns output.text
-    text = responseBody.output?.text || "{}";
+    // Amazon Nova returns output.message.content[0].text
+    text = responseBody.output?.message?.content?.[0]?.text || responseBody.output?.text || "{}";
+    console.log("[Nova] Response text length:", text.length);
+    console.log("[Nova] First 300 chars:", text.substring(0, 300));
+    console.log("[Nova] Last 300 chars:", text.substring(Math.max(0, text.length - 300)));
   } else if (isClaudeModel) {
     // Anthropic Claude returns content[0].text
     text = responseBody.content?.[0]?.text?.trim() || "{}";
