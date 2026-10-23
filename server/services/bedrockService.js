@@ -6,6 +6,8 @@ dotenv.config();
 
 const REGION = process.env.AWS_REGION || "us-east-1";
 const MODEL_ID = process.env.BEDROCK_MODEL_ID;
+const isNovaModel = MODEL_ID && MODEL_ID.startsWith("amazon.nova");
+const isClaudeModel = MODEL_ID && (MODEL_ID.includes("anthropic") || MODEL_ID.includes("claude"));
 const bedrock = new BedrockRuntimeClient({ region: REGION });
 
 const MAX_TOKENS_BY_LENGTH = { 3: 1000, 4: 1200, 6: 1650, 8: 2100, 9: 2400 };
@@ -129,20 +131,49 @@ Return ONLY a valid JSON object with this exact structure:
 }`;
   }
 
+  // Build request body based on model type
+  let requestBody;
+  if (isNovaModel) {
+    // Amazon Nova Pro/Lite uses messages format with inferenceConfig
+    requestBody = {
+      messages: [{ role: "user", content: [{ text: prompt }] }],
+      inferenceConfig: {
+        max_new_tokens: maxTokens,
+        temperature: 0.7,
+        top_p: 0.9
+      }
+    };
+  } else {
+    // Anthropic/Claude format
+    requestBody = {
+      anthropic_version: "bedrock-2023-05-31",
+      max_tokens: maxTokens,
+      messages: [{ role: "user", content: [{ type: "text", text: prompt }] }]
+    };
+  }
+
   const command = new InvokeModelCommand({
     modelId: MODEL_ID,
     contentType: "application/json",
     accept: "application/json",
-    body: JSON.stringify({
-      anthropic_version: "bedrock-2023-05-31",
-      max_tokens: maxTokens,
-      messages: [{ role: "user", content: prompt }],
-    }),
+    body: JSON.stringify(requestBody),
   });
 
   const response = await bedrock.send(command);
   const responseBody = JSON.parse(new TextDecoder().decode(response.body));
-  const text = responseBody.content?.[0]?.text?.trim() || "{}";
+  
+  // Parse response based on model type
+  let text = "{}";
+  if (isNovaModel) {
+    // Amazon Nova returns output.text
+    text = responseBody.output?.text || "{}";
+  } else if (isClaudeModel) {
+    // Anthropic Claude returns content[0].text
+    text = responseBody.content?.[0]?.text?.trim() || "{}";
+  } else {
+    // Fallback
+    text = JSON.stringify(responseBody);
+  }
 
   let pages = [];
   let lesson = `Every step of our bedtime journey in ${theme} brings warm memories to cherish.`;
