@@ -233,7 +233,7 @@ export default function StoryScreen({
       {windDown && (
         <div
           data-testid="bedtime-dimmer-veil"
-          className="pointer-events-none fixed inset-0 z-20 bg-night/40 backdrop-blur-[1px] transition-opacity duration-1000"
+          className="pointer-events-none fixed inset-0 z-20 bg-night/40  transition-opacity duration-1000"
         />
       )}
       {/* Bedtime Wind-Down indicator */}
