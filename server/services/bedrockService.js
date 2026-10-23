@@ -5,7 +5,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 const REGION = process.env.AWS_REGION || "us-east-1";
-const MODEL_ID = process.env.BEDROCK_MODEL_ID || "us.anthropic.claude-3-5-sonnet-20241022-v2:0";
+const MODEL_ID = process.env.BEDROCK_MODEL_ID;
 const bedrock = new BedrockRuntimeClient({ region: REGION });
 
 const MAX_TOKENS_BY_LENGTH = { 3: 1000, 4: 1200, 6: 1650, 8: 2100, 9: 2400 };

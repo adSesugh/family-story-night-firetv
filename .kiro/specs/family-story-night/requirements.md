@@ -151,7 +151,7 @@ Family Story Night is a Fire TV web application that generates personalized, ill
 
 1. WHEN the Frontend starts, THE System SHALL default the API base URL to `http://localhost:4000` unless overridden by environment variable `VITE_API_BASE`
 2. WHEN the Backend starts, THE System SHALL default the AWS region to `us-east-1` unless overridden by environment variable `AWS_REGION`
-3. WHEN the Backend starts, THE System SHALL default the Bedrock model to `anthropic.claude-3-5-sonnet-20241022-v2:0` unless overridden by environment variable `BEDROCK_MODEL_ID`
+3. WHEN the Backend starts, THE System SHALL default the Bedrock model to `amazon.nova-pro-v1:0` unless overridden by environment variable `BEDROCK_MODEL_ID`
 4. WHEN the Backend starts, THE System SHALL require AWS credentials via environment variables (`AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`)
 5. WHEN the Backend receives a request to `/health`, THE System SHALL respond with `{ "status": "ok" }`
 

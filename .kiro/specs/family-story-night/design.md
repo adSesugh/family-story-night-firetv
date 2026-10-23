@@ -335,7 +335,7 @@ app.use(cors());
 app.use(express.json());
 
 const REGION = process.env.AWS_REGION || "us-east-1";
-const MODEL_ID = process.env.BEDROCK_MODEL_ID || "anthropic.claude-3-5-sonnet-20241022-v2:0";
+const MODEL_ID = process.env.BEDROCK_MODEL_ID || "amazon.nova-pro-v1:0";
 
 const bedrock = new BedrockRuntimeClient({ region: REGION });
 const polly = new PollyClient({ region: REGION });
@@ -383,7 +383,7 @@ app.listen(PORT, () => console.log(`Server on port ${PORT}`));
 
 **Configuration**:
 - `AWS_REGION`: Defaults to `us-east-1`
-- `BEDROCK_MODEL_ID`: Defaults to `anthropic.claude-3-5-sonnet-20241022-v2:0`
+- `BEDROCK_MODEL_ID`: Defaults to `amazon.nova-pro-v1:0`
 - AWS credentials: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` (required)
 
 **Error Handling**:
@@ -1146,7 +1146,7 @@ If not set, defaults to `http://localhost:4000` in code.
 **Backend (.env)**:
 ```
 AWS_REGION=us-east-1
-BEDROCK_MODEL_ID=anthropic.claude-3-5-sonnet-20241022-v2:0
+BEDROCK_MODEL_ID=amazon.nova-pro-v1:0
 AWS_ACCESS_KEY_ID=<your-key>
 AWS_SECRET_ACCESS_KEY=<your-secret>
 PORT=4000

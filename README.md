@@ -35,7 +35,7 @@ flowchart TD
     end
 
     subgraph AWS["☁️ Amazon Web Services"]
-        BedrockText["Amazon Bedrock\n(Anthropic Claude 3.5 Sonnet / Nova Lite)"]
+        BedrockText["Amazon Bedrock\n(via AWS SDK - Claude 3.5 Sonnet / Nova Lite)"]
         BedrockImage["Amazon Bedrock\n(Amazon Nova Canvas)"]
         Polly["Amazon Polly\n(Neural Standard Voices + SpeechMarks)"]
     end
@@ -101,7 +101,7 @@ flowchart TD
 ### 2. Backend Orchestrator (`server/`)
 - **Framework**: Node.js & Express.
 - **Responsibilities**:
-  - Calls **Amazon Bedrock** (Anthropic Claude 3.5 Sonnet) for story creation and chapter continuation.
+  - Calls **Amazon Bedrock** (via AWS SDK - Claude 3.5 Sonnet) for story creation and chapter continuation.
   - Calls **Amazon Nova Canvas** for parallel page illustration generation.
   - Routes voice synthesis: calls **Amazon Polly** for standard neural voices, or routes custom family voices to the **Voice Microservice** via `VOICE_SERVICE_URL`.
 - **Port**: `4000`.
