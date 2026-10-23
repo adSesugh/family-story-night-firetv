@@ -1617,12 +1617,15 @@ export default function App() {
   const hasPlayedLullabyChimeRef = useRef(false);
 
   useEffect(() => {
-    if (screen === "story" && pages && pageIndex >= pages.length) {
+    // Play chime when reaching the LAST page of the story (when wind-down is active)
+    if (screen === "story" && pages && pages.length > 0 && pageIndex === pages.length - 1) {
       if (!hasPlayedLullabyChimeRef.current) {
         hasPlayedLullabyChimeRef.current = true;
-        playBedtimeLullabyChime();
+        // Delay chime by 2 seconds to let narration settle
+        setTimeout(() => playBedtimeLullabyChime(), 2000);
       }
-    } else {
+    } else if (pageIndex < pages.length - 1) {
+      // Reset when not on last page
       hasPlayedLullabyChimeRef.current = false;
     }
   }, [screen, pageIndex, pages]);
@@ -2094,7 +2097,7 @@ export default function App() {
           activeSpeechMark={activeSpeechMark}
           windDown={
             (parentSettings?.settings?.bedtimeWindDown ?? true) &&
-            (chapter > 1 || pageIndex >= 2 || pageIndex >= (pages ? pages.length : 0))
+            (chapter > 1 || pageIndex >= 2 || pageIndex >= (pages ? pages.length - 1 : 0))
           }
         />
       )}
