@@ -2098,19 +2098,12 @@ export default function App() {
           windDown={
             (() => {
               const setting = parentSettings?.settings?.bedtimeWindDown ?? true;
-              const ch = chapter;
               const idx = pageIndex;
               const len = pages?.length || 0;
-              const condition = (ch > 1 || idx >= 2 || idx >= len - 1);
+              // Only activate wind-down on the last page (not based on chapter number)
+              const condition = (idx >= len - 1 && len > 0);
               const result = setting && condition;
-              console.log('[Wind-Down Debug]', {
-                chapter: ch,
-                pageIndex: idx,
-                totalPages: len,
-                setting,
-                condition,
-                windDownActive: result
-              });
+              console.log('[Wind-Down] Page', idx + 1, 'of', len, '- Active:', result);
               return result;
             })()
           }
